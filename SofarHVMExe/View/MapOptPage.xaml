@@ -1,0 +1,240 @@
+﻿<UserControl x:Class="SofarHVMExe.View.MapOptPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:fa="http://schemas.awesome.incremented/wpf/xaml/fontawesome.sharp"
+             xmlns:ut="clr-namespace:SofarHVMExe.Utilities" 
+             xmlns:vm="clr-namespace:SofarHVMExe.ViewModel"
+             xmlns:collections="clr-namespace:System.Collections;assembly=System.Runtime" 
+             xmlns:system="clr-namespace:System;assembly=System.Runtime" xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
+             mc:Ignorable="d" 
+             d:DesignHeight="450" d:DesignWidth="800"
+             xmlns:local="clr-namespace:SofarHVMExe.View"
+             d:DataContext="{d:DesignInstance vm:MapOptPageVm}"
+             Unloaded="MapOptPage_OnUnloaded"
+             Name="page">
+
+    <UserControl.Resources>
+        <Style x:Key="TextBlockColunmStyle" TargetType="TextBlock">
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Margin" Value="15 0" />
+        </Style>
+
+        <ut:FrameStrValueValidateConverter x:Key="frameStrValueValidateConverter" />
+    </UserControl.Resources>
+
+    <Border Background="{DynamicResource mainWndBackgroundColor}" >
+        <Grid Margin="0" >
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!--导入文件区域-->
+            <Border Background="{DynamicResource sectionBackgroundColor}">
+                <StackPanel Orientation="Horizontal" Margin="10" HorizontalAlignment="Left" VerticalAlignment="Center">
+                    <TextBlock Text="文件路径"  VerticalAlignment="Center" />
+                    <TextBox Text="{Binding FilePath}" VerticalContentAlignment="Center" Width="590" Height="28" Margin="27 0 0 0"/>
+                    <Button Content="导入" Command="{Binding ImportCommand}" Margin="10 0 0 0"/>
+                </StackPanel>
+            </Border>
+
+            <Border Background="{DynamicResource sectionBackgroundColor}" Grid.Row="1">
+                <StackPanel Orientation="Horizontal" Margin="10" HorizontalAlignment="Left" VerticalAlignment="Center">
+                    <TextBlock Text="地址/变量名" VerticalAlignment="Center" />
+                    <TextBox Width="250" Height="28" Text="{Binding SelectData.AddressOrName}" Margin="10 0 0 0" />
+                    <TextBlock Text="数据类型" VerticalAlignment="Center" Margin="10 0 10 0" />
+                    <ComboBox Width="120" Height="28" Text="{Binding SelectData.Type}">
+                        <ComboBoxItem>I16</ComboBoxItem>
+                        <ComboBoxItem>U16</ComboBoxItem>
+                        <ComboBoxItem>U32</ComboBoxItem>
+                        <ComboBoxItem>float</ComboBoxItem>
+                        <ComboBoxItem>I32</ComboBoxItem>
+                    </ComboBox>
+                    <TextBlock Text="值" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="10 0 10 0" />
+                    <TextBox Width="120"  Height="28" Text="{Binding SelectData.Value}"/>
+                    <Button Content="写入" Margin="10 0 0 0" Command="{Binding WriteDataCommand}" />
+                </StackPanel>
+            </Border>
+
+            <!--读写操作区域-->
+            <Grid Grid.Row="2" Margin="0 5 0 0">
+                <Grid.ColumnDefinitions>
+                    <!--<ColumnDefinition Width="2*" MinWidth="300"/>-->
+                    <ColumnDefinition Width="1*" MinWidth="300"/>
+                </Grid.ColumnDefinitions>
+
+                <!--读取区域-->
+                <Border Grid.Column="0" Margin="0 0 0 0" Padding="10" Background="{DynamicResource sectionBackgroundColor}">
+                    <Grid >
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <!--上方操作区-->
+                        <Grid>
+                            <!--增加删除按钮-->
+                            <StackPanel Orientation="Horizontal">
+                                <Button Width="50" Height="28" Background="#4cd137" BorderThickness="0"
+                                        Command="{Binding AddCommand}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <fa:IconImage Icon="Plus" Width="13" Foreground="White"/>
+                                    </StackPanel>
+                                </Button>
+
+                                <Button Width="50" Height="28" BorderBrush="#bdc3c7" Margin="10 0 0 0" 
+                                    Background="#ff6b6b" BorderThickness="0"
+                                    Command="{Binding DeleteCommand}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <fa:IconImage Icon="minus" Width="13" Foreground="White"/>
+                                    </StackPanel>
+                                </Button>
+
+                                <Button Content="{Binding ReadBtnText}" Margin="10 0 0 0" Command="{Binding StartReadCommand}" />
+                                <Button Content="保存" Margin="10 0 0 0" Command="{Binding SaveCommand}" />
+                                <Button Content="清除" Margin="10 0 0 0" Command="{Binding ClearCommand}"/>
+                                <TextBlock Text="间隔时间：" VerticalAlignment="Center" Margin="10 0 0 0"/>
+                                <TextBox x:Name="txtInterval" Text="{Binding IntervalVal}" IsEnabled="{Binding IntervalEnable,Mode=TwoWay}" Width="75" VerticalContentAlignment="Center" />
+                                <TextBlock Text="ms" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Grid>
+
+                        <!--下方表格数据区-->
+                        <Border Name="DataArea" Grid.Row="2" Margin="0 8 0 0" BorderBrush="LightGray" BorderThickness="1 0 1 1">
+                            <DataGrid x:Name="dataGrid"
+                                      ItemsSource="{Binding DataSource}" 
+                                      SelectedItem="{Binding SelectData}"
+                                      BorderBrush="LightGray" BorderThickness="0 0 0 0" SelectionMode="Single"
+                                      CanUserSortColumns="False" 
+                                      HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
+                                      LoadingRow="DataGrid_LoadingRow"
+                                      BeginningEdit="DataGrid_BeginningEdit"
+                                      CellEditEnding="DataGrid_CellEditEnding">
+
+                                <!--<i:Interaction.Triggers>
+                                    <i:EventTrigger EventName="MouseDoubleClick">
+                                        <i:InvokeCommandAction Command="{Binding EditSelectCommand}" />
+                                    </i:EventTrigger>
+                                </i:Interaction.Triggers>-->
+
+                                <DataGrid.Columns>
+                                    <!--地址(0x) / 变量名列-->
+                                    <DataGridTextColumn Header="地址(0x) / 变量名" Width="200" 
+                                                        Binding="{Binding AddressOrName, UpdateSourceTrigger=PropertyChanged}" >
+                                        <DataGridTextColumn.ElementStyle>
+                                            <Style TargetType="TextBlock" >
+                                                <Setter Property="HorizontalAlignment" Value="Center" />
+                                                <Setter Property="VerticalAlignment" Value="Center" />
+                                            </Style>
+                                        </DataGridTextColumn.ElementStyle>
+                                    </DataGridTextColumn>
+
+                                    <!--数据类型列-->
+                                    <DataGridComboBoxColumn Header="数据类型" Width="100" 
+                                                ElementStyle="{StaticResource CenterComboBoxStyle}"
+                                                SelectedValueBinding="{Binding Type, UpdateSourceTrigger=PropertyChanged}">
+                                        <DataGridComboBoxColumn.ItemsSource>
+                                            <collections:ArrayList>
+                                                <system:String>I16</system:String>
+                                                <system:String>U16</system:String>
+                                                <system:String>U32</system:String>
+                                                <system:String>float</system:String>
+                                                <system:String>I32</system:String>
+                                            </collections:ArrayList>
+                                        </DataGridComboBoxColumn.ItemsSource>
+                                    </DataGridComboBoxColumn>
+
+                                    <!--地址信息-->
+                                    <DataGridTextColumn Header="地址" Width="150" ElementStyle="{StaticResource CenterTextBlockStyle}"
+                                            Binding="{Binding Address, UpdateSourceTrigger=PropertyChanged}">
+                                        <!--编辑时样式-->
+                                        <DataGridTextColumn.EditingElementStyle>
+                                            <Style TargetType="TextBox">
+                                                <Setter Property="BorderThickness" Value="0" />
+
+                                                <!--校验失败样式-->
+                                                <Style.Triggers>
+                                                    <Trigger Property="Validation.HasError" Value="True">
+                                                        <Setter Property="ToolTip" Value="请输入合法的16进制数！"/>
+                                                        <Setter Property="ToolTipService.ShowDuration" Value="5000"/>
+                                                        <Setter Property="ToolTipService.InitialShowDelay" Value="100"/>
+                                                        <Setter Property="ToolTipService.ShowsToolTipOnKeyboardFocus" Value="True"/>
+                                                    </Trigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </DataGridTextColumn.EditingElementStyle>
+                                    </DataGridTextColumn>
+
+                                    <!--值列-->
+                                    <DataGridTextColumn Header="值" Width="250" ElementStyle="{StaticResource CenterTextBlockStyle}"
+                                            Binding="{Binding Value, UpdateSourceTrigger=PropertyChanged}">
+                                        <!--编辑时样式-->
+                                        <DataGridTextColumn.EditingElementStyle>
+                                            <Style TargetType="TextBox">
+                                                <Setter Property="BorderThickness" Value="0" />
+
+                                                <!--校验失败样式-->
+                                                <Style.Triggers>
+                                                    <Trigger Property="Validation.HasError" Value="True">
+                                                        <Setter Property="ToolTip" Value="请输入合法的16进制数！"/>
+                                                        <Setter Property="ToolTipService.ShowDuration" Value="5000"/>
+                                                        <Setter Property="ToolTipService.InitialShowDelay" Value="100"/>
+                                                        <Setter Property="ToolTipService.ShowsToolTipOnKeyboardFocus" Value="True"/>
+                                                    </Trigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </DataGridTextColumn.EditingElementStyle>
+                                    </DataGridTextColumn>
+
+                                    <!--备注列-->
+                                    <DataGridTextColumn Header="备注" Width="*" ElementStyle="{StaticResource CenterTextBlockStyle}"
+                                            Binding="{Binding Remark, UpdateSourceTrigger=PropertyChanged}">
+                                        <!--编辑时样式-->
+                                        <DataGridTextColumn.EditingElementStyle>
+                                            <Style TargetType="TextBox">
+                                                <Setter Property="BorderThickness" Value="0" />
+
+                                                <!--校验失败样式-->
+                                                <Style.Triggers>
+                                                    <Trigger Property="Validation.HasError" Value="True">
+                                                        <Setter Property="ToolTip" Value="请输入合法的16进制数！"/>
+                                                        <Setter Property="ToolTipService.ShowDuration" Value="5000"/>
+                                                        <Setter Property="ToolTipService.InitialShowDelay" Value="100"/>
+                                                        <Setter Property="ToolTipService.ShowsToolTipOnKeyboardFocus" Value="True"/>
+                                                    </Trigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </DataGridTextColumn.EditingElementStyle>
+                                    </DataGridTextColumn>
+
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </Border>
+                    </Grid>
+                </Border>
+
+                <!--分隔条-->
+                <!--<GridSplitter Grid.Column="0" Width="5" Background="{DynamicResource mainWndBackgroundColor}"
+                              Margin="5 0 0 0" />-->
+
+                <!--写入区域-->
+                <!--<Border Grid.Column="1" Margin="0 0 0 0" Padding="5" Background="{DynamicResource sectionBackgroundColor}"
+                        >
+                    <Grid >
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="auto" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="auto" />
+                        </Grid.RowDefinitions>
+                        
+                    </Grid>
+                </Border>-->
+            </Grid>
+        </Grid>
+
+    </Border>
+</UserControl>

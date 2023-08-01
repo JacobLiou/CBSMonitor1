@@ -1,0 +1,48 @@
+﻿<Application x:Class="SofarHVMExe.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:SofarHVMExe"
+             StartupUri="MainWindow.xaml">
+    <Application.Resources>
+
+        <ResourceDictionary>
+            
+            <!--自定义菜单按钮-->
+            <Style x:Key="menuButton" TargetType="Button">
+                <!--<Setter Property="Background" Value="Transparent"/>-->
+                <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+                <Setter Property="BorderThickness" Value="0"/>
+
+                <Setter Property="Template" >
+                    <Setter.Value >
+                        <ControlTemplate TargetType="Button">
+                            <Border Background="{TemplateBinding Background}" BorderThickness="{TemplateBinding BorderThickness}">
+                                <ContentPresenter VerticalAlignment="Stretch" HorizontalAlignment="Stretch" />
+                            </Border>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Background" Value="{DynamicResource menuHoverBackgroundColor}" />
+                    </Trigger>
+
+                    <Trigger Property="IsMouseOver" Value="False">
+                        <Setter Property="Background" Value="{DynamicResource menuBackgroundColor}" />
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
+            <ResourceDictionary.MergedDictionaries>
+                <!-- 控件样式 -->
+                <ResourceDictionary Source="pack://application:,,,/Style/Controls.xaml"/>
+                <!-- 颜色样式 -->
+                <ResourceDictionary Source="pack://application:,,,/Style/WhiteColor.xaml"/>
+                <!-- 数据模板 -->
+                <ResourceDictionary Source="Util/DataTemplate.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+        
+    </Application.Resources>
+</Application>

@@ -1,0 +1,45 @@
+﻿<UserControl x:Class="SofarHVMExe.UserControls.MCUCfgInfoControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:ut="clr-namespace:SofarHVMExe.Utilities"
+             Name="userControl">
+
+    <UserControl.Resources>
+        <ut:UInt2HexStrConverter x:Key="uint2HexStrConverter" />
+    </UserControl.Resources>
+    
+    <Border Background="White">
+        <StackPanel Orientation="Horizontal" >
+            <CheckBox Name="checkBox" Content="{Binding ElementName=userControl,Path=Desc}" VerticalAlignment="Center" 
+                      VerticalContentAlignment="Center" FontSize="12"  Width="100"
+                      IsChecked="{Binding ElementName=userControl,Path=DataSource.McuEnable}" />
+            <TextBox Width="100" Height="20" FontSize="13" VerticalContentAlignment="Center"
+                     IsEnabled="{Binding ElementName=checkBox, Path=IsChecked}"
+                     Text="{Binding ElementName=userControl,Path=DataSource.McuName}"/>
+            <ComboBox Width="100" Height="20" FontSize="13" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Margin="5 0 0 0" Padding="5 0 0 0"
+                      IsEnabled="{Binding ElementName=checkBox, Path=IsChecked}"
+                      Text="{Binding ElementName=userControl,Path=DataSource.FileType}">
+                <ComboBoxItem Content="0(out)" />
+                <ComboBoxItem Content="1(hex)" />
+                <ComboBoxItem Content="2(bin)" />
+            </ComboBox>
+            <TextBox Width="100" Height="20" FontSize="13" VerticalContentAlignment="Center" Margin="5 0 0 0"
+                     IsEnabled="{Binding ElementName=checkBox, Path=IsChecked}"
+                     Text="{Binding ElementName=userControl,Path=DataSource.AddrMin, Converter={StaticResource uint2HexStrConverter}}"/>
+            <TextBox Width="100" Height="20" FontSize="13" VerticalContentAlignment="Center" Margin="5 0 0 0"
+                     IsEnabled="{Binding ElementName=checkBox, Path=IsChecked}"
+                     Text="{Binding ElementName=userControl,Path=DataSource.AddrMax, Converter={StaticResource uint2HexStrConverter}}"/>
+            <ComboBox Width="50" Height="20" FontSize="13"  HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Margin="5 0 0 0" Padding="5 0 0 0"
+                      IsEnabled="{Binding ElementName=checkBox, Path=IsChecked}"
+                      Text="{Binding ElementName=userControl,Path=DataSource.MemWidth}">
+                <ComboBoxItem Content="1" />
+                <ComboBoxItem Content="2" />
+            </ComboBox>
+            <TextBox Width="100" Height="20" FontSize="13" VerticalContentAlignment="Center" Margin="5 0 0 0"
+                     IsEnabled="{Binding ElementName=checkBox, Path=IsChecked}"
+                     Text="{Binding ElementName=userControl,Path=DataSource.FwCode, Converter={StaticResource uint2HexStrConverter}}"/>
+        </StackPanel>
+    </Border>
+</UserControl>

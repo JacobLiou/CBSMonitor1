@@ -1,0 +1,623 @@
+﻿<UserControl x:Class="SofarHVMExe.View.OscilloscopePage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:ScottPlot="clr-namespace:ScottPlot;assembly=ScottPlot.WPF" 
+             xmlns:behaviors="http://schemas.microsoft.com/xaml/behaviors"
+             xmlns:vm="clr-namespace:SofarHVMExe.ViewModel"
+             mc:Ignorable="d" 
+             d:DataContext="{d:DesignInstance vm:OscilloscopePageVM}"
+             d:DesignHeight="500" d:DesignWidth="1000"
+             Loaded="OscilloscopePage_OnLoaded" Unloaded="OscilloscopePage_OnUnloaded" >
+
+    <UserControl.Resources>
+        
+    </UserControl.Resources>
+    
+    <Grid  Background="#f0f0f0">
+        <Grid.Resources>
+            <!--<vm:TimeUnitSliderConverter x:Key="TimeUnitSliderCvt"/>-->
+            <vm:BoolInverseConverter x:Key="BoolInverseCvt"/>
+            <vm:ChannelColorConverter x:Key="ChannelColorCvt"/>
+            <vm:UInt32ToHexStringConverter x:Key="UIntToHexStringCvt"/>
+
+        </Grid.Resources>
+
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition />
+            <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+
+        
+        <Grid Grid.Column="0">
+            <Grid x:Name="OscilloscopePlotPanel" Visibility="Visible">
+
+                <Grid.RowDefinitions>
+                    <RowDefinition/>
+                    <RowDefinition Height="25"/>
+                    <RowDefinition Height="100"/>
+                </Grid.RowDefinitions>
+                <Grid Grid.Row="0" x:Name="OscilloscopePlotContainer" Margin="5">
+                    <WpfPlot x:Name="OscilloPlotCtrl"/>
+                </Grid>
+
+                <Grid Grid.Row="1">
+                    <TextBlock Margin="5, 0, 5, 0" Height="20" Background="White"
+                               Text="{Binding OscilloscopeVm.StatusMsg}"
+                               Foreground="{Binding OscilloscopeVm.StatusMsgColor}">
+                    </TextBlock>
+                </Grid>
+
+                <ItemsControl Grid.Row="2" ItemsSource="{Binding OscilloscopeVm.SignalTextList}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <UniformGrid Columns="3" Margin="5, 0, 5, 5"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Margin="1" Background="LightGray" FontSize="14" FontWeight="Bold"
+                                       Foreground="{Binding TextColor, Converter={StaticResource ChannelColorCvt}}"
+                                       Text="{Binding SignalText}"/>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+            </Grid>
+
+            <Grid x:Name="FaultWavePlotPanel" Visibility="Visible">
+                <Grid Grid.Column="0" >
+                    <Grid.RowDefinitions>
+                        <RowDefinition/>
+                        <RowDefinition Height="22"/>
+                        <RowDefinition Height="60"/>
+                        <RowDefinition Height="20"/>
+                    </Grid.RowDefinitions>
+                    <Grid Grid.Row="0" x:Name="FaultWavePlotContainer" Margin="5" >
+                        <WpfPlot x:Name="FaultWavePlotCtrl"/>
+                    </Grid>
+                    
+                    <StackPanel Grid.Row="1" Margin="5, 0, 5, 0" Orientation="Horizontal" HorizontalAlignment="Right">
+                        <CheckBox Content="操作电流轴"
+                                  Margin="5, 0, 5, 0"
+                                  IsChecked="True"
+                                  Command="{Binding FaultWaveRecordVm.UnlockCurrentAxisCommand}"
+                                  CommandParameter="{Binding Path=IsChecked, RelativeSource={RelativeSource Self}}">
+                        </CheckBox>
+
+                        <CheckBox Content="操作电压轴"
+                                  Margin="5, 0, 5, 0"
+                                  IsChecked="True"
+                                  Command="{Binding FaultWaveRecordVm.UnlockVoltageAxisCommand}"
+                                  CommandParameter="{Binding Path=IsChecked, RelativeSource={RelativeSource Self}}">
+                        </CheckBox>
+                        
+                        <CheckBox Content="显示游标"
+                                  Margin="5, 0, 0, 0"
+                                  IsChecked="False"
+                                  Command="{Binding FaultWaveRecordVm.VisualizeDataCursorCommand}"
+                                  CommandParameter="{Binding Path=IsChecked, RelativeSource={RelativeSource Self}}">
+                        </CheckBox>
+
+                    </StackPanel>
+
+                    <ItemsControl Grid.Row="2" ItemsSource="{Binding FaultWaveRecordVm.SelectedFaultWaves}" >
+
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <UniformGrid Columns="3" Margin="5, 0, 5, 5"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <WrapPanel Orientation="Horizontal">
+                                    <CheckBox IsChecked="{Binding WavePlot.IsVisible}"
+                                              Content="{Binding TagName}" Margin="0 ,3 ,0, 0"
+                                              
+                                              Foreground="{Binding LineColor, Converter={StaticResource ChannelColorCvt}}"
+                                              FontWeight="Bold"
+                                              Command="{Binding Path=DataContext.FaultWaveRecordVm.VisualizeWaveCommand,
+                                                        RelativeSource={RelativeSource Mode=FindAncestor, AncestorType=ItemsControl}}"/>
+                                </WrapPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    
+                    <Grid Grid.Row="3" VerticalAlignment="Center">
+                        <TextBlock Background="White" Margin="5, 0, 5, 0" 
+                                   Height="20"
+                                   Text="{Binding FaultWaveRecordVm.StatusMsg}"
+                                   Foreground="{Binding FaultWaveRecordVm.StatusMsgColor}">
+
+                        </TextBlock>
+                    </Grid>
+
+                </Grid>
+
+
+            </Grid>
+        </Grid>
+        
+
+        <Expander Grid.Column="1" ExpandDirection="Left" IsExpanded="True" >
+
+            <TabControl x:Name="OscilloscopeTabControl" Width="380" SelectionChanged="OscilloscopeTabControl_OnSelectionChanged">
+                <TabItem x:Name="OscilloTabItem" Header="多通道" >
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" >
+
+                        <StackPanel Orientation="Vertical">
+
+                            <Expander Header="设置"  Margin="3, 5, 3, 5" BorderBrush="DarkGray" IsExpanded="True">
+                                
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition />
+                                        <RowDefinition />
+                                        <RowDefinition />
+                                        <RowDefinition />
+                                    </Grid.RowDefinitions>
+
+                                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="5" HorizontalAlignment="Left" VerticalAlignment="Center">
+                                        <TextBlock Text="文件路径(.out)"  VerticalAlignment="Center" />
+                                        <TextBox x:Name="CoffPathText" Text="{Binding OscilloscopeVm.CoffPath}" IsReadOnly="True" 
+                                                 TextChanged="CoffPathText_OnTextChanged"
+                                                 VerticalContentAlignment="Center" Width="150" Height="28" Margin="10 0 0 0" >
+                                                 
+                                        </TextBox>
+                                        <Button x:Name="ImportFileButton"  Content="选择文件"  Margin="10 0 0 0" Background="LightGray" Command="{Binding OscilloscopeVm.ImportCoffCommand}"/>
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Row="1">
+                                        <DataGrid x:Name="ChannelSettingsGrid"  Margin="5" 
+                                                  BorderBrush="LightGray"  GridLinesVisibility="None"
+                                                  AutoGenerateColumns="False" ItemsSource="{Binding  Path=OscilloscopeVm.ChannelsSettings}" 
+                                                  CanUserResizeColumns="True" CanUserResizeRows="False"
+                                                  CanUserAddRows="False" CanUserSortColumns="False"
+                                                  SelectionMode="Single" SelectionUnit="Cell"
+                                                  IsReadOnly="{Binding Path=OscilloscopeVm.IsStartAllowed, Converter={StaticResource BoolInverseCvt}}">
+                                            <DataGrid.Columns>
+                                                <DataGridTemplateColumn Header="" IsReadOnly="True"  Width="35" CanUserResize="False">
+                                                    <DataGridTemplateColumn.CellTemplate>
+                                                        <DataTemplate>
+                                                            <TextBlock FontWeight="Bold" 
+                                                                       Foreground="{Binding LineColor, Converter={StaticResource ChannelColorCvt}}"
+                                                                       Text="{Binding TagName}">
+                                                            </TextBlock>
+                                                        </DataTemplate>
+                                                    </DataGridTemplateColumn.CellTemplate>
+                                                </DataGridTemplateColumn>
+
+                                                <DataGridTemplateColumn Header="变量名/Hex地址" Width="150" CanUserResize="True">
+                                                    <DataGridTemplateColumn.CellTemplate>
+                                                        <DataTemplate>
+                                                            <TextBox Text="{Binding Path=VariableName, UpdateSourceTrigger=PropertyChanged}" 
+                                                                     IsReadOnly="{Binding ElementName=ChannelSettingsGrid, Path=IsReadOnly}">
+                                                                <TextBox.Style>
+                                                                    <Style TargetType="TextBox">
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding Path=IsInvalid}" Value="false">
+                                                                                <Setter  Property="BorderBrush" Value="LightBlue"/>
+                                                                            </DataTrigger>
+                                                                            <DataTrigger Binding="{Binding Path=IsInvalid}" Value="true">
+                                                                                <Setter  Property="BorderBrush" Value="Red"/>
+                                                                            </DataTrigger>                                                                            
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </TextBox.Style>
+
+                                                            </TextBox>
+                                                        </DataTemplate>
+                                                    </DataGridTemplateColumn.CellTemplate>
+                                                </DataGridTemplateColumn>
+
+                                                <DataGridTemplateColumn Header="数据类型" Width="65" CanUserResize="False">
+                                                    <DataGridTemplateColumn.CellTemplate>
+                                                        <DataTemplate >
+                                                            <ComboBox x:Name="DataTypeComboBox"
+                                                                      SelectedIndex="{Binding Path=DataType, UpdateSourceTrigger=PropertyChanged}"
+                                                                      ItemsSource="{Binding Path=DataContext.OscilloscopeVm.DataTypeComboItems, RelativeSource={RelativeSource Mode=FindAncestor, AncestorType=DataGrid}}">
+                                                            </ComboBox>
+
+                                                            <DataTemplate.Triggers>
+                                                                <DataTrigger Binding="{Binding ElementName=ChannelSettingsGrid, Path=IsReadOnly}" Value="True">
+                                                                    <Setter Property="IsEnabled" Value="False"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding ElementName=ChannelSettingsGrid, Path=IsReadOnly}" Value="False">
+                                                                    <Setter TargetName="DataTypeComboBox" Property="IsEnabled" Value="True"/>
+                                                                </DataTrigger>
+                                                            </DataTemplate.Triggers>
+                                                        </DataTemplate>
+                                                    </DataGridTemplateColumn.CellTemplate>
+                                                </DataGridTemplateColumn>
+
+                                                <DataGridTemplateColumn Header="浮点精度" Width="65" CanUserResize="False">
+                                                    <DataGridTemplateColumn.CellTemplate>
+                                                        <DataTemplate>
+                                                            <ComboBox x:Name="DataFloatScaleComboBox" 
+                                                                      SelectedIndex="{Binding Path=FloatDataScale, UpdateSourceTrigger=PropertyChanged}"
+                                                                      ItemsSource="{Binding Path=DataContext.OscilloscopeVm.FloatDataScaleComboItems, RelativeSource={RelativeSource Mode=FindAncestor, AncestorType=DataGrid}}">
+                                                            </ComboBox>
+                                                            
+                                                            <DataTemplate.Triggers>
+                                                                <DataTrigger Binding="{Binding ElementName=ChannelSettingsGrid, Path=IsReadOnly}" Value="True">
+                                                                    <Setter Property="IsEnabled" Value="False"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding ElementName=ChannelSettingsGrid, Path=IsReadOnly}" Value="False">
+                                                                    <Setter Property="IsEnabled" Value="True"/>
+                                                                </DataTrigger>
+                                                            </DataTemplate.Triggers>
+                                                        </DataTemplate>
+                                                    </DataGridTemplateColumn.CellTemplate>
+                                                </DataGridTemplateColumn>
+
+                                                <DataGridTemplateColumn Header="备注" Width="175" CanUserResize="True">
+                                                    <DataGridTemplateColumn.CellTemplate>
+                                                        <DataTemplate>
+                                                            <TextBox Text="{Binding Path=Comment, UpdateSourceTrigger=PropertyChanged}" 
+                                                                     IsReadOnly="False">
+                                                            </TextBox>
+                                                        </DataTemplate>
+                                                    </DataGridTemplateColumn.CellTemplate>
+                                                </DataGridTemplateColumn>
+
+                                                <DataGridTemplateColumn Header="地址结果" Width="100" CanUserResize="False">
+                                                    <DataGridTemplateColumn.CellTemplate>
+                                                        <DataTemplate>
+                                                            <TextBox Text="{Binding Path=VariableAddress, UpdateSourceTrigger=PropertyChanged,
+                                                                            Converter={StaticResource UIntToHexStringCvt}}" 
+                                                                     IsReadOnly="True">
+                                                            </TextBox>
+                                                        </DataTemplate>
+                                                    </DataGridTemplateColumn.CellTemplate>
+                                                </DataGridTemplateColumn>
+
+                                            </DataGrid.Columns>
+
+                                            
+
+                                        </DataGrid>
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Row="2" Margin="5" >
+                                        <WrapPanel>
+                                            <TextBlock Text="采样间隔(1~20):" Margin="5"  VerticalAlignment="Center" TextAlignment="Right"/>
+                                            <TextBox Margin ="5"  Width="61" Height="24" VerticalContentAlignment="Center"
+                                                     Text="{Binding Path=OscilloscopeVm.UnderSampleScale, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}">
+                                            </TextBox>
+                                        </WrapPanel>
+
+                                        <WrapPanel  Orientation="Horizontal">
+                                            
+
+                                            <TextBlock Text="触发信源:" Margin="5" Width="50" VerticalAlignment="Center" TextAlignment="Right"/>
+                                            <ComboBox Margin ="5"  Width="75" Height="24"
+                                                      ItemsSource="{Binding OscilloscopeVm.TrigSourceComboItems}" 
+                                                      SelectedIndex="{Binding  OscilloscopeVm.TrigSource}">
+                                            </ComboBox>
+
+                                            <TextBlock Text="触发模式:" Margin="5" Width="50" VerticalAlignment="Center" TextAlignment="Right"/>
+                                            <ComboBox x:Name="TrigModeComboBox" Margin ="5"  Width="100" Height="24"
+                                                      ItemsSource="{Binding OscilloscopeVm.TrigModeComboItems}"
+                                                      SelectedIndex="{Binding OscilloscopeVm.TrigMode}">
+                                                
+                                            </ComboBox>
+
+                                            <TextBlock Text="触发电平:"  Margin="5" Width="50" VerticalAlignment="Center" TextAlignment="Right"/>
+                                            <TextBox Margin="5" Width="75" Height="22" VerticalContentAlignment="Center"
+                                                     Text="{Binding Path=OscilloscopeVm.TrigYLevel, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}">
+                                            </TextBox>
+
+                                            <TextBlock Text="触发位置:" Margin="5" Width="50" VerticalAlignment="Center" TextAlignment="Right"/>
+                                            <ComboBox  Margin ="5"  Width="100" Height="24" IsEnabled="False"
+                                                       ItemsSource="{Binding OscilloscopeVm.TrigXPercentComboItems}" 
+                                                       SelectedIndex="{Binding Path=OscilloscopeVm.TrigXPercent, UpdateSourceTrigger=PropertyChanged}">
+                                                <ComboBox.Style>
+                                                    <Style TargetType="ComboBox">
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding ElementName=TrigModeComboBox, Path=SelectedIndex}" Value="0">
+                                                                <Setter Property="IsEnabled" Value="False"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </ComboBox.Style>
+                                            </ComboBox>
+
+                                            
+
+
+                                        </WrapPanel>
+
+                                    </StackPanel>
+
+                                    
+                                    <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="2" HorizontalAlignment="Left" VerticalAlignment="Center">
+
+                                        <Button x:Name="StartButton" Content="Start" Height="50" Width="50" Margin="5" Background="LimeGreen"
+                                                IsEnabled="{Binding OscilloscopeVm.IsStartAllowed}"
+                                                Command="{Binding OscilloscopeVm.StartButtonCommand}" />
+                                        <Button x:Name="StopButton" Content="Stop"  Height="50" Width="50" Margin="5"  Background="LightCoral"
+                                                Command="{Binding OscilloscopeVm.StopButtonCommand}"/>
+
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="启动模式:" Margin="5" Width="50" VerticalAlignment="Center" TextAlignment="Right"/>
+                                            <ComboBox  Margin ="5"  Width="100" Height="24"
+                                                       ItemsSource="{Binding OscilloscopeVm.StartModeComboItems}"
+                                                        SelectedItem="{Binding Path=OscilloscopeVm.StartMode}">
+                                            </ComboBox>
+                                        </StackPanel>
+
+
+                                    </StackPanel>
+                                </Grid>
+                            </Expander>
+
+
+                            <Expander Header="波形" Margin="3, 5, 3 ,5" BorderBrush="DarkGray" IsExpanded="True">
+                                
+                                <StackPanel Margin="5">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="游标" VerticalAlignment="Center" Margin="10, 0,5,0"/>
+                                        <ComboBox Width="75" Height="22"
+                                                  ItemsSource="{Binding OscilloscopeVm.DataCursorComboItems}"
+                                                  SelectedItem="{Binding OscilloscopeVm.DataCursorMode}">
+                                        </ComboBox>
+
+                                        <ToggleButton Content="X轴缩放" Margin="10, 0, 5, 0" IsChecked="True"
+                                                      Command="{Binding OscilloscopeVm.ZoomXAxisCommand}" 
+                                                      CommandParameter="{Binding Path=IsChecked, RelativeSource={RelativeSource Mode=Self}}">
+                                        </ToggleButton>
+
+                                        <ToggleButton Content="Y轴隐藏" Margin="10, 0, 5, 0" IsChecked="False"
+                                                      Command="{Binding OscilloscopeVm.HideYAxisCommand}" 
+                                                      CommandParameter="{Binding Path=IsChecked, RelativeSource={RelativeSource Mode=Self}}">                                            
+                                        </ToggleButton>
+                                        
+                                        <!--<Button Content="X轴铺满" Margin="0"/>-->
+                                        
+                                    </StackPanel>
+
+                                    <DataGrid x:Name="ChannelViewGrid"  Margin="2, 10, 2, 10"
+                                              BorderBrush="LightGray"  GridLinesVisibility="None"
+                                              AutoGenerateColumns="False" ItemsSource="{Binding OscilloscopeVm.ChannelsSettings}" 
+                                              CanUserResizeColumns="False" CanUserResizeRows="False"
+                                              CanUserAddRows="False" CanUserSortColumns="False"
+                                              SelectionMode="Single" SelectionUnit="Cell">
+                                        <DataGrid.Columns>
+                                            <DataGridTemplateColumn Header="" IsReadOnly="True"  Width="35" >
+                                                <DataGridTemplateColumn.CellTemplate>
+                                                    <DataTemplate>
+                                                        <TextBlock FontWeight="Bold" VerticalAlignment="Center"
+                                                                   Foreground="{Binding LineColor, Converter={StaticResource ChannelColorCvt}}"
+                                                                   Text="{Binding TagName}" >
+                                                        </TextBlock>
+                                                    </DataTemplate>
+                                                </DataGridTemplateColumn.CellTemplate>
+                                            </DataGridTemplateColumn>
+
+                                            <DataGridTemplateColumn Header="显示">
+                                                <DataGridTemplateColumn.CellTemplate>
+                                                    <DataTemplate>
+                                                        <CheckBox HorizontalAlignment="Center" VerticalAlignment="Center" 
+                                                                  IsChecked="{Binding Path=IsVisible, UpdateSourceTrigger=PropertyChanged}" 
+                                                                  Command="{Binding Path=DataContext.OscilloscopeVm.ChannelVisibleCommand,
+                                                                            RelativeSource={RelativeSource Mode=FindAncestor, AncestorType=DataGrid}}">
+                                                        </CheckBox>
+                                                    </DataTemplate>
+                                                </DataGridTemplateColumn.CellTemplate>
+                                            </DataGridTemplateColumn>                                            
+
+                                            <DataGridTemplateColumn Header="选中">
+                                                <DataGridTemplateColumn.CellTemplate>
+                                                    <DataTemplate>
+                                                        <CheckBox HorizontalAlignment="Center" VerticalAlignment="Center" 
+                                                                  IsChecked="{Binding Path=IsSelected, UpdateSourceTrigger=PropertyChanged}"
+                                                                  Command="{Binding Path=DataContext.OscilloscopeVm.ChannelSelectedCommand,
+                                                                            RelativeSource={RelativeSource Mode=FindAncestor, AncestorType=DataGrid}}">
+                                                        </CheckBox>
+                                                    </DataTemplate>
+                                                </DataGridTemplateColumn.CellTemplate>
+                                            </DataGridTemplateColumn>
+
+                                        </DataGrid.Columns>
+
+                                    </DataGrid>
+
+                                </StackPanel>
+                            </Expander>
+
+
+                            <Expander Header="写入变量"  Margin="3, 5, 3, 5" BorderBrush="DarkGray" IsExpanded="True">
+                                <StackPanel IsEnabled="False">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="条目数量:" Margin="5" Width="50" Height="20" VerticalAlignment="Center" TextAlignment="Right"/>
+                                        <ComboBox x:Name="WriteVarNumComboBox"  Width="75" Height="20" Margin="5" >
+                                            <behaviors:Interaction.Triggers>
+                                                <behaviors:EventTrigger EventName="SelectionChanged">
+                                                    <behaviors:InvokeCommandAction 
+                                                        Command="{Binding}"
+                                                        CommandParameter="{Binding ElementName=WriteVarNumComboBox, Path=SelectedIndex}"/>
+                                                </behaviors:EventTrigger>
+                                            </behaviors:Interaction.Triggers>
+                                        </ComboBox>
+                                    </StackPanel>
+
+                                    <DataGrid x:Name="VariablesToWriteGrid"
+                                              GridLinesVisibility="None"  BorderBrush="LightGray"
+                                              CanUserResizeColumns="False" CanUserResizeRows="False" 
+                                              CanUserAddRows="False" CanUserSortColumns="False" 
+                                              SelectionMode="Single"  SelectionUnit="Cell" 
+                                              AutoGenerateColumns="False"  >
+                                        <DataGrid.Columns>
+                                            <DataGridTemplateColumn Header="变量名/Hex地址" Width="120">
+
+                                                <DataGridTemplateColumn.CellTemplate>
+                                                    <DataTemplate>
+                                                        <TextBox Text=""/>
+                                                    </DataTemplate>
+                                                </DataGridTemplateColumn.CellTemplate>
+                                            </DataGridTemplateColumn>
+
+                                            <DataGridTemplateColumn Header="数值" Width="75">
+                                                <DataGridTemplateColumn.CellTemplate>
+                                                    <DataTemplate>
+                                                        <TextBox Text=""/>
+                                                    </DataTemplate>
+                                                </DataGridTemplateColumn.CellTemplate>
+                                            </DataGridTemplateColumn>
+
+                                            <DataGridTemplateColumn Header="类型" Width="45">
+                                                <DataGridTemplateColumn.CellTemplate>
+                                                    <DataTemplate>
+                                                        <ComboBox >
+                                                        </ComboBox>
+                                                    </DataTemplate>
+                                                </DataGridTemplateColumn.CellTemplate>
+                                            </DataGridTemplateColumn>
+
+                                            <DataGridTemplateColumn Header="倍数" Width="45">
+                                                <DataGridTemplateColumn.CellTemplate>
+                                                    <DataTemplate>
+                                                        <ComboBox >
+                                                        </ComboBox>
+                                                    </DataTemplate>
+                                                </DataGridTemplateColumn.CellTemplate>
+                                            </DataGridTemplateColumn>
+                                        </DataGrid.Columns>
+
+                                    </DataGrid>
+
+                                    <Border >
+                                        <Button Content="写入"  Margin="2" />
+                                    </Border>
+                                </StackPanel>
+
+
+                            </Expander>
+                            
+                        </StackPanel>
+                    </ScrollViewer>
+
+                </TabItem>
+
+                <TabItem x:Name="FaultWaveTabItem" Header="故障录波" >
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel>
+                            <StackPanel Margin="10" Orientation="Horizontal">
+                                <TextBlock Text="读取录波编号范围:  " VerticalAlignment="Center" />
+                                <ComboBox Width="50" Height="20" 
+                                          SelectedItem="{Binding FaultWaveRecordVm.FetchBeginIndex,
+                                                        UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"
+                                          ItemsSource="{Binding FaultWaveRecordVm.FetchIndexComboItems}">
+                                          
+                                </ComboBox>
+                                <TextBlock Text="~" VerticalAlignment="Center" Margin="5, 0, 5, 0"/>
+                                <ComboBox Width="50" Height="20" 
+                                          SelectedItem="{Binding FaultWaveRecordVm.FetchEndIndex,
+                                                         UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"
+                                          ItemsSource="{Binding FaultWaveRecordVm.FetchIndexComboItems}">
+
+                                </ComboBox>
+                                
+                            </StackPanel>
+
+                            <StackPanel Orientation="Horizontal" Margin="5">
+                                <Button Content="清空读取" Margin="20, 0, 0, 0" Width="80"  
+                                        Command="{Binding FaultWaveRecordVm.ReadFaultWavesCommand}"
+                                        CommandParameter="Replace"
+                                        IsEnabled="{Binding FaultWaveRecordVm.IsReceiving, Converter={StaticResource BoolInverseCvt}}">
+                                </Button>
+                                <Button Content="追加读取" Margin="20, 0, 0, 0" Width="80"  
+                                        Command="{Binding FaultWaveRecordVm.ReadFaultWavesCommand}"
+                                        CommandParameter="Append"
+                                        IsEnabled="{Binding FaultWaveRecordVm.IsReceiving, Converter={StaticResource BoolInverseCvt}}">
+                                </Button>
+                                <Button Content="停止读取" Margin="20, 0, 0, 0" Width="80" 
+                                        Command="{Binding FaultWaveRecordVm.StopReadFaultWavesCommand}"
+                                        IsEnabled="{Binding FaultWaveRecordVm.IsReceiving}">
+                                </Button>
+
+                            </StackPanel>
+
+                            <StackPanel>
+                                <DataGrid x:Name="FaultWaveInfoGrid"  Margin="2"
+                                          BorderBrush="LightGray"  GridLinesVisibility="All"
+                                          AutoGenerateColumns="False" ItemsSource="{Binding FaultWaveRecordVm.FaultWavesInfoList}" 
+                                          CanUserResizeColumns="True" CanUserResizeRows="False"
+                                          CanUserAddRows="False" CanUserSortColumns="False"
+                                          SelectionMode="Single" SelectionUnit="Cell">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="编号" CanUserResize="False" IsReadOnly="True" 
+                                                            Binding="{Binding Index}">
+                                            <DataGridTextColumn.ElementStyle>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="VerticalAlignment" Value="Center"/>
+                                                    <Setter Property="HorizontalAlignment" Value="Center"/>
+                                                </Style>
+                                            </DataGridTextColumn.ElementStyle>
+                                        </DataGridTextColumn>
+
+                                        <DataGridTemplateColumn Header="显示" CanUserResize="False">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <RadioButton HorizontalAlignment="Center" VerticalAlignment="Center" x:Name="SelectedToPlotRadioButton" GroupName="SelectedToPlot" 
+                                                                 IsChecked="{Binding Path=IsSelectedToPlot, UpdateSourceTrigger=PropertyChanged}">
+                                                        <behaviors:Interaction.Triggers>
+                                                            <behaviors:EventTrigger EventName="Checked">
+                                                                <behaviors:InvokeCommandAction  Command="{Binding Path=DataContext.FaultWaveRecordVm.SwitchFaultWavePlotCommand, 
+                                                                                                            RelativeSource={RelativeSource AncestorType= DataGrid}}"
+                                                                                                CommandParameter="{Binding Path=SelectedIndex, RelativeSource={RelativeSource AncestorType= DataGrid}}"/>
+                                                            </behaviors:EventTrigger>
+                                                        </behaviors:Interaction.Triggers>
+                                                    </RadioButton>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+
+                                        <!--<DataGridTextColumn Header="故障类型" IsReadOnly="True"  Width="135" Binding="{Binding FaultType}"/>-->
+
+                                        <DataGridTemplateColumn Header="故障类型" Width="140">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <TextBox  IsReadOnly="True"  VerticalContentAlignment="Center" BorderBrush="Transparent"
+                                                              Text="{Binding FaultType}" />
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+
+                                        <!--<DataGridTextColumn Header="录波时间" IsReadOnly="True"  Width="120" Binding="{Binding RecordTime}"/>-->
+
+                                        <DataGridTemplateColumn Header="录波时间" Width="130" CanUserResize="False">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <TextBox  IsReadOnly="True"  VerticalContentAlignment="Center" BorderBrush="Transparent"
+                                                              Text="{Binding RecordTime}" />
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+
+                                        
+
+                                        
+
+                                    </DataGrid.Columns>
+
+                                </DataGrid>
+
+                                <Button Content="清空" Margin="5" Command="{Binding FaultWaveRecordVm.ClearCommand}"/>
+
+                            </StackPanel>
+                        </StackPanel>
+
+                        
+                    </ScrollViewer>
+
+                </TabItem>
+            </TabControl>
+
+        </Expander>
+
+
+    </Grid>
+</UserControl>

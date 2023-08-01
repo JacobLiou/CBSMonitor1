@@ -1,0 +1,130 @@
+﻿<UserControl x:Class="SofarHVMExe.View.DownloadPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:fa="http://schemas.awesome.incremented/wpf/xaml/fontawesome.sharp"
+             xmlns:b="http://schemas.microsoft.com/xaml/behaviors" 
+             xmlns:ctrl="clr-namespace:SofarHVMExe.UserControls"
+             mc:Ignorable="d" 
+             xmlns:vm ="clr-namespace:SofarHVMExe.ViewModel"
+             d:DataContext="{d:DesignInstance vm:DownloadPageVm}"
+             d:DesignHeight="450" d:DesignWidth="1100">
+
+    <Border>
+        <Grid >
+            <Border Background="{DynamicResource sectionBackgroundColor}" Margin="0 0 0 0">
+                <Grid Margin="30 18 30 50">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <StackPanel >
+                        <DockPanel >
+                            <CheckBox x:Name="checkBox_broadcast" Content="广播更新" VerticalContentAlignment="Center" IsChecked="{Binding IsBroadcast}" Visibility="Collapsed"/>
+                            <StackPanel Orientation="Horizontal" Margin="20 0 0 0"  Visibility="Collapsed">
+                                <TextBlock Text="目标设备地址" VerticalAlignment="Center" >
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding ElementName=checkBox_broadcast, Path=IsChecked}" Value="False" >
+                                                    <Setter Property="Foreground" Value="Black" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding ElementName=checkBox_broadcast, Path=IsChecked}" Value="True" >
+                                                    <Setter Property="Foreground" Value="Gray" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <TextBox Text="{Binding TargetAddr}" VerticalContentAlignment="Center" Width="60" Height="25" Margin="10 0 0 0">
+                                    <TextBox.Style>
+                                        <Style TargetType="TextBox">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding ElementName=checkBox_broadcast, Path=IsChecked}" Value="False" >
+                                                    <Setter Property="IsEnabled" Value="True" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding ElementName=checkBox_broadcast, Path=IsChecked}" Value="True" >
+                                                    <Setter Property="IsEnabled" Value="False" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBox.Style>
+                                </TextBox>
+                            </StackPanel >
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="left" >
+                                <CheckBox Content="调试" Margin="10 0 0 0" VerticalAlignment="Center" VerticalContentAlignment="Center"
+                                          IsChecked="{Binding OpenDebug}"  Visibility="Collapsed"/>
+                                <CheckBox Content="跳过下载" Margin="10 0 10 0" VerticalAlignment="Center" VerticalContentAlignment="Center"
+                                          IsChecked="{Binding JumpDownload}" Visibility="Collapsed"/>
+                                <CheckBox Content="去除FF数据块" Margin="0 0 10 0" VerticalAlignment="Center" VerticalContentAlignment="Center"
+                                          ToolTip="勾选此项不下载全为FF的数据块"
+                                          IsChecked="{Binding DeleteFFData}" Visibility="Collapsed"/>
+
+                                <TextBlock Text="数据块个数" VerticalAlignment="Center" />
+                                <TextBox Text="{Binding BlockNum}" VerticalContentAlignment="Center" Width="40" Height="25"
+                                         Margin="5 0 0 0"/>
+                                <TextBlock Text="数据块大小" VerticalAlignment="Center" Margin="10 0 0 0" />
+                                <TextBox Text="{Binding BlockSize}" VerticalContentAlignment="Center" Width="40" Height="25"
+                                         Margin="5 0 0 0"/>
+                                <TextBlock Text="间隔时间(ms)" VerticalAlignment="Center" Margin="10 0 0 0" />
+                                <TextBox Text="{Binding SendInterval}" VerticalContentAlignment="Center" Width="40" Height="25"
+                                         Margin="5 0 0 0"/>
+                                <TextBlock Text="最大补包次数" VerticalAlignment="Center" Margin="10 0 0 0" />
+                                <TextBox Text="{Binding MaxPackageNum}" VerticalContentAlignment="Center" Width="40" Height="25"
+                                         Margin="5 0 0 0"/>
+                                <CheckBox Content="自动跳过0xFF数据帧" VerticalAlignment="Center" Margin="10 0 0 0" IsChecked="{Binding DeleteFFData}"/>
+                                <Button Content="数据信息" Command="{Binding ShowDebugInfoCommand}" Margin="10 0 0 0" Visibility="Collapsed"/>
+                            </StackPanel>
+                        </DockPanel>
+                        <DockPanel Margin="0 15 0 0">
+                            <TextBlock Text="选择固件" VerticalAlignment="Center" />
+                            <ComboBox Margin="10 0 0 0" Width="80" Height="25" VerticalContentAlignment="Center" HorizontalAlignment="Left"
+                                ItemsSource="{Binding FirmwareList}"
+                                SelectedIndex="{Binding FirmwareIndex}">
+                            </ComboBox>
+                            <TextBlock  Margin="10 0 0 0" Text="文件类型"  VerticalAlignment="Center" />
+                            <ComboBox Margin="10 0 0 0" Width="80" Height="25" VerticalContentAlignment="Center" HorizontalAlignment="Left"
+                                SelectedIndex="{Binding FileNumber}">
+                                <ComboBoxItem>APP</ComboBoxItem>
+                                <ComboBoxItem>CORE</ComboBoxItem>
+                                <ComboBoxItem>SOFAR</ComboBoxItem>
+                            </ComboBox>
+                            <!-- 升级多个模块待确认 -->
+                            <!--<StackPanel Orientation="Horizontal" IsEnabled="{Binding IsTiming}" >
+                                <TextBlock Text="升级类型" VerticalAlignment="Center" Margin="10 0 0 0" />
+                                <ComboBox VerticalContentAlignment="Center" Width="80" Height="27" Margin="10 0 0 0">
+                                    <ComboBoxItem>定时升级</ComboBoxItem>
+                                    <ComboBoxItem>强制进入BOOT升级</ComboBoxItem>
+                                </ComboBox>
+                                <Label VerticalContentAlignment="Center">升级时间</Label>
+                                <ctrl:MyDateTimePicker BorderBrush="Gray" Height="27" Width="150" Margin="10,0,0,0" DateTimeStr="{Binding MyDateTime,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"></ctrl:MyDateTimePicker>
+                            </StackPanel>-->
+                        </DockPanel>
+                        <DockPanel Margin="0 15 0 0" LastChildFill="True">
+                            <TextBlock Text="文件路径" VerticalAlignment="Center" DockPanel.Dock="Left"/>
+                            <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
+                                <Button Content="导入" Command="{Binding ImportCommand}" Margin="10 0 0 0"/>
+                                <Button Content="开始更新" Command="{Binding StartDownloadCommand}" Margin="10 0 0 0"/>
+                                <Button Content="停止更新" Command="{Binding StopDownloadCommand}" Margin="10 0 0 0"/>
+                                <Button Content="清除" Command="{Binding ClearMsgCommand}" HorizontalAlignment="Right" Margin="10 0 0 0" />
+                            </StackPanel>
+                            <TextBox Text="{Binding FilePath}" VerticalContentAlignment="Center" Height="28" Margin="10 0 0 0"/>
+                        </DockPanel>
+                    </StackPanel>
+                    
+                    <TextBox Grid.Row="1" Margin="0 15 0 0" Padding="3 3 3 10" TextWrapping="Wrap" AcceptsReturn="True" 
+                             VerticalScrollBarVisibility="Auto" UndoLimit="0"
+                             Text="{Binding Message}">
+                        <b:Interaction.Triggers>
+                            <b:EventTrigger EventName="TextChanged">
+                                <b:CallMethodAction MethodName="ScrollToEnd" />
+                            </b:EventTrigger>
+                        </b:Interaction.Triggers>
+                    </TextBox>
+                </Grid>
+            </Border>
+        </Grid>
+    </Border>
+</UserControl>

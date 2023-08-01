@@ -1,0 +1,205 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup />
+  <ItemGroup>
+    <ApplicationDefinition Update="App.xaml">
+      <SubType>Designer</SubType>
+    </ApplicationDefinition>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Update="UserControls\CustomMenu.xaml.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="UserControls\DeviceInfoControl.xaml.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="UserControls\EventInfoControl.xaml.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="UserControls\FrameDataControl.xaml.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="UserControls\MCUCfgInfoControl.xaml.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="UserControls\MultyFrameDataControl.xaml.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="View\CANConnectPage.xaml.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="View\CommandGroupPage.xaml.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="View\ConfigPage.xaml.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="View\DebugPanel.xaml.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="View\DownloadDebugInfoWnd.xaml.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="View\DownloadPage.xaml.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="View\EventGroupPage.xaml.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="View\FileOptPage.xaml.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="View\HeartBeatPage.xaml.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="View\MCUCfgPage.xaml.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="View\MainParamDisPage.xaml.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="View\MonitorPage.xaml.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="View\OscilloscopePage.xaml.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="View\ProjectCfgPage.xaml.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="View\SafetyCfgPage.xaml.cs">
+      <SubType>Code</SubType>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <Page Update="MainWindow.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="Style\BlackThemeStyle.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="Style\ControlStyle\Button.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="Style\ControlStyle\CheckBox.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="Style\ControlStyle\ContextMenu.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="Style\ControlStyle\TreeView.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="Style\ControlStyle\DataGrid.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="UserControls\CommandInfoControl.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="UserControls\CustomMenu.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="UserControls\MyDateTimePicker.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="UserControls\IconButton.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="UserControls\TDateTimeView.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="UserControls\THourView.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="UserControls\TMinSexView.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="UserControls\DeviceInfoControl.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="UserControls\EventInfoControl.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="UserControls\FrameDataControl_old.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="UserControls\FrameDataControl.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="UserControls\MCUCfgInfoControl.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="UserControls\MenuButton.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="UserControls\MultyFrameDataControl_old.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="UserControls\MultyFrameDataControl.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="Util\DataTemplate.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="View\CANConnectPage.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="View\CANFrameCfgPage.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="View\CANFrameDataConfigWnd.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="View\CANFrameDataEditWnd.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="View\CommandGroupPage.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="View\ConfigPage.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="View\DebugPanel.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="View\FileOptPage.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="View\LogInfoWnd.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="View\DownloadDebugInfoWnd.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="View\DownloadPage.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="View\EventGroupPage.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="View\HeartBeatPage.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="View\MCUCfgPage.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="View\MainParamDisPage.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="View\MapOptPage.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="View\MonitorPage.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="View\OscilloscopePage.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="View\ProjectCfgPage.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="View\SafetyCfgPage.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+  </ItemGroup>
+</Project>

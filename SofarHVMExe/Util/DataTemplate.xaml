@@ -1,0 +1,68 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:vm="clr-namespace:SofarHVMExe.ViewModel"
+                    xmlns:view="clr-namespace:SofarHVMExe.View">
+
+    <!-- 主界面中的view和viewModel关联 -->
+    <DataTemplate DataType="{x:Type vm:CANConnectPageVm}">
+        <view:CANConnectPage />
+    </DataTemplate>
+    
+    <DataTemplate DataType="{x:Type vm:HeartBeatPageVm}">
+        <view:HeartBeatPage />
+    </DataTemplate>
+
+    <DataTemplate DataType="{x:Type vm:MonitorPageVm}">
+        <view:MonitorPage />
+    </DataTemplate>
+
+    <DataTemplate DataType="{x:Type vm:MapOptPageVm}">
+        <view:MapOptPage />
+    </DataTemplate>
+
+    <DataTemplate DataType="{x:Type vm:ConfigPageVm}">
+        <view:ConfigPage />
+    </DataTemplate>
+
+    <DataTemplate DataType="{x:Type vm:DownloadPageVm}">
+        <view:DownloadPage />
+    </DataTemplate>
+
+    <DataTemplate DataType="{x:Type vm:FileOptPageVm}">
+        <view:FileOptPage />
+    </DataTemplate>
+
+    <!-- 配置功能界面中的view和viewModel关联 -->
+    <DataTemplate DataType="{x:Type vm:ProjectCfgPageVm}">
+        <view:ProjectCfgPage />
+    </DataTemplate>
+
+    <DataTemplate DataType="{x:Type vm:MCUCfgPageVm}">
+        <view:MCUCfgPage />
+    </DataTemplate>
+
+    <DataTemplate DataType="{x:Type vm:CANFrameCfgPageVm}">
+        <view:CANFrameCfgPage />
+    </DataTemplate>
+
+    <DataTemplate DataType="{x:Type vm:MainParamDisPageVm}">
+        <view:MainParamDisPage />
+    </DataTemplate>
+
+    <DataTemplate DataType="{x:Type vm:EventGroupPageVm}">
+        <view:EventGroupPage />
+    </DataTemplate>
+
+    <DataTemplate DataType="{x:Type vm:CommandGroupPageVm}">
+        <view:CommandGroupPage />
+    </DataTemplate>
+    
+    <DataTemplate DataType="{x:Type vm:SafetyVm}">
+        <view:SafetyCfgPage />
+    </DataTemplate>
+
+    <DataTemplate DataType="{x:Type vm:OscilloscopePageVM}">
+        <view:OscilloscopePage />
+    </DataTemplate>
+
+</ResourceDictionary>

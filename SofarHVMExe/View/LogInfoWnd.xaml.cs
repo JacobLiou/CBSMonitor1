@@ -1,0 +1,40 @@
+﻿using SofarHVMExe.SubPubEvent;
+using SofarHVMExe.ViewModel;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Data;
+using System.Windows.Documents;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using System.Windows.Shapes;
+
+namespace SofarHVMExe.View
+{
+    /// <summary>
+    /// LogInfoWnd.xaml 的交互逻辑
+    /// </summary>
+    public partial class LogInfoWnd : Window
+    {
+        public LogInfoWnd(IEventAggregator eventAggregator)
+        {
+            InitializeComponent();
+
+            this.DataContext = new LogInfoWndVm(eventAggregator);
+            //this.DataContext = new LogInfoWndVm();
+        }
+
+        private void Border_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ChangedButton == MouseButton.Left)
+            {
+                this.DragMove();
+            }
+        }
+    }//class
+}

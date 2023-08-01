@@ -1,0 +1,167 @@
+﻿<Window x:Class="SofarHVMExe.View.DebugPanel"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:SofarHVMExe.View" 
+        xmlns:fa="http://schemas.awesome.incremented/wpf/xaml/fontawesome.sharp"
+        mc:Ignorable="d"
+        Title="DownloadDebugInfoWnd" 
+        Height="600" Width="600"
+        ResizeMode="NoResize" 
+        AllowsTransparency="True"
+        WindowStyle="None" 
+        WindowStartupLocation="CenterScreen" 
+        Background="Transparent" 
+        KeyDown="Window_KeyDown">
+
+    <Window.Effect>
+        <DropShadowEffect ShadowDepth="0" Color="LightGray" BlurRadius="15" Opacity="1" >
+        </DropShadowEffect>
+    </Window.Effect>
+
+    <Border MouseDown="Border_MouseDown" CornerRadius="10" Background="{DynamicResource sectionBackgroundColor}" 
+            BorderBrush="LightGray" BorderThickness="1" Margin="10" >
+        <Grid Margin="10">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="30" />
+                <RowDefinition Height="auto" />
+                <RowDefinition Height="auto" />
+                <RowDefinition Height="auto" />
+            </Grid.RowDefinitions>
+
+
+            <!--窗口标题-->
+            <DockPanel >
+                <Canvas Background="red">
+                    <TextBlock Name="titleTextBlock" Text="软件功能调试面板" FontSize="15" VerticalAlignment="Center"/>
+                </Canvas>
+                <Button DockPanel.Dock="Right" Width="25" Padding="0" BorderThickness="0" 
+                        HorizontalAlignment="Right" Click="Button_Click">
+                    <fa:IconImage Icon="Close" Foreground="Black" Width="16" Height="16" />
+                </Button>
+            </DockPanel>
+
+            <!--监控功能-->
+            <Border Grid.Row="1" HorizontalAlignment="Stretch">
+                <GroupBox Padding="8">
+                    <GroupBox.Header>
+                        <TextBlock Text="监控功能" Foreground="blue" />
+                    </GroupBox.Header>
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <Button Content="设备1接入" Command="{Binding ConnectDevice1Command}"/>
+                            <Button Content="设备2接入" Command="{Binding ConnectDevice2Command}" Margin="8 0 0 0"/>
+                            <Button Content="不接入设备" Command="{Binding NotConnectDeviceCommand}" Margin="8 0 0 0"/>
+                            <TextBlock Text="设备: " VerticalAlignment="Center" Margin="8 0 0 0"/>
+                            <TextBlock Text="{Binding DeviceNumber}" VerticalAlignment="Center" />
+                        </StackPanel>
+
+                        <GroupBox Header="发送设备信息" Padding="3" BorderBrush="Green" 
+                                  HorizontalAlignment="Left"
+                                  BorderThickness="1" Margin="0 10 0 0">
+                            <StackPanel>
+                                <StackPanel Orientation="Horizontal" >
+                                    <Button Content="非连续帧" Command="{Binding SendDevInfoUnContinueCommand}" />
+                                    <TextBox Width="80" Height="25" VerticalContentAlignment="Center" Margin="8 0 0 0"
+                                             Text="{Binding UnContinueId}"/>
+                                    <TextBox Width="150" Height="25" VerticalContentAlignment="Center" Margin="8 0 0 0"
+                                             Text="{Binding UnContinueDatas}"/>
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0 8 0 0">
+                                    <Button Content="连续帧" Command="{Binding SendDevInfoContinueCommand}" />
+                                    <TextBox Width="80" Height="25" VerticalContentAlignment="Center" Margin="8 0 0 0"
+                                             Text="{Binding ContinueId}"/>
+                                    <TextBox Width="150" Height="25" VerticalContentAlignment="Center" Margin="8 0 0 0"
+                                             Text="{Binding ContinueDatas1}"/>
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0 8 0 0">
+                                    <TextBlock Foreground="Red" FontSize="11" Width="107" Visibility="Hidden">
+                                        4个数据
+                                        <LineBreak/>
+                                        <!--重新计算校验码88 16-->
+                                    </TextBlock>
+                                    <TextBox Width="150" Height="25" VerticalContentAlignment="Center" Margin="60 0 0 0"
+                                             Text="{Binding ContinueDatas2}"/>
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0 8 0 0" HorizontalAlignment="Right">
+                                    <TextBox Width="150" Height="25" HorizontalAlignment="Right"  VerticalContentAlignment="Center" 
+                                             Text="{Binding ContinueDatas3}"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </GroupBox>
+                        
+                    </StackPanel>
+                </GroupBox>
+            </Border>
+
+            <!--MAP功能-->
+            <Border Grid.Row="2" HorizontalAlignment="Stretch">
+                <GroupBox Padding="8">
+                    <GroupBox.Header>
+                        <TextBlock Text="MAP功能" Foreground="blue" />
+                    </GroupBox.Header>
+                    <StackPanel>
+                        <GroupBox Header="发送设备信息" Padding="3" BorderBrush="Green" 
+                                  HorizontalAlignment="Left"
+                                  BorderThickness="1" Margin="0 0 0 0">
+                            <StackPanel>
+                                <StackPanel Orientation="Horizontal" >
+                                    <!--<Button Content="应答1" Command="{Binding MapSend1Command}" />-->
+                                    <CheckBox IsChecked="{Binding SendMap1}" Content="应答1" VerticalContentAlignment="Center"/>
+                                    <!--<TextBox Width="80" Height="25" VerticalContentAlignment="Center" Margin="8 0 0 0"
+                                             Text="{Binding MapId}"/>-->
+                                    <TextBox Width="150" Height="25" VerticalContentAlignment="Center" Margin="8 0 0 0"
+                                             Text="{Binding MapDatas1}"/>
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0 8 0 0">
+                                    <!--<Button Content="应答2" Command="{Binding MapSend2Command}" />-->
+                                    <CheckBox IsChecked="{Binding SendMap2}" Content="应答2" VerticalContentAlignment="Center"/>
+                                    <!--<TextBox Width="80" Height="25" VerticalContentAlignment="Center" Margin="8 0 0 0"
+                                             Text="{Binding MapId}"/>-->
+                                    <TextBox Width="150" Height="25" VerticalContentAlignment="Center" Margin="8 0 0 0"
+                                             Text="{Binding MapDatas2}"/>
+                                </StackPanel>
+                                
+                            </StackPanel>
+                        </GroupBox>
+
+                    </StackPanel>
+                </GroupBox>
+            </Border>
+
+            <!--心跳功能-->
+            <Border Grid.Row="3" HorizontalAlignment="Stretch">
+                <GroupBox Padding="8">
+                    <GroupBox.Header>
+                        <TextBlock Text="心跳功能" Foreground="blue" />
+                    </GroupBox.Header>
+                    <StackPanel>
+                            <StackPanel>
+                                <StackPanel Orientation="Horizontal" >
+                                <CheckBox IsChecked="{Binding HbSendHeartbeat1}" Content="设备1" VerticalContentAlignment="Center"/>
+                                    <TextBox Width="50" Height="25" VerticalContentAlignment="Center" Margin="8 0 0 0"
+                                            Text="{Binding HbPeriod1, UpdateSourceTrigger=PropertyChanged}" ToolTip="周期" ToolTipService.InitialShowDelay="0"/>
+                                    <TextBox Width="80" Height="25" VerticalContentAlignment="Center" Margin="8 0 0 0"
+                                            Text="{Binding HbId1, UpdateSourceTrigger=PropertyChanged}"/>
+                                    <TextBox Width="150" Height="25" VerticalContentAlignment="Center" Margin="8 0 0 0"
+                                            Text="{Binding HbDatas1, UpdateSourceTrigger=PropertyChanged}"/>
+                                </StackPanel>
+                            </StackPanel>
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0 5 0 0">
+                                <CheckBox IsChecked="{Binding HbSendHeartbeat2}" Content="设备2" VerticalContentAlignment="Center"/>
+                                <TextBox Width="50" Height="25" VerticalContentAlignment="Center" Margin="8 0 0 0"
+                                            Text="{Binding HbPeriod2, UpdateSourceTrigger=PropertyChanged}" ToolTip="周期" ToolTipService.InitialShowDelay="0"/>
+                                <TextBox Width="80" Height="25" VerticalContentAlignment="Center" Margin="8 0 0 0"
+                                            Text="{Binding HbId2, UpdateSourceTrigger=PropertyChanged}"/>
+                                <TextBox Width="150" Height="25" VerticalContentAlignment="Center" Margin="8 0 0 0"
+                                            Text="{Binding HbDatas2, UpdateSourceTrigger=PropertyChanged}"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </StackPanel>
+                </GroupBox>
+            </Border>
+        </Grid>
+    </Border>
+</Window>

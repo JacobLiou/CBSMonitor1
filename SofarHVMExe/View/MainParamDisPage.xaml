@@ -1,0 +1,92 @@
+﻿<UserControl x:Class="SofarHVMExe.View.MainParamDisPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:SofarHVMExe.View"
+             xmlns:vm="clr-namespace:SofarHVMExe.ViewModel"
+             mc:Ignorable="d" 
+             d:DataContext="{d:DesignInstance vm:MainParamDisPageVm}"
+             d:DesignHeight="450" d:DesignWidth="800">
+
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <Style TargetType="TextBox">
+                <!--禁用中文输入法-->
+                <Setter Property="InputMethod.IsInputMethodEnabled" Value="False" /> 
+            </Style>
+        </ResourceDictionary>
+    </UserControl.Resources>
+    
+    <Border Background="White">
+        <GroupBox Padding="20" Margin="5" >
+            <GroupBox.Header>
+                <TextBlock Text="主参数配置" FontSize="16" FontWeight="Bold"/>
+            </GroupBox.Header>
+
+            <StackPanel >
+                <StackPanel Orientation="Horizontal" Margin="165 0 0 0">
+                    <TextBlock Text="主参数1" VerticalAlignment="Center" FontSize="13" Width="100"/>
+                    <TextBlock Text="主参数2" VerticalAlignment="Center" FontSize="13" Width="100" Margin="100 0 0 0"/>
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" Margin="0 5 0 0">
+                    <TextBlock Text="CAN ID:" VerticalAlignment="Center" TextAlignment="Right" FontSize="13" Width="80" Margin="0 0 5 0"/>
+                    <ComboBox Width="200" Height="25" FontSize="12" VerticalContentAlignment="Center"
+                              SelectedIndex="{Binding CanIdIndex1}" ItemsSource="{Binding CanIdList}">
+                    </ComboBox>
+                    <ComboBox Width="200" Height="25" FontSize="12" VerticalContentAlignment="Center" Margin="5 0 0 0"
+                              SelectedIndex="{Binding CanIdIndex2}" ItemsSource="{Binding CanIdList}">
+                    </ComboBox>
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" Margin="0 5 0 0">
+                    <TextBlock Text="成员:" VerticalAlignment="Center" TextAlignment="Right" FontSize="13" Width="80" Margin="0 0 5 0"/>
+                    <ComboBox Width="200" Height="25" FontSize="13" VerticalContentAlignment="Center"
+                              SelectedIndex="{Binding MemberIndex1}" ItemsSource="{Binding MemberList1}">
+                    </ComboBox>
+                    <ComboBox Width="200" Height="25" FontSize="13" VerticalContentAlignment="Center" Margin="5 0 0 0"
+                              SelectedIndex="{Binding MemberIndex2}" ItemsSource="{Binding MemberList2}">
+                    </ComboBox>
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" Margin="0 5 0 0" InputMethod.IsInputMethodEnabled="False">
+                    <TextBlock Text="上红色警戒值:" VerticalAlignment="Center" TextAlignment="Right" FontSize="13" Width="80" Margin="0 0 5 0"/>
+                    <TextBox Width="200" Height="25" FontWeight="SemiBold" VerticalAlignment="Center" VerticalContentAlignment="Center" 
+                             Background="Red" Text="{Binding UpRedAlertVal1}" 
+                             />
+                    <TextBox Width="200" Height="25" FontWeight="SemiBold" VerticalAlignment="Center" VerticalContentAlignment="Center" 
+                             Background="Red" Text="{Binding UpRedAlertVal2}" Margin="5 0 0 0"/>
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" Margin="0 5 0 0">
+                    <TextBlock Text="上黄色警戒值:" VerticalAlignment="Center" TextAlignment="Right" FontSize="13" Width="80" Margin="0 0 5 0"/>
+                    <TextBox Width="200" Height="25" FontWeight="SemiBold" VerticalAlignment="Center" VerticalContentAlignment="Center" 
+                             Background="Yellow" Text="{Binding UpYellowAlertVal1}"/>
+                    <TextBox Width="200" Height="25" FontWeight="SemiBold" VerticalAlignment="Center" VerticalContentAlignment="Center" 
+                             Background="Yellow" Text="{Binding UpYellowAlertVal2}" Margin="5 0 0 0"/>
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" Margin="0 5 0 0">
+                    <TextBlock Text="下黄色警戒值:" VerticalAlignment="Center" TextAlignment="Right" FontSize="13" Width="80" Margin="0 0 5 0"/>
+                    <TextBox Width="200" Height="25" FontWeight="SemiBold" VerticalAlignment="Center" VerticalContentAlignment="Center" 
+                             Background="Yellow" Text="{Binding DownYellowAlertVal1}"/>
+                    <TextBox Width="200" Height="25" FontWeight="SemiBold" VerticalAlignment="Center" VerticalContentAlignment="Center" 
+                             Background="Yellow" Text="{Binding DownYellowAlertVal2}" Margin="5 0 0 0"/>
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" Margin="0 5 0 0">
+                    <TextBlock Text="下红色警戒值:" VerticalAlignment="Center" TextAlignment="Right" FontSize="13" Width="80" Margin="0 0 5 0"/>
+                    <TextBox Width="200" Height="25" FontWeight="SemiBold" VerticalAlignment="Center" VerticalContentAlignment="Center" 
+                             Background="Red" Text="{Binding DownRedAlertVal1}"/>
+                    <TextBox Width="200" Height="25" FontWeight="SemiBold" VerticalAlignment="Center" VerticalContentAlignment="Center" 
+                             Background="Red" Text="{Binding DownRedAlertVal2}" Margin="5 0 0 0"/>
+                </StackPanel>
+
+                <Button Content="保存" Width="70" Height="28" FontSize="13" HorizontalAlignment="Left" Margin="250 20 0 0"
+                        Command="{Binding SaveCommand}"/>
+            </StackPanel>
+        </GroupBox>
+    </Border>
+
+</UserControl>

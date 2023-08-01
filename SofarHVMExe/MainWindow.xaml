@@ -1,0 +1,145 @@
+﻿<Window x:Class="SofarHVMExe.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:SofarHVMExe"
+        xmlns:uc="clr-namespace:SofarHVMExe.UserControls"
+        xmlns:fa="http://schemas.awesome.incremented/wpf/xaml/fontawesome.sharp"
+        xmlns:ut="clr-namespace:SofarHVMExe.Utilities"
+        xmlns:vm="clr-namespace:SofarHVMExe.ViewModel"
+        WindowStartupLocation="CenterScreen"
+        WindowStyle="ThreeDBorderWindow"
+        Background="{StaticResource mainWndBackgroundColor}"
+        AllowsTransparency="false"
+        Height="780" Width="1000"
+        MinHeight="552" MinWidth="800"
+        Title=""
+        Icon="Resource/logo.ico" 
+        KeyDown="Window_KeyDown">
+
+    <Window.DataContext>
+        <vm:MainWindowVm />
+    </Window.DataContext>
+
+    <Window.Resources>
+        <ut:Str2ColorConverter x:Key="str2ColorConverter" />
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+    </Window.Resources>
+
+    <Border Background="{DynamicResource mainWndBackgroundColor}" CornerRadius="0"
+            MouseDown="Border_MouseDown">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="auto" />
+                <RowDefinition Height="30" />
+            </Grid.RowDefinitions>
+            <!-- 顶部标题 -->
+            <!--<Border Grid.Row="0" Background="{StaticResource mainWndBackground}" >
+                
+            </Border>-->
+
+            <!-- 中间主区域 -->
+            <Border Grid.Row="1" Background="{StaticResource mainWndBackgroundColor}" Margin="0 5 0 5" 
+                    BorderThickness="0 0 0 0" BorderBrush="black">
+                <Grid >
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <Border Grid.Row="0" Background="{DynamicResource sectionBackgroundColor}">
+                        <Grid >
+                            <StackPanel Orientation="Horizontal">
+                                <uc:MenuButton Title="CAN连接" Icon="Staylinked" Visibility="Visible" Command="{Binding CANTestPageCommand}"/>
+                                <uc:MenuButton Title="心跳" Icon="HeartPulse" Command="{Binding HeartBeatPageCommand}"/>
+                                <uc:MenuButton Title="监控" Icon="Tv"  Command="{Binding MonitorPageCommand}"/>
+                                <uc:MenuButton Title="Map操作" Icon="Microchip"  Command="{Binding MapOptPageCommand}"/>
+                                <uc:MenuButton Title="文件数据" Icon="TableCells" Command="{Binding FilePageCommand}" />
+                                <uc:MenuButton Title="黑匣子" Icon="BoxArchive" />
+                                <uc:MenuButton Title="示波器" Icon="WaveSquare" Command="{Binding OscilloscopeCommand}"/>
+                                <!--<uc:MenuButton Title="波特图" Icon="ChartGantt" />-->
+                                <uc:MenuButton Title="程序更新" Icon="Download" Command="{Binding DownloadPageCommand}"/>
+                                <uc:MenuButton Title="配置" Icon="Gear" Command="{Binding ConfigPageCommand}"/>
+                            </StackPanel>
+
+                            <!-- 主题切换按钮 -->
+                            <Button Width="20" Height="20" HorizontalAlignment="Right" Margin="0 0 5 0" Background="Transparent"
+                                    BorderThickness="0" Click="ButtonTheme_Click" Visibility="Hidden">
+                                <!--<Button.Triggers>
+                                    <EventTrigger RoutedEvent="Button.Click">
+                                        <EventTrigger.Actions>
+                                            <BeginStoryboard>
+                                                <Storyboard />
+                                            </BeginStoryboard>
+                                        </EventTrigger.Actions>
+                                    </EventTrigger>
+                                </Button.Triggers>-->
+                                <fa:IconImage Name="themeIcon" Icon="Sun" Foreground="White"/>
+                            </Button>
+                        </Grid>
+                    </Border>
+
+                    <Border Grid.Row="1" Margin="0 5 0 0">
+                        <ContentControl Content="{Binding CurrentView}" >
+
+                        </ContentControl>
+                    </Border>
+                </Grid>
+            </Border>
+
+            <!-- 底部消息栏 -->
+            <Border Grid.Row="2" Background="{StaticResource sectionBackgroundColor}" 
+                    Height="45" Margin="10 0 10 5" Visibility="Collapsed">
+
+            </Border>
+
+            <!-- 底部状态栏 -->
+            <Border Grid.Row="3" Background="{StaticResource sectionBackgroundColor}" 
+                    Height="30" Margin="0 0 0 0" 
+                    BorderThickness="0 1 0 0">
+                <StackPanel Orientation="Horizontal">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="15 0 0 0">
+                        <Ellipse Width="15" Height="15" Margin="0 0 5 0"
+                        Fill="{Binding ConnectStatus, Converter={StaticResource str2ColorConverter},ConverterParameter=ConnectSts}"/>
+                        <!--Fill="#2ecc71" />-->
+                        <!--<TextBlock Text="连接状态："  FontSize="13" VerticalAlignment="Center"/>-->
+                        <TextBlock Text="{Binding ConnectStatus}" 
+                                   Foreground="{Binding ConnectStatus, Converter={StaticResource str2ColorConverter},ConverterParameter=ConnectSts}" 
+                                   Width="40" FontSize="13" FontWeight="Bold"
+                                   VerticalAlignment="Center"/>
+
+                    </StackPanel>
+
+                    <StackPanel VerticalAlignment="Center" Margin="15 0 0 0">
+                        <TextBlock Text="{Binding CanErrInfo}" 
+                                   Foreground="Red" 
+                                   Width="100" FontSize="10" FontWeight="Bold"
+                                   VerticalAlignment="Center"/>
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="20 0 0 0">
+                        <TextBlock Text="选择设备：" VerticalAlignment="Center" FontSize="13" />
+                        <!--<TextBlock Text="{Binding SelectDev}" FontWeight="Normal" Width="40" VerticalAlignment="Center"/>-->
+                        <ComboBox ItemsSource="{Binding ConnectDevs}" 
+                                  SelectedItem="{Binding SelectDev}"
+                                  VerticalAlignment="Center" Foreground="#6c5ce7"
+                                  Height="22" Width="80" FontSize="13.5" FontWeight="Bold"
+                                  Background="Red"
+                                  IsReadOnly="True"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="20 0 0 0">
+                        <Button Template="{DynamicResource ButtonTemplate1}" Content="故障告警" 
+                                Height="20" FontSize="12" BorderThickness="0" Cursor="Arrow"
+                                Command="{Binding OpenLogInfoPannelCommand}" >
+                        </Button>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <Rectangle x:Name="Overlay" Fill="Gray" Opacity="0" Visibility="{Binding UILocked, Converter={StaticResource BooleanToVisibilityConverter}}" Grid.RowSpan="4"/>
+        </Grid>
+    </Border>
+</Window>

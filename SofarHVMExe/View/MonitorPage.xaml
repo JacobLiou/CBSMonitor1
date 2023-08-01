@@ -1,0 +1,341 @@
+﻿<UserControl x:Class="SofarHVMExe.View.MonitorPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:fa="http://schemas.awesome.incremented/wpf/xaml/fontawesome.sharp"
+             xmlns:ut="clr-namespace:SofarHVMExe.Utilities"
+             xmlns:vm="clr-namespace:SofarHVMExe.ViewModel"
+             mc:Ignorable="d" 
+             d:DesignHeight="450" d:DesignWidth="800"
+             Name="page"
+             d:DataContext="{d:DesignInstance vm:MonitorPageVm}">
+
+    <UserControl.Resources>
+        <Style x:Key="TextBlockColunmStyle" TargetType="TextBlock">
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Padding" Value="8 2" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+
+        <ut:SendRecv2IconConverter x:Key="sendRecv2IconConverter" />
+        <ut:SendRecv2ColorConverter x:Key="sendRecv2ColorConverter" />
+        <!--<ut:String2FrameDataConverter x:Key="string2FrameDataConverter" />-->
+        <ut:CommandType2BoolConverter x:Key="commandType2BoolConverter" />
+        <ut:CommandType2ForegroudConverter x:Key="commandType2ForegroudConverter" />
+        <ut:Str2VisibilityConverter x:Key="str2VisibilityConverter" />
+        <ut:SpecialFrameInfo2StringConverter x:Key="SpecialFrameInfo2StringConverter" />
+    </UserControl.Resources>
+
+    <Border Background="{DynamicResource mainWndBackgroundColor}" >
+        <Grid Margin="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="280" MinWidth="10"/>
+                <ColumnDefinition Width="*" MinWidth="100"/>
+            </Grid.ColumnDefinitions>
+
+            <!--左侧命令块-->
+            <Border Grid.Column="0" Margin="0 0 5 0" Padding="5 5 5 10" Background="{DynamicResource sectionBackgroundColor}">
+                <Grid >
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="auto" />
+                    </Grid.RowDefinitions>
+
+                    <!--上方命令组列表-->
+                    <Border BorderThickness="1" BorderBrush="LightGray">
+                        <StackPanel >
+                            <TextBlock Text="命令组" FontSize="15" Height="28" HorizontalAlignment="Stretch" TextAlignment="Center" 
+                                       Background="LightGray" Padding="0 5 0 0"/>
+                            <ListBox Style="{DynamicResource ListBoxStyle1}" BorderThickness="0" Height="180" ScrollViewer.VerticalScrollBarVisibility="Visible"
+                                     SelectionMode="Single"
+                                     ItemsSource="{Binding CmdGroupList}" 
+                                     SelectedItem="{Binding SelectCmdGrpModel}"
+                                     DisplayMemberPath="Name" Loaded="ListBox_Loaded"
+                                     >
+                                <!--SelectedIndex="{Binding CmdGroupSelectedIndex}"-->
+
+                                <ListBox.ItemContainerStyle>
+                                    <Style TargetType="{x:Type ListBoxItem}">
+                                        <Setter Property="Height" Value="22" />
+
+                                        <Style.Triggers>
+                                            <Trigger Property="IsSelected" Value="True">
+                                                <Setter Property="FontSize" Value="13" />
+                                                <Setter Property="FontWeight" Value="SemiBold" />
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </ListBox.ItemContainerStyle>
+                            </ListBox>
+                        </StackPanel>
+                    </Border>
+
+                    <!--下方命令列表-->
+                    <Border Grid.Row="1" Margin="0 10 0 0">
+                        <DataGrid ItemsSource="{Binding CmdDataSource}" SelectedItem="{Binding SelectCmdCfgModel}"
+                                  BorderBrush="LightGray" BorderThickness="1 0 1 1" SelectionMode="Single"  
+                                  CanUserSortColumns="False" GridLinesVisibility="None"
+                                  CanUserResizeColumns="true" RowHeight="36"
+                                  VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Hidden"
+                                  LoadingRow="DataGrid_LoadingRow"
+                                  CellStyle="{StaticResource cmdDataGridCellStyle}"
+                                  RowStyle="{StaticResource cmdDataGridRowStyle}">
+
+                            <DataGrid.Columns>
+                                <!--命令列-->
+                                <DataGridTemplateColumn Header="命令" Width="123">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <Border VerticalAlignment="Top">
+                                                <Button Cursor="Hand" Margin="0"
+                                                    Width="auto" Height="22"
+                                                    Command="{Binding Path=DataContext.SendSelDataCommand,ElementName=page}" 
+                                                    Style="{StaticResource 3DButtonStyle}"
+                                                    >
+                                                    <!--Width="{TemplateBinding ActualWidth}" 
+                                                    Height="{TemplateBinding ActualHeight}"-->
+                                                    <Button.Content>
+                                                        <!--button的content不会显示下划线，这里使用textblock显示-->
+                                                        <TextBlock Text="{Binding Path=FrameModel.Name}"/>
+                                                    </Button.Content>
+                                                </Button>
+                                            </Border>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+
+                                <!--设置值列-->
+                                <DataGridTemplateColumn Header="设置值" Width="*" >
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBox Text="{Binding Path=SetValue, UpdateSourceTrigger=LostFocus}" 
+                                                     IsEnabled="{Binding Path=CmdType,Converter={StaticResource commandType2BoolConverter}}"
+                                                     Foreground="{Binding Path=CmdType, Converter={StaticResource commandType2ForegroudConverter}}"
+                                                     FontSize="13" FontWeight="Bold" 
+                                                     BorderThickness="1" VerticalContentAlignment="Center"
+                                                     Height="24" VerticalAlignment="Top"
+                                                     Margin="1 0 0 0">
+                                                <TextBox.Style>
+                                                    <Style TargetType="TextBox" >
+                                                        <Style.Triggers>
+                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                <Setter Property="BorderBrush" Value="Red" />
+                                                            </Trigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBox.Style>
+                                            </TextBox>
+
+                                            <!--<Button Width="20" Height="20" BorderThickness="0" Cursor="Hand"
+                                                        Command="{Binding Path=DataContext.SetDataCommand,ElementName=page}" >
+                                                    <fa:IconImage Icon="Gear" Width="16" Height="16" Foreground="#1e90ff"/>
+                                                </Button>-->
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Border>
+
+                    <!--发送停止按钮-->
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0 10 0 10" HorizontalAlignment="Center"
+                                Visibility="Collapsed">
+                        <Button Content="发送" Background="White" Width="60" Height="25"
+                            Command="{Binding StartSendCommand}"/>
+                        <Button Content="停止" Background="White" Width="60" Height="25" Margin="5 0 0 0" 
+                            Command="{Binding StopSendCommand}"/>
+                        <Button Content="保存设置" Background="White" Width="60" Height="25" Margin="5 0 0 0" 
+                            Command="{Binding SaveSetValueCommand}"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!--分隔条-->
+            <GridSplitter Grid.Row="0" Grid.Column="0" Width="5" Background="{DynamicResource mainWndBackgroundColor}"
+                          Margin="5 0 0 0"/>
+
+            <!--右侧数据显示区域-->
+            <Border Grid.Column="1"  MinWidth="500" Background="{DynamicResource sectionBackgroundColor}" Margin="0 0 0 0">
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="auto" />
+                        <RowDefinition Height="auto" />
+                        <RowDefinition Height="auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+
+                    <!--主参数显示区域-->
+                    <Border Grid.Row="0">
+
+                    </Border>
+
+                    <!--故障显示区域-->
+                    <Border Grid.Row="1">
+                        <TextBlock Text="{Binding FaultInfo}" FontSize="13" FontWeight="Bold" Foreground="Red" />
+                    </Border>
+
+                    <!--按钮操作区域-->
+                    <Border Grid.Row="2" Margin="0 10 0 0">
+                        <DockPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <Button Content="清除" Width="50" Height="25" BorderBrush="#bdc3c7" Margin="0 0 0 0"
+                                        Command="{Binding ClearDataCommand}" />
+
+                                <!--<CheckBox Content="按配置排序" VerticalAlignment="Center" VerticalContentAlignment="Center" Visibility="Collapsed"
+                                          IsChecked="{Binding SortByCfg}" Margin="10 0 0 0"/>
+
+                                <Button Content="保存" Width="50" Height="25" BorderBrush="#bdc3c7" Margin="10 0 0 0" Visibility="Collapsed"
+                                        Command="{Binding SaveCommand}"/>
+
+                                <CheckBox Content="显示发送" VerticalAlignment="Center" Margin="10 0 0 0" Visibility="Collapsed"
+                                          IsChecked="{Binding IsShowSend}"/>
+
+                                <CheckBox Content="停止更新" VerticalAlignment="Center" Margin="10 0 0 0" Visibility="Collapsed"
+                                          IsChecked="{Binding IsShowRecieve}"/>
+                            
+                                <CheckBox Content="滚动显示" VerticalAlignment="Center" Margin="10 0 0 0" Visibility="Collapsed"
+                                          IsChecked="{Binding IsScrollDisplay}"/>-->
+                            </StackPanel>
+
+                            <!--<StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right" Visibility="Collapsed">
+                                <Button Content="报文信息" Margin="0 0 10 0"
+                                        Command="{Binding ShowMsgInfoCommand}"/>
+                            </StackPanel>-->
+                            <StackPanel Margin="10,0,0,0" Orientation="Horizontal" HorizontalAlignment="Center">
+                                <TextBlock Text="{Binding SpecialFrameInfo, Converter={StaticResource SpecialFrameInfo2StringConverter}}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </DockPanel>
+                    </Border>
+
+                    <!--发送和接收数据显示区域-->
+                    <Border Grid.Row="3" Margin="0 10 0 0" >
+                        <ScrollViewer x:Name="OuterScrollViewer">
+                            <DataGrid Name="dataGrid" Margin="0 0 0 0" FontSize="14" 
+                                      BorderThickness="1 0 1 1" BorderBrush="LightGray"
+                                      ItemsSource="{Binding FrameInfoDataSrc}"
+                                      HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                                      CanUserSortColumns="False" 
+                                      CanUserResizeColumns="False"
+                                      LoadingRow="DataGrid_LoadingRow"
+                                      LayoutUpdated="DataGrid_LayoutUpdated"
+                                      PreviewMouseWheel="InnerDataGrid_PreviewMouseWheel"
+                                      >
+
+                                <DataGrid.RowStyle>
+                                    <Style TargetType="DataGridRow">
+                                        <Setter Property="Background" Value="White" />
+                                        <Setter Property="Height" Value="auto"/>
+                                        <Setter Property="MinHeight" Value="28"/>
+                                        <Setter Property="Foreground" Value="Black" />
+                                        <Style.Triggers>
+                                            <!--隔行换色-->
+                                            <!--<Trigger Property="AlternationIndex" Value="0" >
+                                            <Setter Property="Background" Value="Red" />
+                                        </Trigger>
+                                        <Trigger Property="AlternationIndex" Value="1" >
+                                            <Setter Property="Background" Value="Blue" />
+                                        </Trigger>-->
+
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter Property="Background" Value="#d1d8e0"/>
+                                            </Trigger>
+
+                                            <Trigger Property="IsSelected" Value="True">
+                                                <Setter Property="Background" Value="#d1d8e0"/>
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </DataGrid.RowStyle>
+                                <!--ItemsSource="{Binding FrameInfoDataSrc, Mode=OneWay,IsAsync=True}"-->
+                                <!--EnableColumnVirtualization="True" EnableRowVirtualization="True"-->
+
+                                <DataGrid.Columns>
+                                    <!--<DataGridTemplateColumn Header="上传/下发" Width="80" IsReadOnly="True">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <fa:IconImage Icon="{Binding IsSend, Converter={StaticResource sendRecv2IconConverter}}" Width="20" Height="20" 
+                                                                  Foreground="{Binding IsSend,Converter={StaticResource sendRecv2ColorConverter}}"/>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>-->
+
+                                    <!--<DataGridTextColumn Header="时间标识(ms)" Width="100" IsReadOnly="True"
+                                                        ElementStyle="{StaticResource CenterTextBlockStyle}"
+                                                        Binding="{Binding Time}" >
+                                        </DataGridTextColumn>-->
+
+                                    <!--<DataGridTextColumn Header="帧ID" Width="85" IsReadOnly="True" 
+                                                        ElementStyle="{StaticResource CenterTextBlockStyle}"
+                                                        Binding="{Binding ID}">
+                                        </DataGridTextColumn>-->
+
+                                    <!--<DataGridTextColumn Header="数据" Width="170" IsReadOnly="True" 
+                                                            ElementStyle="{StaticResource CenterTextBlockStyle}"
+                                                            Binding="{Binding Datas}">
+                                        </DataGridTextColumn>-->
+
+                                    <!--多个字段列-->
+                                    <DataGridTextColumn Header="字段1" Width="*" MinWidth="50" IsReadOnly="True"
+                                                        ElementStyle="{StaticResource TextBlockColunmStyle}"
+                                                        Binding="{Binding Info1}">
+                                    </DataGridTextColumn>
+                                    <DataGridTextColumn Header="值1" Width="auto" MinWidth="50" IsReadOnly="True"
+                                                            ElementStyle="{StaticResource TextBlockColunmStyle}"
+                                                            Binding="{Binding Value1}">
+                                    </DataGridTextColumn>
+
+                                    <DataGridTextColumn Header="字段2" Width="*" MinWidth="50" IsReadOnly="True"
+                                                            ElementStyle="{StaticResource TextBlockColunmStyle}"
+                                                            Binding="{Binding Info2}">
+                                    </DataGridTextColumn>
+                                    <DataGridTextColumn Header="值2" Width="auto" MinWidth="50" IsReadOnly="True"
+                                                            ElementStyle="{StaticResource TextBlockColunmStyle}"
+                                                            Binding="{Binding Value2}">
+                                    </DataGridTextColumn>
+
+                                    <DataGridTextColumn Header="字段3" Width="*" MinWidth="50" IsReadOnly="True"
+                                                            ElementStyle="{StaticResource TextBlockColunmStyle}"
+                                                            Binding="{Binding Info3}">
+                                    </DataGridTextColumn>
+                                    <DataGridTextColumn Header="值3" Width="auto" MinWidth="50" IsReadOnly="True"
+                                                            ElementStyle="{StaticResource TextBlockColunmStyle}"
+                                                            Binding="{Binding Value3}">
+                                    </DataGridTextColumn>
+
+                                    <DataGridTextColumn Header="字段4" Width="*" MinWidth="50" IsReadOnly="True"
+                                                            ElementStyle="{StaticResource TextBlockColunmStyle}"
+                                                            Binding="{Binding Info4}">
+                                    </DataGridTextColumn>
+                                    <DataGridTextColumn Header="值4" Width="auto" MinWidth="50" IsReadOnly="True"
+                                                            ElementStyle="{StaticResource TextBlockColunmStyle}"
+                                                            Binding="{Binding Value4}">
+                                    </DataGridTextColumn>
+
+                                    <!--<DataGridTextColumn Header="字段5" Width="auto" MinWidth="50" IsReadOnly="True"
+                                                            ElementStyle="{StaticResource TextBlockColunmStyle}"
+                                                            Binding="{Binding Info5}">
+                                        </DataGridTextColumn>
+                                        <DataGridTextColumn Header="值5" Width="auto" MinWidth="50" IsReadOnly="True"
+                                                            ElementStyle="{StaticResource TextBlockColunmStyle}"
+                                                            Binding="{Binding Value5}">
+                                        </DataGridTextColumn>-->
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </ScrollViewer>
+                    </Border>
+                </Grid>
+            </Border>
+
+        </Grid>
+
+    </Border>
+</UserControl>

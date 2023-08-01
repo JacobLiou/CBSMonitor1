@@ -1,0 +1,39 @@
+﻿<UserControl x:Class="SofarHVMExe.UserControls.CommandInfoControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ut="clr-namespace:SofarHVMExe.Utilities"
+             Name="userControl">
+
+    <UserControl.Resources>
+        <ut:CommandType2EnableConverter x:Key="commandType2EnableConverter" />
+        <ut:CommandType2ForegroudConverter x:Key="commandType2ForegroudConverter" />
+    </UserControl.Resources>
+    
+    <Border Background="White">
+        <StackPanel Orientation="Horizontal" >
+            <TextBlock Text="{Binding ElementName=userControl,Path=CmdName}" VerticalAlignment="Center" FontSize="12"  Width="50" />
+            
+            <ComboBox Name="combobox" Width="100" Height="24" FontSize="13" VerticalContentAlignment="Center" 
+                      HorizontalContentAlignment="Center" Margin="5 0 0 0" Padding="5 0 0 0"
+                      Text="{Binding ElementName=userControl,Path=DataSource.Type}">
+                <ComboBoxItem Content="0(禁止)" />
+                <ComboBoxItem Content="1(固定命令)" />
+                <ComboBoxItem Content="2(可设命令)" />
+            </ComboBox>
+
+            <ComboBox Width="250" Height="24" FontSize="13" VerticalContentAlignment="Center" 
+                      HorizontalContentAlignment="Center" Margin="5 0 0 0" Padding="5 0 0 0"
+                      Text="{Binding ElementName=userControl,Path=DataSource.CanId}"
+                      IsEnabled="{Binding ElementName=combobox, Path=Text, Converter={StaticResource commandType2EnableConverter}}"
+                      >
+            </ComboBox>
+            
+            <TextBox Width="250" Height="24" FontSize="13" FontWeight="SemiBold" VerticalContentAlignment="Center" Margin="5 0 0 0"
+                     Text="{Binding ElementName=userControl,Path=DataSource.Param}"
+                     IsEnabled="{Binding ElementName=combobox, Path=Text, Converter={StaticResource commandType2EnableConverter}}"
+                     Foreground="{Binding ElementName=combobox, Path=Text, Converter={StaticResource commandType2ForegroudConverter}}"
+                     />
+        </StackPanel>
+    </Border>
+    
+</UserControl>

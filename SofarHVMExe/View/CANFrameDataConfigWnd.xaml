@@ -1,0 +1,224 @@
+﻿<Window x:Class="SofarHVMExe.View.CANFrameDataConfigWnd"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:fa="http://schemas.awesome.incremented/wpf/xaml/fontawesome.sharp"
+        xmlns:ut="clr-namespace:SofarHVMExe.Utilities" 
+        xmlns:system="clr-namespace:System;assembly=System.Runtime" 
+        xmlns:collections="clr-namespace:System.Collections;assembly=System.Runtime"
+        xmlns:uc="clr-namespace:SofarHVMExe.UserControls"
+        WindowStartupLocation="CenterScreen"
+        Height="800" Width="780"
+        ResizeMode="NoResize"
+        AllowsTransparency="True"
+        Background="Transparent"
+        WindowStyle="None"
+        Name="window" KeyDown="window_KeyDown"
+        Topmost="True"
+        >
+        <!--Deactivated="Window_Deactivated"-->
+
+    <Window.Resources>
+        <ut:FrameType2VisibleConverter x:Key="frameType2VisibleConverter" />
+        <ut:Hexstr2intConverter x:Key="hexstr2intConverter" />
+        <ut:FrameStrValueValidateConverter x:Key="frameStrValueValidateConverter" />
+        <ut:FrameDataTypeValidateConverter x:Key="frameDataTypeValidateConverter" />
+        <ut:BoolToVisibilityConverter x:Key="booToVis" CollapseWhenInvisible="False"/>
+    </Window.Resources>
+    
+    
+    <Window.Effect>
+        <DropShadowEffect ShadowDepth="0" Color="LightGray" BlurRadius="15" Opacity="1" >
+        </DropShadowEffect>
+    </Window.Effect>
+
+    <Border MouseDown="Border_MouseDown" CornerRadius="10" Background="{DynamicResource mainWndBackgroundColor}" 
+            Margin="10" BorderBrush="LightGray" BorderThickness="1" >
+        
+        <Grid >
+            <Grid.RowDefinitions>
+                <RowDefinition Height="auto" />
+                <RowDefinition Height="auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="auto" />
+            </Grid.RowDefinitions>
+            
+            <!-- 顶部标题栏 -->
+            <Border CornerRadius="10 10 0 0" Background="White">
+                <Grid>
+                    <TextBlock Text="编辑CAN帧配置" FontSize="15" FontWeight="Normal" VerticalAlignment="Center" Margin="15 8 0 5"/>
+                    <Button Width="20" Height="20" HorizontalAlignment="Right" Background="Transparent" BorderBrush="Transparent" 
+                            Margin="0 0 5 0" Click="Close_Click">
+                        <fa:IconImage Icon="Xmark" />
+                    </Button>
+                </Grid>
+            </Border>
+
+            <!-- 设置ID信息区域 -->
+            <Border Grid.Row="1" Margin="10 5 10 10" Padding="10" Background="{DynamicResource sectionBackgroundColor}">
+                <StackPanel >
+                    <DockPanel  >
+                        <TextBlock Text="Name：" FontSize="13" Width="70"  TextAlignment="Right" VerticalAlignment="Center"/>
+                        <TextBox  Width="200" VerticalContentAlignment="Center" Height="24"
+                                  Text="{Binding Name}"/>
+                        <CheckBox  VerticalContentAlignment="Center" Content="AutoTx" Margin="10 0 0 0"
+                                   IsChecked="{Binding AutoTx}"/>
+
+                        <TextBox DockPanel.Dock="Right" HorizontalAlignment="Right" VerticalAlignment="Center" 
+                                FontSize="20" FontWeight="Bold" Width="Auto"
+                                Foreground="#1e90ff" Margin="0 0 38 0"
+                                Text="{Binding ID, UpdateSourceTrigger=PropertyChanged}" BorderThickness="1">
+                            <!--<TextBox.Triggers>
+                                
+                            </TextBox.Triggers>-->
+                        </TextBox>
+                    </DockPanel>
+
+                    <StackPanel Orientation="Horizontal" Margin="0 10 0 0">
+                        <StackPanel Orientation="Horizontal" Margin="0 0 0 0">
+                            <TextBlock Text="优先级：" FontSize="13" Width="70" TextAlignment="Right" VerticalAlignment="Center"/>
+                            <ComboBox Width="70" Height="24" HorizontalContentAlignment="Center" Background="White"
+                                      SelectedIndex="{Binding Priority}">
+                                <ComboBoxItem Content="0(最高)" />
+                                <ComboBoxItem Content="1" />
+                                <ComboBoxItem Content="2" />
+                                <ComboBoxItem Content="3" />
+                                <ComboBoxItem Content="4" />
+                                <ComboBoxItem Content="5" />
+                                <ComboBoxItem Content="6" />
+                                <ComboBoxItem Content="7(最低)" />
+                            </ComboBox>
+                        </StackPanel>
+
+                        <StackPanel Orientation="Horizontal" Margin="10 0 0 0">
+                            <TextBlock Text="帧类型：" FontSize="13" Width="70" TextAlignment="Right" VerticalAlignment="Center"/>
+                            <ComboBox Name="FrameTypeCombobox" Width="90" Height="24" HorizontalContentAlignment="Center" Background="White"
+                                      SelectedIndex="{Binding FrameType}">
+                                <ComboBoxItem Content="0（标准帧）" />
+                                <ComboBoxItem Content="1（数据帧）" />
+                                <ComboBoxItem Content="2（请求帧）" />
+                                <ComboBoxItem Content="3（应答帧）" />
+                            </ComboBox>
+                        </StackPanel>
+
+                        <StackPanel Orientation="Horizontal" Margin="20 0 0 0" 
+                                    IsEnabled="{Binding ElementName=FrameTypeCombobox,Path=Text,Converter={StaticResource frameType2VisibleConverter}}">
+                            <TextBlock Text="目标设备ID：" FontSize="13" Width="80" TextAlignment="Right" VerticalAlignment="Center"/>
+                            <ComboBox Width="90" Height="24" HorizontalContentAlignment="Center" Background="White" 
+                                      SelectedIndex="{Binding TargetDevId}"
+                                      ItemsSource="{Binding TargetDeviceIdSource}">
+                            </ComboBox>
+                        </StackPanel>
+
+                        <StackPanel Orientation="Horizontal" Margin="20 0 0 0">
+                            <TextBlock Text="目标设备地址：" FontSize="13" Width="90" TextAlignment="Right" VerticalAlignment="Center"/>
+                            <TextBox  Width="70" VerticalContentAlignment="Center" Height="24"
+                                      ut:TextBoxAttachedProperties.IsOnlyNumber="True"
+                                      Text="{Binding TargetDevAddr}">
+                                
+                                <!--范围提示-->
+                                <TextBox.Style>
+                                    <Style TargetType="TextBox">
+                                        <Style.Triggers>
+                                            <Trigger Property="Text" Value="">
+                                                <Setter Property="Background" >
+                                                    <Setter.Value>
+                                                        <VisualBrush TileMode="None" Opacity="0.4" Stretch="None" AlignmentX="Left">
+                                                            <VisualBrush.Visual>
+                                                                <TextBlock Text="{Binding TargetAddrHint}" /> <!--绑定无作用-->
+                                                            </VisualBrush.Visual>
+                                                        </VisualBrush>
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBox.Style>
+                            </TextBox>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" Margin="0 10 0 0">
+                        <StackPanel Orientation="Horizontal" Margin="0 0 0 0">
+                            <TextBlock Text="连续：" FontSize="13" Width="70" TextAlignment="Right" VerticalAlignment="Center"/>
+                            <ComboBox Width="70" Height="24" HorizontalContentAlignment="Center" Background="White"
+                                      SelectedIndex="{Binding ContinueFlg}">
+                                      <!--IsEnabled="False" SelectedIndex="{Binding CurrentModel.FrameId.Contineflg}">-->
+                                <ComboBoxItem Name="unContinueItem" Content="非连续" IsSelected="True"/>
+                                <ComboBoxItem Name="continueItem" Content="连续" />
+                            </ComboBox>
+                        </StackPanel>
+
+                        <StackPanel Orientation="Horizontal" Margin="10 0 0 0">
+                            <TextBlock Text="功能码：" FontSize="13" Width="70" TextAlignment="Right" VerticalAlignment="Center"/>
+                            <ComboBox Width="90" Height="24" HorizontalContentAlignment="Center" Background="White"
+                                      SelectedIndex="{Binding FunctionCode}"
+                                      ItemsSource="{Binding FuncCodeSource}">
+                            </ComboBox>
+                        </StackPanel>
+
+                        <StackPanel Orientation="Horizontal" Margin="20 0 0 0" 
+                                    IsEnabled="{Binding ElementName=FrameTypeCombobox,Path=Text,Converter={StaticResource frameType2VisibleConverter}}">
+                            <TextBlock Text="源设备ID：" FontSize="13" Width="80" TextAlignment="Right" VerticalAlignment="Center"/>
+                            <ComboBox Width="90" Height="24" HorizontalContentAlignment="Center" Background="White"
+                                      SelectedIndex="{Binding SrcDevId}" 
+                                      ItemsSource="{Binding SrcDeviceIdSource}">
+                            </ComboBox>
+                        </StackPanel>
+
+                        <StackPanel Orientation="Horizontal" Margin="20 0 0 0">
+                            <TextBlock Text="源设备地址：" FontSize="13" Width="90" TextAlignment="Right" VerticalAlignment="Center"/>
+                            <TextBox  Width="70" VerticalContentAlignment="Center" Height="24" InputMethod.IsInputMethodEnabled="False"
+                                      ut:TextBoxAttachedProperties.IsOnlyNumber="True"
+                                      Text="{Binding SrcDevAddr}">
+
+                                <!--范围提示-->
+                                <TextBox.Style>
+                                    <Style TargetType="TextBox">
+                                        <Style.Triggers>
+                                            <Trigger Property="Text" Value="">
+                                                <Setter Property="Background" >
+                                                    <Setter.Value>
+                                                        <VisualBrush TileMode="None" Opacity="0.4" Stretch="None" AlignmentX="Left">
+                                                            <VisualBrush.Visual>
+                                                                <TextBlock Text="{Binding SrcAddrHint}" /> <!--绑定无作用-->
+                                                            </VisualBrush.Visual>
+                                                        </VisualBrush>
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBox.Style>
+                            </TextBox>
+                        </StackPanel>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- 设置数据段信息区域 -->
+            <Border Grid.Row="2" Width="auto" HorizontalAlignment="Left" Margin="10 0">
+                <Grid>
+                    <!--非连续数据区-->
+                    <uc:FrameDataControl ShowTip="True" DataSource="{Binding DataSource}"
+                                         ShowShrinkBtn="Collapsed" ContextMenuVis="Hidden"
+                                         Visibility="{Binding ElementName=unContinueItem,Path=IsSelected,
+                                                      Converter={StaticResource booToVis}}"/>
+                    <!--连续数据区-->
+                    <uc:MultyFrameDataControl DataSource="{Binding MultiDataSource, Mode=TwoWay}"
+                                              Visibility="{Binding ElementName=continueItem,Path=IsSelected,
+                                              Converter={StaticResource booToVis}}"/>
+                </Grid>
+            </Border>
+
+            <!-- 底部按钮 -->
+            <StackPanel Grid.Row="3" >
+                <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0 10 10 10" HorizontalAlignment="Right">
+                    <Button Content="保存" Width="70" Command="{Binding SaveCommand}" BorderThickness="0"/>
+                    <Button Content="取消" Width="70" Click="Close_Click" Margin="10 0 0 0" BorderThickness="0"/>
+                </StackPanel>
+            </StackPanel>
+        </Grid>
+    </Border>
+</Window>

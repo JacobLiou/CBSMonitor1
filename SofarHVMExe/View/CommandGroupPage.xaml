@@ -1,0 +1,152 @@
+﻿<UserControl x:Class="SofarHVMExe.View.CommandGroupPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:fa="http://schemas.awesome.incremented/wpf/xaml/fontawesome.sharp"
+             xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
+             xmlns:ut="clr-namespace:SofarHVMExe.Utilities" 
+             xmlns:vm="clr-namespace:SofarHVMExe.ViewModel" 
+             xmlns:dd="urn:gong-wpf-dragdrop"
+             xmlns:system="clr-namespace:System;assembly=System.Runtime" 
+             xmlns:collections="clr-namespace:System.Collections;assembly=System.Runtime"
+             mc:Ignorable="d" 
+             d:DesignHeight="450" d:DesignWidth="800"
+             d:DataContext="{d:DesignInstance vm:CommandGroupPageVm}"
+             Name="page">
+
+    <UserControl.Resources>
+        <ut:FrameModel2DataStrConverter x:Key="frameModel2DataStrConverter" />
+        <ut:CommandType2ValueConverter x:Key="commandType2ValueConverter" />
+    </UserControl.Resources>
+    
+    <Border Background="white">
+        <GroupBox Padding="10" Margin="5" >
+            <GroupBox.Header>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{Binding CmdGrpNumberText}" FontSize="16" FontWeight="Bold" />
+                    <TextBox Text="{Binding CmdGrpName}" FontSize="14" FontWeight="SemiBold" Height="25" Width="250" BorderThickness="2" 
+                             VerticalContentAlignment="Center" Foreground="#2e3acc" Margin="30 0 0 0"/>
+                </StackPanel>
+            </GroupBox.Header>
+
+            <Grid >
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="auto" />
+                </Grid.RowDefinitions>
+                
+                <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Width="70" Height="28" Command="{Binding AddNewCommand}" BorderBrush="#bdc3c7">
+                        <StackPanel Orientation="Horizontal">
+                            <fa:IconImage Icon="Plus" Width="13" Foreground="Black"/>
+                            <TextBlock Text="增加" FontSize="13" VerticalAlignment="Center" Margin="5 0 0 0"/>
+                        </StackPanel>
+                    </Button>
+
+                    <Button Width="70" Height="28" Command="{Binding DeleteSelectCommand}" BorderBrush="#bdc3c7" Margin="10 0 0 0">
+                        <StackPanel Orientation="Horizontal">
+                            <fa:IconImage Icon="minus" Width="13" />
+                            <TextBlock Text="删除" FontSize="13" VerticalAlignment="Center" Margin="5 0 0 0"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+
+                <Border Grid.Row="1" Margin="0 5 0 0" BorderThickness="0">
+                    <DataGrid Name="dataGrid"
+                              ItemsSource="{Binding DataSource}" SelectedItem="{Binding SelectData}"
+                              BorderBrush="LightGray" BorderThickness="1 0 1 1" SelectionMode="Single"
+                              CanUserSortColumns="False"
+                              Loaded="DataGrid_Loaded"
+                              LoadingRow="DataGrid_LoadingRow"
+                              dd:DragDrop.DropScrollingMode="VerticalOnly"
+                              dd:DragDrop.IsDragSource="True"
+                              dd:DragDrop.IsDropTarget="True"
+                              dd:DragDrop.ShowAlwaysDropTargetAdorner="True"
+                              dd:DragDrop.SelectDroppedItems="True"
+                              >
+                        
+                        <DataGrid.Columns>
+                            <!--命令类型列-->
+                            <DataGridComboBoxColumn Header="命令类型" Width="100" 
+                                                    SelectedItemBinding="{Binding CmdType, Converter={StaticResource commandType2ValueConverter}}" >
+                                <DataGridComboBoxColumn.ElementStyle>
+                                    <Style TargetType="ComboBox" >
+                                        <Setter Property="HorizontalAlignment" Value="Center" />
+                                        <Setter Property="VerticalAlignment" Value="Center" />
+                                    </Style>
+                                </DataGridComboBoxColumn.ElementStyle>
+                                <DataGridComboBoxColumn.ItemsSource>
+                                    <collections:ArrayList>
+                                        <system:String>0(禁用命令)</system:String>
+                                        <system:String>1(可设命令)</system:String>
+                                        <system:String>2(固定命令)</system:String>
+                                    </collections:ArrayList>
+                                </DataGridComboBoxColumn.ItemsSource>
+                            </DataGridComboBoxColumn>
+
+                            <!--ID列-->
+                            <DataGridComboBoxColumn Header="ID" Width="auto" 
+                                                    SelectedValueBinding="{Binding FrameGuid, UpdateSourceTrigger=PropertyChanged}">
+                                <!--IdIndex绑定失效-->
+                                <DataGridComboBoxColumn.EditingElementStyle>
+                                    <Style TargetType="ComboBox">
+                                        <Setter Property="ItemsSource" Value="{Binding Path=DataContext.CanFrameList,ElementName=page}" />
+                                        <Setter Property="SelectedValuePath" Value="Guid" />
+                                        <Setter Property="DisplayMemberPath" Value="Text" />
+                                        <EventSetter Event="SelectionChanged" Handler="Id_ComboBox_SelectionChanged" />
+                                    </Style>
+                                </DataGridComboBoxColumn.EditingElementStyle>
+                                <DataGridComboBoxColumn.ElementStyle>
+                                    <Style TargetType="ComboBox" >
+                                        <Setter Property="ItemsSource" Value="{Binding Path=DataContext.CanFrameList,ElementName=page}" />
+                                        <Setter Property="SelectedValuePath" Value="Guid" />
+                                        <Setter Property="DisplayMemberPath" Value="Text" />
+                                        <Setter Property="HorizontalAlignment" Value="Center" />
+                                        <Setter Property="VerticalAlignment" Value="Center" />
+                                        <Setter Property="Margin" Value="5 0" />
+                                    </Style>
+                                </DataGridComboBoxColumn.ElementStyle>
+                            </DataGridComboBoxColumn>
+
+                            <!--值列表（只读）列-->
+                            <DataGridTextColumn Header="值列表（只读）" Width="*" IsReadOnly="True"
+                                                ElementStyle="{StaticResource CenterTextBlockStyle}"
+                                                Binding="{Binding FrameModel,Converter={StaticResource frameModel2DataStrConverter}}">
+                            </DataGridTextColumn>
+
+                            <!--设置数据值列-->
+                            <DataGridTemplateColumn Header="设置数据值" Width="100" >
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Button Width="20" Height="20" BorderThickness="0" Cursor="Hand" 
+                                                        Command="{Binding Path=DataContext.SetDataCommand,ElementName=page}">
+                                            <fa:IconImage Icon="Gear" Width="16" Height="16" Foreground="#1e90ff"/>
+                                        </Button>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+
+                        <!-- 右键菜单 -->
+                        <DataGrid.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem Header="增加" Command="{Binding AddNewCommand}" />
+                                <MenuItem Header="删除" Command="{Binding DeleteSelectCommand}" />
+                                <MenuItem Header="上移" Command="{Binding MoveUpCommand}" />
+                                <MenuItem Header="下移" Command="{Binding MoveDownCommand}" />
+                            </ContextMenu>
+                        </DataGrid.ContextMenu>
+                    </DataGrid>
+                </Border>
+
+                <Button Grid.Row="2" Content="保存" Width="70" Height="28" FontSize="13" HorizontalAlignment="Center" Margin="0 20 0 0"
+                        Command="{Binding SaveCommand}"/>
+                
+            </Grid>
+            
+        </GroupBox>
+    </Border>
+
+</UserControl>

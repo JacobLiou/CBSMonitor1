@@ -1,0 +1,258 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+
+    <!-- 数据表格控件DataGrid样式文件 -->
+
+    <SolidColorBrush x:Key="dataGridBackgroudColor" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="dataGridGridLinesColor" Color="LightGray"/>
+
+
+
+    <!--默认表格列头样式-->
+    <Style x:Key="MaterialDesignThumb" TargetType="{x:Type Thumb}">
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="Padding" Value="8" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="OverridesDefaultStyle" Value="True" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type Thumb}">
+                    <Border x:Name="PART_Border"
+                            Padding="{TemplateBinding Padding}"
+                            Background="{TemplateBinding Background}"
+                            SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+    
+    <Style x:Key="MaterialDesignGridColumnHeaderGripper" TargetType="{x:Type Thumb}" BasedOn="{StaticResource MaterialDesignThumb}">
+        <Setter Property="Width" Value="8"/>
+        <Setter Property="Cursor" Value="SizeWE"/>
+        <Setter Property="Padding" Value="0" />
+    </Style>
+
+    <Style x:Key="DefaultDataGridColumnHeaderStyle" TargetType="DataGridColumnHeader">
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <!--<Setter Property="MinWidth" Value="0" />-->
+        <Setter Property="MinHeight" Value="28" />
+        <Setter Property="Foreground" Value="#323433" />
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="FontWeight" Value="Normal" />
+        <Setter Property="Height" Value="25"/>
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="DataGridColumnHeader">
+                    <Grid Background="Transparent">
+                        <Border x:Name="BackgroundBorder" BorderThickness="0,1,0,1" BorderBrush="LightGray" 
+                            Width="Auto" Background="#e6e6e6">
+                            <Grid >
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <ContentPresenter  Margin="5,0" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                <Path x:Name="SortArrow" Visibility="Collapsed" Data="M0,0 L1,0 0.5,1 z" Stretch="Fill"  Grid.Column="2" 
+                                  Width="8" Height="6" Fill="White" Margin="0,0,50,0" VerticalAlignment="Center" RenderTransformOrigin="1,1" />
+                                <Rectangle Width="1.5" Fill="LightGray" HorizontalAlignment="Right" Grid.ColumnSpan="1" 
+                                       />
+                            </Grid>
+                        </Border>
+                        <Thumb
+                            x:Name="PART_LeftHeaderGripper"
+                            HorizontalAlignment="Left"
+                            Style="{StaticResource MaterialDesignGridColumnHeaderGripper}" />
+                        <Thumb
+                            x:Name="PART_RightHeaderGripper"
+                            HorizontalAlignment="Right"
+                            Style="{StaticResource MaterialDesignGridColumnHeaderGripper}" />
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="MaterialDesignDataGridColumnHeader" TargetType="{x:Type DataGridColumnHeader}">
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="TextBlock.FontWeight" Value="Medium" />
+        <!--<Setter Property="Padding" Value="{Binding RelativeSource={RelativeSource Self}, Path=(wpf:DataGridAssist.ColumnHeaderPadding)}" />-->
+        <Setter Property="Foreground" Value="{DynamicResource MaterialDesignColumnHeader}" />
+        <Setter Property="BorderBrush" Value="{Binding HorizontalGridLinesBrush, RelativeSource={RelativeSource AncestorType=DataGrid}}" />
+        <!--<Setter Property="BorderThickness" Value="{Binding GridLinesVisibility, RelativeSource={RelativeSource AncestorType=DataGrid}, Converter={StaticResource GridLinesVisibilityBorderToThicknessConverter}}" />-->
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type DataGridColumnHeader}">
+                    <ControlTemplate.Resources>
+                        <Storyboard x:Key="GoToVisible">
+                            <DoubleAnimationUsingKeyFrames Storyboard.TargetName="SortDirectionIndicator" Storyboard.TargetProperty="Width">
+                                <EasingDoubleKeyFrame KeyTime="0:0:0.0" Value="0" />
+                                <EasingDoubleKeyFrame KeyTime="0:0:0.2" Value="12" />
+                            </DoubleAnimationUsingKeyFrames>
+                        </Storyboard>
+                        <Storyboard x:Key="GoToHidden">
+                            <DoubleAnimationUsingKeyFrames Storyboard.TargetName="SortDirectionIndicator" Storyboard.TargetProperty="Width">
+                                <EasingDoubleKeyFrame KeyTime="0:0:0.0" Value="12" />
+                                <EasingDoubleKeyFrame KeyTime="0:0:0.2" Value="0" />
+                            </DoubleAnimationUsingKeyFrames>
+                        </Storyboard>
+                    </ControlTemplate.Resources>
+                    <Grid Background="Transparent">
+                        <Border
+                            Padding="{TemplateBinding Padding}"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}">
+                            <Grid HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}">
+                                <!--<wpf:ListSortDirectionIndicator
+                                    x:Name="SortDirectionIndicator"
+                                    Width="0"
+                                    Height="12"
+                                    Margin="-16,0,0,0"
+                                    HorizontalAlignment="Left"
+                                    Foreground="Red"
+                                    IsTabStop="False"
+                                    ListSortDirection="{TemplateBinding SortDirection}"
+                                    Opacity="0.45"
+                                    Visibility="{Binding CanUserSortColumns, RelativeSource={RelativeSource AncestorType=DataGrid}, Converter={StaticResource BooleanToVisibilityConverter}}" />-->
+                                <ContentPresenter
+                                    VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                    RecognizesAccessKey="True"
+                                    SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}">
+                                    <ContentPresenter.Resources>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="TextTrimming" Value="WordEllipsis" />
+                                            <!--<Setter Property="wpf:TextBlockAssist.AutoToolTip" Value="True" />-->
+                                        </Style>
+                                    </ContentPresenter.Resources>
+                                </ContentPresenter>
+                            </Grid>
+                        </Border>
+                        <Thumb
+                            x:Name="PART_LeftHeaderGripper"
+                            HorizontalAlignment="Left"
+                            Style="{StaticResource MaterialDesignGridColumnHeaderGripper}" />
+                        <Thumb
+                            x:Name="PART_RightHeaderGripper"
+                            HorizontalAlignment="Right"
+                            Style="{StaticResource MaterialDesignGridColumnHeaderGripper}" />
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Foreground" Value="{DynamicResource MaterialDesignBody}" />
+                        </Trigger>
+                        <Trigger Property="SortDirection" Value="Ascending">
+                            <Setter Property="Foreground" Value="{DynamicResource MaterialDesignBody}" />
+                        </Trigger>
+                        <Trigger Property="SortDirection" Value="Descending">
+                            <Setter Property="Foreground" Value="{DynamicResource MaterialDesignBody}" />
+                        </Trigger>
+                        <!--<Trigger SourceName="SortDirectionIndicator" Property="IsNeutral" Value="False">
+                            <Trigger.EnterActions>
+                                <BeginStoryboard Name="GoToVisible" Storyboard="{StaticResource GoToVisible}" />
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <RemoveStoryboard BeginStoryboardName="GoToVisible" />
+                                <BeginStoryboard Storyboard="{StaticResource GoToHidden}" />
+                            </Trigger.ExitActions>
+                        </Trigger>-->
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+    
+    <!--DataGrid样式-->
+    <Style TargetType="DataGrid">
+        <Setter Property="AutoGenerateColumns" Value="False"/>
+        <Setter Property="GridLinesVisibility" Value="All"/>
+        <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
+        <Setter Property="HorizontalScrollBarVisibility" Value="Auto"/>
+        <Setter Property="CanUserResizeRows" Value="False"/>
+        <Setter Property="CanUserAddRows" Value="False"/>
+        <Setter Property="CanUserResizeColumns" Value="True"/>
+        <Setter Property="Background" Value="{DynamicResource dataGridBackgroudColor}" />
+        <!--网格线颜色-->
+        <Setter Property="BorderBrush" Value="#FFF5F7F5" />
+        <Setter Property="HorizontalGridLinesBrush" Value="{DynamicResource dataGridGridLinesColor}" />
+        <Setter Property="VerticalGridLinesBrush" Value="{DynamicResource dataGridGridLinesColor}" />
+    </Style>
+
+    <!--表格列头样式-->
+    <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource DefaultDataGridColumnHeaderStyle}" />
+    <!--<Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource MaterialDesignDataGridColumnHeader}" />-->
+
+
+    <!--表格行样式-->
+    <!--背景色改变必须先设置cellStyle 因为cellStyle会覆盖rowStyle样式-->
+    <Style TargetType="DataGridRow">
+        <Setter Property="Background" Value="White" />
+        <Setter Property="Height" Value="25"/>
+        <Setter Property="Foreground" Value="Black" />
+        <Style.Triggers>
+            <!--隔行换色-->
+            <!--<Trigger Property="AlternationIndex" Value="0" >
+                <Setter Property="Background" Value="Red" />
+            </Trigger>
+            <Trigger Property="AlternationIndex" Value="1" >
+                <Setter Property="Background" Value="Blue" />
+            </Trigger>-->
+
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="#d1d8e0"/>
+            </Trigger>
+
+            <Trigger Property="IsSelected" Value="True">
+                <Setter Property="Background" Value="#d1d8e0"/>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <!--表格单元格样式-->
+    <Style TargetType="DataGridCell">
+        <!--<Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="DataGridCell">
+                    <TextBlock VerticalAlignment="Center"  HorizontalAlignment="Center">
+                        <ContentPresenter />
+                    </TextBlock>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>-->
+        <Style.Triggers>
+            <Trigger Property="IsSelected" Value="True">
+                <!--<Setter Property="Background" Value="Yellow"/>-->
+                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="Foreground" Value="White"/>
+                <Setter Property="Background" Value="#1e90ff"/>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+
+    <Style x:Key="cmdDataGridRowStyle" TargetType="DataGridRow">
+        <Setter Property="Background" Value="White" />
+        <Setter Property="Height" Value="25"/>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="White"/>
+            </Trigger>
+
+            <Trigger Property="IsSelected" Value="True">
+                <Setter Property="Background" Value="White"/>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+    
+    <Style x:Key="cmdDataGridCellStyle" TargetType="DataGridCell">
+        <Setter Property="Padding" Value="0" />
+        <Style.Triggers>
+            <Trigger Property="IsSelected" Value="True">
+                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="Foreground" Value="White"/>
+                <Setter Property="Background" Value="White"/>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+    
+</ResourceDictionary>

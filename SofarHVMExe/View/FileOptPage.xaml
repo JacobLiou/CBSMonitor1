@@ -17,19 +17,29 @@
                         <RowDefinition Height="auto" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="75"/>
-                        <ColumnDefinition Width="120"/>
-                        <ColumnDefinition Width="75"/>
-                        <ColumnDefinition Width="120"/>
-                        <ColumnDefinition/>
-                    </Grid.ColumnDefinitions>
                     <!--首行为导航栏-->
-                    <TextBlock Text="文件编号" Width="75" HorizontalAlignment="Left" VerticalAlignment="Center" Grid.Row="0" Grid.Column="0"/>
-                    <ComboBox x:Name="cbbFileType" Grid.Row="0" Grid.Column="1" HorizontalAlignment="Left" Width="100" 
-                              SelectedValue="{Binding CurrentFileType}"
-                              ItemsSource="{Binding FiletypeToLength.Keys}"/>
-                    <Button Content="读取" Grid.Row="0" Grid.Column="2" HorizontalAlignment="Left" Command="{Binding ReadCommand}"/>
+                    <StackPanel Grid.Column="0" Grid.ColumnSpan="5" Orientation="Horizontal">
+                        <TextBlock Text="文件编号" VerticalAlignment="Center"/>
+                        <ComboBox x:Name="cbbFileNo" Margin="10 0 0 0" MinWidth="100"
+                             HorizontalAlignment="Center"
+                             VerticalAlignment="Center" 
+                             ItemsSource="{Binding FileCodeList}"
+                             DisplayMemberPath="Name" />
+                        <TextBlock Text="访问模块" VerticalAlignment="Center" Margin="10 0 0 0" />
+                        <ComboBox HorizontalAlignment="Left" Width="100" Margin="10 0 0 0" SelectedIndex="{Binding CurrentObjval}">
+                            <ComboBoxItem>BCU</ComboBoxItem>
+                            <ComboBoxItem>BMU</ComboBoxItem>
+                        </ComboBox>
+                        <TextBlock Text="BMU设备ID" VerticalAlignment="Center" Margin="10 0 0 0" />
+                        <TextBox x:Name="txtBmuId" Margin="10 0 0 0" Width="75" Height="23"
+                                 HorizontalAlignment="Center"
+                                 VerticalContentAlignment="Center"
+                                 Text="{Binding BmuId}" />
+                        <Button Content="读取" Margin="10 0 0 0" Height="24" 
+                                HorizontalAlignment="Left"
+                                Command="{Binding ReadCommand}"
+                                CommandParameter="{Binding ElementName=cbbFileNo,Path=SelectedValue}"/>
+                    </StackPanel>
                     <!--第二行为内容区-->
                     <TextBox Grid.Row="1" Grid.ColumnSpan="5" Margin="0 15 0 0" Padding="3 3 3 10" TextWrapping="Wrap" AcceptsReturn="True" 
                              VerticalScrollBarVisibility="Auto" UndoLimit="0"

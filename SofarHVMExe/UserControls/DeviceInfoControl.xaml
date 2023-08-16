@@ -56,7 +56,8 @@
                                Foreground="#706fd3" VerticalAlignment="Center" Margin="25 0 0 0"/>-->
 
                     <StackPanel Orientation="Vertical" HorizontalAlignment="Left" Background="Transparent" 
-                                Margin="0 0 40 0" Visibility="{Binding ElementName=userControl, Path=DeviceInfo.Connected, Converter={StaticResource booToVis}}">
+                                Visibility="{Binding ElementName=userControl, Path=DeviceInfo.Connected, Converter={StaticResource booToVis}}">
+                                <!--Margin="0 0 40 0" Visibility="{Binding ElementName=userControl, Path=DeviceInfo.Connected, Converter={StaticResource booToVis}}">-->
                         <TextBlock FontSize="16" Foreground="Gray">
                             <Run>[状态]</Run>
                             <Run Foreground="Black" 
@@ -71,6 +72,14 @@
                         <TextBlock FontSize="16" Foreground="Gray" >
                             <Run>[模式]</Run>
                             <Run Foreground="Black" Text="{Binding ElementName=userControl, Path=DeviceInfo.Mode}"/>
+                        </TextBlock>
+                        <TextBlock FontSize="16" Foreground="Gray" >
+                            <Run>[发电]</Run>
+                            <Run Foreground="Black" Text="{Binding ElementName=userControl, Path=DeviceInfo.DischargePower}"/>
+                        </TextBlock>
+                        <TextBlock FontSize="16" Foreground="Gray" >
+                            <Run>[充电]</Run>
+                            <Run Foreground="Black" Text="{Binding ElementName=userControl, Path=DeviceInfo.ChargePower}"/>
                         </TextBlock>
                     </StackPanel>
                 </DockPanel>

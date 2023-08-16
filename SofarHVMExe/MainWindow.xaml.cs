@@ -25,7 +25,7 @@ namespace SofarHVMExe
         {
             InitializeComponent();
 
-            SetVersionTitle("CAN协议调试上位机-T1.0.0.14.20230721");
+            SetVersionTitle("CAN协议调试上位机-T1.0.0.15.20230816");
 
             AdjustMainWindow();
 

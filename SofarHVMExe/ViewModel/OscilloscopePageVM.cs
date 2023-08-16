@@ -17,7 +17,6 @@ using CanProtocol.ProtocolModel;
 using Communication.Can;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Microsoft.Win32;
 using NPOI.SS.Formula.Functions;
 using Org.BouncyCastle.Asn1.Cmp;
 using ScottPlot;
@@ -41,6 +40,7 @@ using FontAwesome.Sharp;
 using NPOI.SS.Formula.Atp;
 using NPOI.Util;
 using SofarHVMExe.Utilities.Global;
+using Microsoft.Win32;
 
 namespace SofarHVMExe.ViewModel
 {
@@ -77,8 +77,8 @@ namespace SofarHVMExe.ViewModel
         {
             // 
             OscilloscopeVm.ClosedJobs();
-            //FaultWaveRecordVm.ClosedJobs();
-            //IsWorking = false;
+            FaultWaveRecordVm.ClosedJobs();
+            IsWorking = false;
         }
         
 
@@ -112,7 +112,7 @@ namespace SofarHVMExe.ViewModel
                 return;
             }
 
-            // MultiLanguages.Common.LogHelper.WriteLog($"接收: " + $"0x{rawCanObj.ID:X8}: " + $"{BytesToString(rawCanObj.Data)}");
+            MultiLanguages.Common.LogHelper.WriteLog($"接收: " + $"0x{rawCanObj.ID:X8}: " + $"{BytesToString(rawCanObj.Data)}");
         }
         
 
@@ -133,7 +133,7 @@ namespace SofarHVMExe.ViewModel
             bool isAllReceived = false;
             var sw = Stopwatch.StartNew();
 
-            //MultiLanguages.Common.LogHelper.WriteLog($"连续数据帧接收开始【{sw.ElapsedMilliseconds}ms】");
+            MultiLanguages.Common.LogHelper.WriteLog($"连续数据帧接收开始【{sw.ElapsedMilliseconds}ms】");
 
             do
             {
@@ -187,11 +187,11 @@ namespace SofarHVMExe.ViewModel
             
             if (isAllReceived)
             {
-                //MultiLanguages.Common.LogHelper.WriteLog($"连续数据帧接收完成，接收时长【{sw.ElapsedMilliseconds}ms】");
+                MultiLanguages.Common.LogHelper.WriteLog($"连续数据帧接收完成，接收时长【{sw.ElapsedMilliseconds}ms】");
                 return true;
             }
 
-            //MultiLanguages.Common.LogHelper.WriteLog($"连续数据帧接收不完整，接收时长【{sw.ElapsedMilliseconds}ms】");
+            MultiLanguages.Common.LogHelper.WriteLog($"连续数据帧接收不完整，接收时长【{sw.ElapsedMilliseconds}ms】");
             return false;
         }
 
@@ -299,7 +299,7 @@ namespace SofarHVMExe.ViewModel
             return true;
         }
 
-        public static bool SendDataFramesCan1(EcanHelper ecanHelper, uint CANID, List<byte> dataBytes)
+        public static bool SendAddressDataFramesCan1(EcanHelper ecanHelper, uint CANID, List<byte> dataBytes)
         {
             // 数据量
             if (dataBytes.Count % 2 == 1)
@@ -327,7 +327,7 @@ namespace SofarHVMExe.ViewModel
             frameBytes[6] = dataBytes[2];
             frameBytes[7] = dataBytes[3];
 
-            //MultiLanguages.Common.LogHelper.WriteLog("连续数据帧发送开始：");
+            MultiLanguages.Common.LogHelper.WriteLog("连续数据帧发送开始：");
 
             if (!SendFrameCan1(ecanHelper, CANID, frameBytes))
             {
@@ -367,7 +367,7 @@ namespace SofarHVMExe.ViewModel
                 return false;
             }
 
-            //MultiLanguages.Common.LogHelper.WriteLog("连续数据帧发送结束\r\n");
+            MultiLanguages.Common.LogHelper.WriteLog("连续数据帧发送结束\r\n");
             return true;
         }
 
@@ -437,7 +437,6 @@ namespace SofarHVMExe.ViewModel
                 }
 
                 StatusMsg = msg;
-                MultiLanguages.Common.LogHelper.WriteLog(msg);
 
                 if (timeMs > 0)
                 {
@@ -454,7 +453,7 @@ namespace SofarHVMExe.ViewModel
         public void ClosedJobs()
         {
             SaveSettings();
-            // StopButton();
+            Stop();
         }
 
         public void SaveSettings()
@@ -465,6 +464,7 @@ namespace SofarHVMExe.ViewModel
             fileCfgModel.OscilloscopeModel.TrigMode = TrigMode;
             fileCfgModel.OscilloscopeModel.TrigSource = TrigSource;
             fileCfgModel.OscilloscopeModel.TrigYLevel = TrigYLevel;
+            fileCfgModel.OscilloscopeModel.TrigXPercent = TrigXPercent;
 
             fileCfgModel.OscilloscopeModel.ChannelInfoList = new();
             for (int i = 0; i < ChannelsSettings.Count; i++)
@@ -495,6 +495,7 @@ namespace SofarHVMExe.ViewModel
                 TrigMode = fileCfgModel.OscilloscopeModel.TrigMode;
                 TrigSource = fileCfgModel.OscilloscopeModel.TrigSource;
                 TrigYLevel = fileCfgModel.OscilloscopeModel.TrigYLevel;
+                TrigXPercent = fileCfgModel.OscilloscopeModel.TrigXPercent;
                 for (int i = 0; i < fileCfgModel.OscilloscopeModel.ChannelInfoList.Count; ++i)
                 {
                     ChannelsSettings[i].VariableName = fileCfgModel.OscilloscopeModel.ChannelInfoList[i].VariableName;
@@ -541,41 +542,35 @@ namespace SofarHVMExe.ViewModel
             if (dlg.ShowDialog() != true)
                 return;
 
-            string currentDir = AppDomain.CurrentDomain.BaseDirectory;
-            string ofdExePath = System.IO.Path.Combine(currentDir, "Oscilloscope", "OFD", "ofd2000.exe");
-            if (!System.IO.File.Exists(ofdExePath))
-            {
-                MessageBox.Show("找不到程序：\n" + ofdExePath, "导入失败", MessageBoxButton.OK, MessageBoxImage.Error);
-                return;
-            }
-
-            var dwarfDirInfo = System.IO.Directory.CreateDirectory(System.IO.Path.Combine(currentDir, "Oscilloscope", "DWARF"));
+            var saveDir = System.IO.Directory.CreateDirectory(System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "temp", "DWARF"));
             string objFileName = System.IO.Path.GetFileNameWithoutExtension(dlg.FileName);
-            string dwarfXmlSavePath = System.IO.Path.Combine(dwarfDirInfo.FullName, objFileName + "_DWARF_" +
-                DateTime.Now.ToString("yyyyMMddhhmmss") + AppDomain.CurrentDomain.Id + ".xml");
+
+            string copyObjPath = System.IO.Path.Combine(saveDir.FullName, objFileName + "(copy).out");
+            System.IO.File.Copy(dlg.FileName, copyObjPath);
+
+            string dwarfXmlSavePath = System.IO.Path.Combine(saveDir.FullName, objFileName + "_DWARF_" +
+                                                                               DateTime.Now.ToString("yyyyMMddhhmmss") + AppDomain.CurrentDomain.Id + ".xml");
 
             try
             {
-                foreach (var fileInfo in dwarfDirInfo.GetFiles())
-                {
-                    // 删除所有旧文件
-                    fileInfo.Delete();
-                }
-
                 CoffPath = "加载中...";
                 IsStartAllowed = false;  // 加载中禁止启动
-                await TIAddressChecker.GetXmlByTiOfdTask(ofdExePath, dlg.FileName, dwarfXmlSavePath, 25);
-                MessageBox.Show($"DWARF.xml保存文件路径(有效时间{DwarfXmlValidHours}小时):\n" + dwarfXmlSavePath, 
-                      "导入成功", MessageBoxButton.OK, MessageBoxImage.Information);
+                await TIPluginHelper.ConvertCoffToXmlAsync(copyObjPath, dwarfXmlSavePath, saveDir.FullName);
+                await Task.Run(() => TIAddressChecker.TrimDwarfXml(dwarfXmlSavePath));
+
+                MessageBox.Show($"Debug信息文件DWARF.xml保存路径（有效时间{DwarfXmlValidHours}小时）:\n" + dwarfXmlSavePath,
+                    "导入成功", MessageBoxButton.OK, MessageBoxImage.Information);
                 CoffPath = dlg.FileName;
                 DwarfXmlPath = dwarfXmlSavePath;
             }
             catch (Exception ex)
             {
                 MessageBox.Show(ex.ToString(), "导入失败", MessageBoxButton.OK, MessageBoxImage.Error);
+                CoffPath = "";
             }
             finally
             {
+                System.IO.File.Delete(copyObjPath);
                 IsStartAllowed = true;
             }
         }
@@ -600,7 +595,7 @@ namespace SofarHVMExe.ViewModel
                 System.Drawing.Color.Red,
                 System.Drawing.Color.Green,
                 System.Drawing.Color.BlueViolet,
-                System.Drawing.Color.Fuchsia,
+                System.Drawing.Color.OrangeRed,
                 System.Drawing.Color.Goldenrod,
             };
             
@@ -679,9 +674,10 @@ namespace SofarHVMExe.ViewModel
 
         public ObservableCollection<string> TrigXPercentComboItems { get; set; } = new()
         {
-            "Free", "0% TimeAxis", 
+            "0% TimeAxis", 
             "10% TimeAxis", "20% TimeAxis", "30% TimeAxis", "40% TimeAxis", "50% TimeAxis",
-            "60% TimeAxis", "70% TimeAxis", "80% TimeAxis", "90% TimeAxis", "100% TimeAxis"
+            "60% TimeAxis", 
+            //"70% TimeAxis", "80% TimeAxis", "90% TimeAxis", "100% TimeAxis"
         };
 
         private int _trigXPercent = 0;
@@ -699,12 +695,12 @@ namespace SofarHVMExe.ViewModel
 
         public ObservableCollection<string> StartModeComboItems { get; } = new()
         {
-            "SingleTrig", "ContinuousTrig", "Rolling", "StartOnly",
+            "SingleTrig", "ContinuousTrig", "Rolling"
         };
         
         #endregion
 
-        #region 运行命令
+        #region Communication
 
         private bool _isStartAllowed = true;
         public bool IsStartAllowed
@@ -714,7 +710,7 @@ namespace SofarHVMExe.ViewModel
         }
 
         [RelayCommand]
-        private void StartButton()
+        private void Start()
         {
             // 禁止重复按下
             IsStartAllowed = false;
@@ -753,7 +749,7 @@ namespace SofarHVMExe.ViewModel
             // 
             for (int i = 0; i < MaxChannelNum; i++)
             { 
-                _signalAxis[i].Hide((ChannelsSettings[i].ID < 0));
+                _signalAxis[i].Hide(ChannelsSettings[i].ID < 0);
             }
             PlotCtrl.Refresh();
 
@@ -772,18 +768,13 @@ namespace SofarHVMExe.ViewModel
 
             switch (StartMode)
             {
-                case "StartOnly":
-                    Task.Run(() => StartWithoutReadData(dstAddr));
-                    break;
-
                 case "SingleTrig":
-                    Task.Run(() => SingleTrigStart(dstAddr));
+                    Task.Run(() => StartWithoutReadData(dstAddr));
+                    // Task.Run(() => SingleTrigStartXY(dstAddr));
                     break;
-
                 case "ContinuousTrig":
-                    Task.Run(() => ContinuousTrigStart(dstAddr));
+                    //Task.Run(() => ContinuousTrigStart());
                     break;
-
                 case "Rolling":
                     break;
                 default:
@@ -794,7 +785,7 @@ namespace SofarHVMExe.ViewModel
         private bool CheckDwarfXmlDate()
         {
             // 删除过期文件
-            var dwarfDirInfo = System.IO.Directory.CreateDirectory(System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Oscilloscope", "DWARF"));
+            var dwarfDirInfo = System.IO.Directory.CreateDirectory(System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "tmp", "DWARF"));
 
             foreach (var fileInfo in dwarfDirInfo.GetFiles())
             {
@@ -813,14 +804,7 @@ namespace SofarHVMExe.ViewModel
         private bool CheckAddresses<T>(ObservableCollection<T> varCollection) where T : VariableModelBase, new()
         {
             if (!_addressChecker.IsDwarfXmlLoaded())
-            {
-                if (!_addressChecker.LoadDwarfXml(DwarfXmlPath))
-                {
-                    MessageBox.Show("加载COFF(.out)或DWARF(.xml)文件出错，请尝试重新导入COFF(.out)文件", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
-                    return false;
-                }
-            }
-               
+                _addressChecker.LoadDwarfXml(DwarfXmlPath);
             var addrCheckTasks = new List<Task>();
             
 
@@ -880,14 +864,26 @@ namespace SofarHVMExe.ViewModel
                 _addressChecker.UnloadDwarfXml();
             }
 
-            if (!string.IsNullOrEmpty(errInfo))
+            if (string.IsNullOrEmpty(errInfo))
             {
-                MessageBox.Show(errInfo, "寻址错误", MessageBoxButton.OK, MessageBoxImage.Error);
-                return false;
+                //string addrResDebug = "寻址结果：\n";
+                //for (int i = 0; i < varCollection.Count; i++)
+                //{
+                //    if (varCollection[i].VariableName.StartsWith("0x") || varCollection[i].VariableName.StartsWith("0X"))
+                //    {
+                        
+                //    }
+                //    addrResDebug += $"{varCollection[i].VariableName}: 0x{varCollection[i].VariableAddress:x8} \n";
+                //}
+                //MessageBox.Show(addrResDebug, "寻址成功", MessageBoxButton.OK, MessageBoxImage.Asterisk);
+                return true;
             }
             else
             {
-                return true;
+                MessageBox.Show(errInfo, "寻址错误", MessageBoxButton.OK, MessageBoxImage.Error);
+
+                return false;
+
             }
 
         }
@@ -924,13 +920,13 @@ namespace SofarHVMExe.ViewModel
             ShowStatusMsg("配置并启动示波器成功");
         }
 
-        private void SingleTrigStart(byte dstAddr)
+        private void SingleTrigStartXY(byte dstAddr)
         {
             ShowStatusMsg("读取性能参数...");
             if (!ReadOscilloscopeProperty(dstAddr))
             {
                 ShowStatusMsg("读取性能参数失败");
-                Stop();
+                IsStartAllowed = true;
                 return;
             }
             ShowStatusMsg("读取性能参数成功");
@@ -941,7 +937,7 @@ namespace SofarHVMExe.ViewModel
             if (!WriteOscilloscopeSettings(dstAddr))
             {
                 ShowStatusMsg("配置并启动示波器失败");
-                Stop();
+                IsStartAllowed = true;
                 return;
             }
             ShowStatusMsg("配置并启动示波器成功");
@@ -950,74 +946,82 @@ namespace SofarHVMExe.ViewModel
 
             ShowStatusMsg("单次触发开始");
 
-            Thread.Sleep(500);
 
-            
             IsStopped = false;
 
-            if (!WaitForTrig(dstAddr))
-            {
-                Stop();
-                ShowStatusMsg("触发等待超时，示波器已关闭");
-                return;
-            }
-
-            ShowStatusMsg("触发成功，正在读取波形数据...");
-
+            
             List<List<short>> chDataCollection = new();
             int storageDepth = TotalStorageDepth / MaxChannelNum;
 
+            int maxWaveNum = (int)(SamplePointNum * (1 - TrigXPercent / 10.0));
             double timeX = 0; 
             var newTimeXs = new List<double>();
+            for (int i = 0; i < SamplePointNum - maxWaveNum; i++)
+            {
+                // 触发位置偏移填充
+                newTimeXs.Add(timeX);
+                chDataCollection.Add(new List<short>() {0 ,0 ,0, 0, 0, 0});
+                timeX += UnderSampleScale / SampleFreq;
+            }
 
             PlotCtrl.Plot.BottomAxis.Dims.SetAxis(-5 * UnderSampleScale / SampleFreq, SamplePointNum * UnderSampleScale / SampleFreq);
             
 
-            //var swTotal = Stopwatch.StartNew();
-            //var sw = Stopwatch.StartNew();
+            var swTotal = Stopwatch.StartNew();
+            var sw = Stopwatch.StartNew();
             int waveIndex = 0;
-            // int failureCnt = 0;
-            while (!IsStopped && waveIndex < SamplePointNum)
+            int failureCnt = 0;
+            while (!IsStopped && waveIndex < maxWaveNum && failureCnt < 10)
             {
                 if (ReadChannelData(dstAddr, waveIndex, out List<short> chData))
                 {
                     newTimeXs.Add(timeX);
                     chDataCollection.Add(chData);
-                    //if ((waveIndex + 1) % 200 == 0)
-                    //{
-                    //    //sw.Restart();
+                    if ((waveIndex + 1) % 200 == 0)
+                    {
+                        //MultiLanguages.Common.LogHelper.WriteLog($"取400点耗时（ms）：{sw.ElapsedMilliseconds}");
+                        sw.Restart();
 
-                    //    UpdatePlot(chDataCollection, newTimeXs);
-                    //    chDataCollection.Clear();
-                    //    newTimeXs.Clear();
-                    //}
-                    ShowStatusMsg($"正在读取波形数据({waveIndex}/{SamplePointNum})");
-
+                        UpdatePlotXY(chDataCollection, newTimeXs);
+                        chDataCollection.Clear();
+                        newTimeXs.Clear();
+                        
+                    }
                 }
                 else
                 {
-                    // failureCnt++;
-                    ShowStatusMsg($"读取波形数据失败：WaveIndex={waveIndex}");
+                    failureCnt++;
+                    // ShowStatusMsg($"读取波形数据失败：WaveIndex={waveIndex}");
                 }
 
                 timeX += UnderSampleScale / SampleFreq;
                 waveIndex++;
             }
-            UpdatePlot(chDataCollection, newTimeXs);
+            UpdatePlotXY(chDataCollection, newTimeXs);
             chDataCollection.Clear();
             newTimeXs.Clear();
 
             // 正常流程结束
             if (!IsStopped)
             {
-                //MultiLanguages.Common.LogHelper.WriteLog($"单次触发耗时（ms）：{swTotal.ElapsedMilliseconds}");
-                ShowStatusMsg(Stop() ? "单次触发结束, 示波器已关闭" : "单次触发结束, 示波器未成功关闭");
+                MultiLanguages.Common.LogHelper.WriteLog($"单次触发耗时（ms）：{swTotal.ElapsedMilliseconds}");
+                if (WriteStopRequest(dstAddr))
+                {
+                    ShowStatusMsg("单次触发结束, 示波器已关闭");
+                }
+                else
+                {
+                    ShowStatusMsg("单次触发结束, 示波器未成功关闭");
+                }
             }
+            
+            
             IsStopped = true;
             IsStartAllowed = true;
+
         }
 
-        private void ContinuousTrigStart(byte dstAddr)  
+        private void ContinuousTrigStart()  
         {
             
         }
@@ -1027,7 +1031,7 @@ namespace SofarHVMExe.ViewModel
 
         }
 
-        private void UpdatePlot(List<List<short>> channelDataCollection, List<double> newTimeXs)
+        private void UpdatePlotXY(List<List<short>> channelDataCollection, List<double> newTimeXs)
         {
             for (int i = 0; i < channelDataCollection.Count; i++)
             {
@@ -1038,6 +1042,7 @@ namespace SofarHVMExe.ViewModel
                     {
                         continue;
                     }
+
 
                     _signalXYPlots[j].Ys[_fillBeginIndex] = ChannelsSettings[j].DataType switch
                     {
@@ -1064,7 +1069,7 @@ namespace SofarHVMExe.ViewModel
             Array.Copy(newTimeXs.ToArray(), 0,_timeXs, _fillBeginIndex - newTimeXs.Count,newTimeXs.Count);
 
             // Refresh
-            Application.Current.Dispatcher.Invoke(() => {
+            App.Current.Dispatcher.Invoke(() => {
                 for (int i = 0; i < MaxChannelNum; i++)
                 {
                     if (ChannelsSettings[i].ID < 0)
@@ -1134,7 +1139,7 @@ namespace SofarHVMExe.ViewModel
 
         }
 
-        private bool ReadOscilloscopeProperty(byte dstAddr, int timeoutMs=5000)
+        private bool ReadOscilloscopeProperty(byte dstAddr)
         {
             var txCanID = new CanFrameID()
             {
@@ -1168,22 +1173,17 @@ namespace SofarHVMExe.ViewModel
                 0, 0, 0, 0
             };
 
-            // 清空接收队列
             RxQueue.Clear();
-
-            // 发送请求帧
             if (!OscilloscopePageVM.SendFrameCan1(_ecanHelper, txCanID.ID, txData))
             {
                 return false;
             }
 
-            // 接收数据
-            if (!OscilloscopePageVM.ReadAddressDataFrames(RxQueue, rxCanID, 0, 4, out var rxData, timeoutMs) || rxData.Count != 8)
+            if (!OscilloscopePageVM.ReadAddressDataFrames(RxQueue, rxCanID, 0, 4, out var rxData, 5000) || rxData.Count != 8)
             {
                 return false;
             }
 
-            // 解析数据
             SampleFreq = (rxData[1] << 8) | rxData[0];
             SamplePointNum = (rxData[3] << 8) | rxData[2];
             TotalStorageDepth = (rxData[7] << 24) | (rxData[6] << 16) |
@@ -1192,7 +1192,7 @@ namespace SofarHVMExe.ViewModel
             return true;
         }
         
-        private bool WriteOscilloscopeSettings(byte dstAddr, int timeoutMs=3000)
+        private bool WriteOscilloscopeSettings(byte dstAddr)
         {
             var txCanID = new CanFrameID()
             {
@@ -1279,7 +1279,7 @@ namespace SofarHVMExe.ViewModel
 
             // Send request and get response
             RxQueue.Clear();
-            if (!OscilloscopePageVM.SendDataFramesCan1(_ecanHelper, txCanID.ID, txData))
+            if (!OscilloscopePageVM.SendAddressDataFramesCan1(_ecanHelper, txCanID.ID, txData))
                 return false;
 
             var sw = Stopwatch.StartNew();
@@ -1293,47 +1293,8 @@ namespace SofarHVMExe.ViewModel
                         return true;
                     }
                 }
-            } while (sw.ElapsedMilliseconds < timeoutMs);
+            } while (sw.ElapsedMilliseconds < 3000);
 
-            return false;
-        }
-
-        private bool WaitForTrig(byte dstAddr, int timeoutMs=60_000*2)
-        {
-            bool isReady = false;
-            var sw = Stopwatch.StartNew();
-            var countdownSpan = TimeSpan.FromMilliseconds(timeoutMs);
-            while (!IsStopped && countdownSpan.TotalSeconds > 0 && !isReady)
-            {
-                isReady = ReadChannelData(dstAddr, 0, out var channelData);
-                ShowStatusMsg("等待触发: " + countdownSpan.Minutes.ToString("D2") + ":" + countdownSpan.Seconds.ToString("D2"));
-                Thread.Sleep(1000);
-                countdownSpan -= TimeSpan.FromSeconds(1);
-            }
-            return isReady;
-            
-            
-            //var countdownTimer = new System.Timers.Timer(1000);
-            //countdownTimer.AutoReset = true;
-            //countdownTimer.Elapsed += (s, e) =>
-            //{
-            //    if (IsStopped) return;
-
-
-                
-                
-            //};
-            //countdownTimer.Start();
-
-
-
-
-            //while (countdownSpan.Seconds > 0)
-            //{
-            //    if (isReady) return true;
-            //}
-
-            //countdownTimer.Stop();
             return false;
         }
 
@@ -1395,7 +1356,7 @@ namespace SofarHVMExe.ViewModel
             int waveIdxResponse = rxData[1] << 8 | rxData[0];
             if (waveIdxResponse != waveIdx)
             {
-                // MultiLanguages.Common.LogHelper.WriteLog("");
+                //MultiLanguages.Common.LogHelper.WriteLog("");
                 return false;
             }
             
@@ -1421,22 +1382,27 @@ namespace SofarHVMExe.ViewModel
 
         
         [RelayCommand]
-        private void StopButton()
-        {
-            // ShowStatusMsg("示波器请求关闭");
-
-            ShowStatusMsg(Stop() ? "示波器关闭成功" : "示波器关闭失败");
-        }
-
-        private bool Stop()
+        private void Stop()
         {
             IsStopped = true;
             IsStartAllowed = true;
+
+            ShowStatusMsg("示波器请求关闭");
             byte dstAddr = DeviceManager.Instance().GetSelectDev();
-            return WriteStopRequest(dstAddr);
+            
+            if (!WriteStopRequest(dstAddr))
+            {
+                ShowStatusMsg("示波器关闭失败");
+            }
+            else
+            {
+                ShowStatusMsg("示波器关闭成功");
+            }
+            
+            
         }
 
-        private bool WriteStopRequest(byte dstAddr, int timeoutMs=500)
+        private bool WriteStopRequest(byte dstAddr)
         {
             var txCanID = new CanFrameID()
             {
@@ -1488,7 +1454,7 @@ namespace SofarHVMExe.ViewModel
                         return true;
                     }
                 }
-            } while (sw.ElapsedMilliseconds < timeoutMs);
+            } while (sw.ElapsedMilliseconds < 500);
 
             return false;
 
@@ -1615,7 +1581,7 @@ namespace SofarHVMExe.ViewModel
                     dataCursor.DragEnabled = true;
                     dataCursor.PositionLabel = true;
                     dataCursor.PositionLabelOppositeAxis = true;
-                    dataCursor.Dragged += UpdateSignalText;
+                    dataCursor.Dragged += UpdateSignalXYText;
                     dataCursor.DragLimitMin = -0.01;
                     dataCursor.DragLimitMax = 1.01;
                     dataCursor.PositionFormatter = d => d.ToString("0.0000E0");
@@ -1688,7 +1654,7 @@ namespace SofarHVMExe.ViewModel
             PlotCtrl.Refresh();
         }
         
-        private void UpdateSignalText(object sender, EventArgs args)
+        private void UpdateSignalXYText(object sender, EventArgs args)
         {
             switch (DataCursorMode)
             {
@@ -1721,14 +1687,14 @@ namespace SofarHVMExe.ViewModel
                                     case 2:
                                         {
                                             // (u)int8
-                                            dataText += $"{(int)signalY} " +
+                                            dataText += $"{(int)signalY}" +
                                                         $"(0x{Convert.ToString((int)signalY).PadLeft(2, '0')})";
                                             string binStr = $"b{Convert.ToString((int)signalY, 2).PadLeft(8, '0')}";
                                             for (int p = 5; p < binStr.Length; p += 5)
                                             {
                                                 binStr = binStr.Insert(p, "_");
                                             }
-                                            dataText += "\n   " + binStr;
+                                            dataText += binStr;
                                             break;
                                         }
 
@@ -1856,7 +1822,6 @@ namespace SofarHVMExe.ViewModel
             get => _isSelected;
             set { _isSelected = value; OnPropertyChanged();}
         }
-        
 
     }
 
@@ -1969,13 +1934,14 @@ namespace SofarHVMExe.ViewModel
             List<string> tagNameList = new List<string>()
             {
                 // 显示单下划线
-                "AD__R__Line__Current", "AD__S__Line__Current", "AD__T__Line__Current",
-                "AD__RS__Line__Voltage", "AD__ST__Line__Voltage", 
+                "AD__R__Phase__Current", "AD__S__Phase__Current", "AD__T__Phase__Current",
+                "AD__RS__Phase__Voltage", "AD__ST__Phase__Voltage", 
                 "AD__DC__BUS__Positive__Voltage", "AD__DC__BUS__Negative__Voltage", "AD__DC__BUS__Battery__Voltage",
             }; 
 
-            for (int i = 0; i < FaultWaveNum; i++)
+            for (int i = 0; i < 8; i++)
             {
+                
                 var wavePlot = _plotCtrl.Plot.AddSignal(ys: new double[1]);
                 wavePlot.LineWidth = 2.0;
                 wavePlot.Color = waveColors[i];
@@ -2080,12 +2046,7 @@ namespace SofarHVMExe.ViewModel
             }
         }
 
-        private ObservableCollection<FaultWavesInfoVM> _faultWavesInfoList = new();
-        public ObservableCollection<FaultWavesInfoVM> FaultWavesInfoList
-        {
-            get => _faultWavesInfoList;
-            set { _faultWavesInfoList = value; OnPropertyChanged();}
-        } 
+        public ObservableCollection<FaultWavesInfoVM> FaultWavesInfoList { get; set; } = new();
 
 
         #endregion
@@ -2094,6 +2055,7 @@ namespace SofarHVMExe.ViewModel
         private ScottPlot.WpfPlot _plotCtrl = new WpfPlot();
         public ScottPlot.WpfPlot PlotCtrl => _plotCtrl;
 
+        private ScottPlot.Plottable.VLine _trigIndexVLine;
         private ScottPlot.Plottable.HLine _currentHLine;
         private ScottPlot.Plottable.HLine _voltageHLine;
 
@@ -2130,7 +2092,11 @@ namespace SofarHVMExe.ViewModel
             _voltageHLine.PositionFormatter = d => d.ToString("0.000E0");
             _voltageHLine.PositionLabelOppositeAxis = true;
             _voltageHLine.IsVisible = false;
-           
+            
+            _trigIndexVLine = PlotCtrl.Plot.AddVerticalLine(x: 0, color: System.Drawing.Color.Red, style:LineStyle.Dash);
+            _trigIndexVLine.PositionLabel = true;
+            _trigIndexVLine.PositionLabelOppositeAxis = true;
+            _trigIndexVLine.PositionFormatter = d => d.ToString("N4");
 
             PlotCtrl.Render();
         }
@@ -2152,18 +2118,6 @@ namespace SofarHVMExe.ViewModel
         }
 
         [RelayCommand]
-        private void UnlockCurrentAxis(bool isUnlocked)
-        {
-            PlotCtrl.Plot.LeftAxis.LockLimits(!isUnlocked);
-        }
-
-        [RelayCommand]
-        private void UnlockVoltageAxis(bool isUnlocked)
-        {
-            PlotCtrl.Plot.RightAxis.LockLimits(!isUnlocked);
-        }
-
-        [RelayCommand]
         private void SwitchFaultWavePlot(int idx)
         {
             for (int i = 0; i < FaultWavesInfoList.Count; i++)
@@ -2176,7 +2130,8 @@ namespace SofarHVMExe.ViewModel
                         SelectedFaultWaves[k].WavePlot.Ys = faultWavesData[k].ToArray();
                         SelectedFaultWaves[k].WavePlot.MaxRenderIndex = faultWavesData[k].Count - 1;
                     }
-                    
+
+                    _trigIndexVLine.X = FaultWavesInfoList[i].TrigIndex / SamplingRate;
                 }
             }
             PlotCtrl.Plot.AxisAuto();
@@ -2265,20 +2220,14 @@ namespace SofarHVMExe.ViewModel
                         var curWaveIdx = fetchIndexList[i];
                         Application.Current.Dispatcher.BeginInvoke(() =>
                         {
-                            var newFaultWavesInfo = new FaultWavesInfoVM()
+                            FaultWavesInfoList.Add(new FaultWavesInfoVM()
                             {
                                 Index = curWaveIdx,
                                 FaultType = (FaultWavesInfoVM.FaultTypeEnum)faultTypeIndex,
                                 TrigIndex = trigIndex,
                                 RecordTime = recordTime,
                                 FaultWavesData = wavesList,
-                            };
-
-                            // 数据重排列
-                            RearrangeWavesData(newFaultWavesInfo);
-
-                            FaultWavesInfoList.Add(newFaultWavesInfo);
-
+                            });
                             PlotCtrl.Refresh();
                             ShowStatusMsg($"读取第{curWaveIdx}个故障录波成功", timeMs:5000);
                         });
@@ -2295,9 +2244,7 @@ namespace SofarHVMExe.ViewModel
                 Application.Current.Dispatcher.BeginInvoke(() =>
                 {
                     if (FaultWavesInfoList.Count > 1)
-                    {
-                        FaultWavesInfoList = new (FaultWavesInfoList.OrderBy(elem => elem.Index).ToList());
-                    }
+                        FaultWavesInfoList = new ObservableCollection<FaultWavesInfoVM>(FaultWavesInfoList.OrderBy(elem => elem.Index).ToList());
                     IsReceiving = false;
                 });
                 
@@ -2451,6 +2398,24 @@ namespace SofarHVMExe.ViewModel
             var minute = rxWaveInfoData[13] << 8 | rxWaveInfoData[12];
             var second = rxWaveInfoData[15] << 8 | rxWaveInfoData[14];
             
+            //try
+            //{
+            //    recordTime = new DateTime(
+            //        year: year,
+            //        month: month,
+            //        day: day,
+            //        hour: hour,
+            //        minute: minute,
+            //        second: second
+            //    ).ToString("yyyy/MM/dd-HH:mm:ss");
+                
+            //}
+            //catch (Exception e)
+            //{
+            //    ShowStatusMsg($"读取第{waveIndex}号录波的录波时间不合法");
+            //    return false;
+            //}
+
             recordTime = $"{year:D4}/{month:D2}/{day:D2}-{hour:D2}:{minute:D2}:{second:D2}";
 
             MultiLanguages.Common.LogHelper.WriteLog($"第{waveIndex}号录波的录波信息: " 
@@ -2497,7 +2462,7 @@ namespace SofarHVMExe.ViewModel
 
 
                 if (!OscilloscopePageVM.ReadFileDataFrames(RxQueue, rxFaultWaveCanID, readOffset, FaultWavePackSize * 2,
-                                                            out var rxWaveData, 10000)
+                                                            out var rxWaveData, 30000)
                     || rxWaveData.Count != FaultWavePackSize * 2)
                 {
                     return false;
@@ -2521,32 +2486,6 @@ namespace SofarHVMExe.ViewModel
                 ShowStatusMsg($"已读取第{waveIndex}号录波的第{readOffset}/{readTotalCount}个录波数据块...");
             }
             
-            return true;
-        }
-        
-        /// <summary>
-        /// 根据TrigIndex对数据进行重排
-        /// </summary>
-        /// <param name="faultWavesInfo"></param>
-        private bool RearrangeWavesData(FaultWavesInfoVM faultWavesInfo)
-        {
-            int trigIndex = faultWavesInfo.TrigIndex;
-
-            for (int i = 0; i < faultWavesInfo.FaultWavesData.Count; i++)
-            {
-                if (trigIndex >= faultWavesInfo.FaultWavesData[i].Count)
-                {
-                    return false;
-                }
-
-                var len = faultWavesInfo.FaultWavesData[i].Count;
-                var part1 = faultWavesInfo.FaultWavesData[i].GetRange(trigIndex, len - trigIndex);
-                var part2 = faultWavesInfo.FaultWavesData[i].GetRange(0, trigIndex);
-                faultWavesInfo.FaultWavesData[i].Clear();
-                faultWavesInfo.FaultWavesData[i].AddRange(part1);
-                faultWavesInfo.FaultWavesData[i].AddRange(part2);
-            }
-
             return true;
         }
 
@@ -2587,6 +2526,7 @@ namespace SofarHVMExe.ViewModel
                 SelectedFaultWaves[i].WavePlot.Ys = new double[1];
                 SelectedFaultWaves[i].WavePlot.MaxRenderIndex = 0;
             }
+            _trigIndexVLine.X = 0;
             PlotCtrl.Refresh();
         }
 
@@ -2735,18 +2675,6 @@ namespace SofarHVMExe.ViewModel
                 throw new InvalidOperationException("The target must be a boolean");
 
             return !(bool)value;
-        }
-    }
-
-    public class UInt32ToHexStringConverter : IValueConverter
-    {
-        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
-        {
-            return "0x" + ((uint)value).ToString("X8");
-        }
-        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
-        {
-            throw new NotImplementedException();
         }
     }
 

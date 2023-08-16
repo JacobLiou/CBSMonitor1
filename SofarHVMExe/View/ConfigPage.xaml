@@ -6,7 +6,7 @@
              xmlns:local="clr-namespace:SofarHVMExe.View"
              xmlns:domain="clr-namespace:SofarHVMExe.Model"
              xmlns:vm="clr-namespace:SofarHVMExe.ViewModel"
-             xmlns:i="http://schemas.microsoft.com/expression/2010/interactivity"
+             xmlns:behaviors="http://schemas.microsoft.com/xaml/behaviors"
              mc:Ignorable="d" 
              d:DataContext="{d:DesignInstance vm:ConfigPageVm}"
              d:DesignHeight="450" d:DesignWidth="800">
@@ -43,13 +43,13 @@
                     x:Name="treeView1"
                     ItemsSource="{Binding DeviceTreeModels}"
                     SelectedValuePath="ID">
-                    <i:Interaction.Triggers>
-                        <i:EventTrigger EventName="SelectedItemChanged">
-                            <i:InvokeCommandAction
+                    <behaviors:Interaction.Triggers>
+                        <behaviors:EventTrigger EventName="SelectedItemChanged">
+                            <behaviors:InvokeCommandAction
                                 Command="{Binding SelectItemChangeCmd}"
                                 CommandParameter="{Binding ElementName=treeView1, Path=SelectedItem}"/>
-                        </i:EventTrigger>
-                    </i:Interaction.Triggers>
+                        </behaviors:EventTrigger>
+                    </behaviors:Interaction.Triggers>
                     <TreeView.Resources>
                         <HierarchicalDataTemplate DataType="{x:Type domain:DeviceTreeModel}" ItemsSource="{Binding Children}">
                             <StackPanel

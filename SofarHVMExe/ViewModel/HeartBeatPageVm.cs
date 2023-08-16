@@ -258,7 +258,9 @@ namespace SofarHVMExe.ViewModel
         {
             dev.Status = GetStatus(data);
             dev.Fault = GetFault(data);
-            dev.Mode = GetMode(data);
+            dev.Mode = GetMode(data); 
+            dev.DischargePower = GetDischargePower(data);
+            dev.ChargePower = ChargePower(data);
         }
         private string GetStatus(byte[] datas)
         {
@@ -272,14 +274,28 @@ namespace SofarHVMExe.ViewModel
             if (datas.Length < 5)
                 return "";
 
-            return datas[4] == 1 ? "有" : "无";
+            //return datas[4] == 1 ? "有" : "无";
+            return datas[2] == 1 ? "有" : "无";
         }
         private string GetMode(byte[] datas)
         {
             if (datas.Length < 6)
                 return "";
 
-            return datas[5].ToString();
+            //return datas[5].ToString();
+            return BitConverter.ToInt16(datas, 0).ToString();
+        }
+        private string GetDischargePower(byte[] datas)
+        {
+            if (datas.Length < 6)
+                return "";
+            return (BitConverter.ToInt16(datas, 4) * 0.01).ToString("F2") + "kW";
+        }
+        private string ChargePower(byte[] datas)
+        {
+            if (datas.Length < 8)
+                return "";
+            return (BitConverter.ToInt16(datas, 6) * 0.01).ToString("F2") + "kW";
         }
     }//class
 }

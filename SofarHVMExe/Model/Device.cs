@@ -150,6 +150,33 @@ namespace SofarHVMExe.Model
         }
 
         /// <summary>
+        /// PCSM降额后的发电能力
+        /// </summary>
+        private string dischargePower = "";
+        public string DischargePower
+        {
+            get => dischargePower;
+            set
+            {
+                dischargePower = value;
+                OnPropertyChanged();
+            }
+        }
+        /// <summary>
+        /// PCSM降额后的充电能力
+        /// </summary>
+        private string chargePower = "";
+        public string ChargePower
+        {
+            get => chargePower;
+            set
+            {
+                chargePower = value;
+                OnPropertyChanged();
+            }
+        }
+
+        /// <summary>
         /// 更新状态栏
         /// </summary>
         public bool UpdateStatusBar = true;
@@ -189,7 +216,7 @@ namespace SofarHVMExe.Model
                             //更新连接信息
                             //string time = DateTime.Now.ToString("HH:mm:ss.fff");
                             //string msg = $"{time}  设备[{address}]断开，连接超时！";
-                           string msg = $"设备[{address}]断开，连接超时！";
+                            string msg = $"设备[{address}]断开，连接超时！";
                             callBack.Invoke(msg);
                             break;
                         }

@@ -20,7 +20,8 @@ namespace SofarHVMExe.Model
         public int TrigSource { get; set; } = 0;
 
         public int TrigYLevel { get; set; } = 1;
-        
+
+        public int TrigXPercent { get; set; } = 1;
     }
 
     

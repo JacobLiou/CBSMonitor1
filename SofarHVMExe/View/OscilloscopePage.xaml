@@ -12,16 +12,14 @@
              Loaded="OscilloscopePage_OnLoaded" Unloaded="OscilloscopePage_OnUnloaded" >
 
     <UserControl.Resources>
-        
+
     </UserControl.Resources>
-    
+
     <Grid  Background="#f0f0f0">
         <Grid.Resources>
             <!--<vm:TimeUnitSliderConverter x:Key="TimeUnitSliderCvt"/>-->
             <vm:BoolInverseConverter x:Key="BoolInverseCvt"/>
             <vm:ChannelColorConverter x:Key="ChannelColorCvt"/>
-            <vm:UInt32ToHexStringConverter x:Key="UIntToHexStringCvt"/>
-
         </Grid.Resources>
 
         <Grid.ColumnDefinitions>
@@ -29,7 +27,7 @@
             <ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
 
-        
+
         <Grid Grid.Column="0">
             <Grid x:Name="OscilloscopePlotPanel" Visibility="Visible">
 
@@ -77,7 +75,7 @@
                     <Grid Grid.Row="0" x:Name="FaultWavePlotContainer" Margin="5" >
                         <WpfPlot x:Name="FaultWavePlotCtrl"/>
                     </Grid>
-                    
+
                     <StackPanel Grid.Row="1" Margin="5, 0, 5, 0" Orientation="Horizontal" HorizontalAlignment="Right">
                         <CheckBox Content="操作电流轴"
                                   Margin="5, 0, 5, 0"
@@ -92,7 +90,7 @@
                                   Command="{Binding FaultWaveRecordVm.UnlockVoltageAxisCommand}"
                                   CommandParameter="{Binding Path=IsChecked, RelativeSource={RelativeSource Self}}">
                         </CheckBox>
-                        
+
                         <CheckBox Content="显示游标"
                                   Margin="5, 0, 0, 0"
                                   IsChecked="False"
@@ -124,7 +122,7 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
-                    
+
                     <Grid Grid.Row="3" VerticalAlignment="Center">
                         <TextBlock Background="White" Margin="5, 0, 5, 0" 
                                    Height="20"
@@ -139,7 +137,7 @@
 
             </Grid>
         </Grid>
-        
+
 
         <Expander Grid.Column="1" ExpandDirection="Left" IsExpanded="True" >
 
@@ -150,7 +148,7 @@
                         <StackPanel Orientation="Vertical">
 
                             <Expander Header="设置"  Margin="3, 5, 3, 5" BorderBrush="DarkGray" IsExpanded="True">
-                                
+
                                 <Grid>
                                     <Grid.RowDefinitions>
                                         <RowDefinition />
@@ -164,7 +162,7 @@
                                         <TextBox x:Name="CoffPathText" Text="{Binding OscilloscopeVm.CoffPath}" IsReadOnly="True" 
                                                  TextChanged="CoffPathText_OnTextChanged"
                                                  VerticalContentAlignment="Center" Width="150" Height="28" Margin="10 0 0 0" >
-                                                 
+
                                         </TextBox>
                                         <Button x:Name="ImportFileButton"  Content="选择文件"  Margin="10 0 0 0" Background="LightGray" Command="{Binding OscilloscopeVm.ImportCoffCommand}"/>
                                     </StackPanel>
@@ -202,7 +200,7 @@
                                                                             </DataTrigger>
                                                                             <DataTrigger Binding="{Binding Path=IsInvalid}" Value="true">
                                                                                 <Setter  Property="BorderBrush" Value="Red"/>
-                                                                            </DataTrigger>                                                                            
+                                                                            </DataTrigger>
                                                                         </Style.Triggers>
                                                                     </Style>
                                                                 </TextBox.Style>
@@ -239,7 +237,7 @@
                                                                       SelectedIndex="{Binding Path=FloatDataScale, UpdateSourceTrigger=PropertyChanged}"
                                                                       ItemsSource="{Binding Path=DataContext.OscilloscopeVm.FloatDataScaleComboItems, RelativeSource={RelativeSource Mode=FindAncestor, AncestorType=DataGrid}}">
                                                             </ComboBox>
-                                                            
+
                                                             <DataTemplate.Triggers>
                                                                 <DataTrigger Binding="{Binding ElementName=ChannelSettingsGrid, Path=IsReadOnly}" Value="True">
                                                                     <Setter Property="IsEnabled" Value="False"/>
@@ -265,8 +263,7 @@
                                                 <DataGridTemplateColumn Header="地址结果" Width="100" CanUserResize="False">
                                                     <DataGridTemplateColumn.CellTemplate>
                                                         <DataTemplate>
-                                                            <TextBox Text="{Binding Path=VariableAddress, UpdateSourceTrigger=PropertyChanged,
-                                                                            Converter={StaticResource UIntToHexStringCvt}}" 
+                                                            <TextBox Text="{Binding Path=VariableAddress, UpdateSourceTrigger=PropertyChanged,                                                                      StringFormat=0x{0:x8}}" 
                                                                      IsReadOnly="True">
                                                             </TextBox>
                                                         </DataTemplate>
@@ -275,7 +272,7 @@
 
                                             </DataGrid.Columns>
 
-                                            
+
 
                                         </DataGrid>
                                     </StackPanel>
@@ -289,7 +286,7 @@
                                         </WrapPanel>
 
                                         <WrapPanel  Orientation="Horizontal">
-                                            
+
 
                                             <TextBlock Text="触发信源:" Margin="5" Width="50" VerticalAlignment="Center" TextAlignment="Right"/>
                                             <ComboBox Margin ="5"  Width="75" Height="24"
@@ -301,7 +298,7 @@
                                             <ComboBox x:Name="TrigModeComboBox" Margin ="5"  Width="100" Height="24"
                                                       ItemsSource="{Binding OscilloscopeVm.TrigModeComboItems}"
                                                       SelectedIndex="{Binding OscilloscopeVm.TrigMode}">
-                                                
+
                                             </ComboBox>
 
                                             <TextBlock Text="触发电平:"  Margin="5" Width="50" VerticalAlignment="Center" TextAlignment="Right"/>
@@ -324,14 +321,14 @@
                                                 </ComboBox.Style>
                                             </ComboBox>
 
-                                            
+
 
 
                                         </WrapPanel>
 
                                     </StackPanel>
 
-                                    
+
                                     <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="2" HorizontalAlignment="Left" VerticalAlignment="Center">
 
                                         <Button x:Name="StartButton" Content="Start" Height="50" Width="50" Margin="5" Background="LimeGreen"
@@ -355,7 +352,7 @@
 
 
                             <Expander Header="波形" Margin="3, 5, 3 ,5" BorderBrush="DarkGray" IsExpanded="True">
-                                
+
                                 <StackPanel Margin="5">
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock Text="游标" VerticalAlignment="Center" Margin="10, 0,5,0"/>
@@ -371,11 +368,11 @@
 
                                         <ToggleButton Content="Y轴隐藏" Margin="10, 0, 5, 0" IsChecked="False"
                                                       Command="{Binding OscilloscopeVm.HideYAxisCommand}" 
-                                                      CommandParameter="{Binding Path=IsChecked, RelativeSource={RelativeSource Mode=Self}}">                                            
+                                                      CommandParameter="{Binding Path=IsChecked, RelativeSource={RelativeSource Mode=Self}}">
                                         </ToggleButton>
-                                        
+
                                         <!--<Button Content="X轴铺满" Margin="0"/>-->
-                                        
+
                                     </StackPanel>
 
                                     <DataGrid x:Name="ChannelViewGrid"  Margin="2, 10, 2, 10"
@@ -406,7 +403,7 @@
                                                         </CheckBox>
                                                     </DataTemplate>
                                                 </DataGridTemplateColumn.CellTemplate>
-                                            </DataGridTemplateColumn>                                            
+                                            </DataGridTemplateColumn>
 
                                             <DataGridTemplateColumn Header="选中">
                                                 <DataGridTemplateColumn.CellTemplate>
@@ -495,7 +492,7 @@
 
 
                             </Expander>
-                            
+
                         </StackPanel>
                     </ScrollViewer>
 
@@ -510,7 +507,7 @@
                                           SelectedItem="{Binding FaultWaveRecordVm.FetchBeginIndex,
                                                         UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"
                                           ItemsSource="{Binding FaultWaveRecordVm.FetchIndexComboItems}">
-                                          
+
                                 </ComboBox>
                                 <TextBlock Text="~" VerticalAlignment="Center" Margin="5, 0, 5, 0"/>
                                 <ComboBox Width="50" Height="20" 
@@ -519,7 +516,7 @@
                                           ItemsSource="{Binding FaultWaveRecordVm.FetchIndexComboItems}">
 
                                 </ComboBox>
-                                
+
                             </StackPanel>
 
                             <StackPanel Orientation="Horizontal" Margin="5">
@@ -597,9 +594,9 @@
                                             </DataGridTemplateColumn.CellTemplate>
                                         </DataGridTemplateColumn>
 
-                                        
 
-                                        
+
+
 
                                     </DataGrid.Columns>
 
@@ -610,7 +607,7 @@
                             </StackPanel>
                         </StackPanel>
 
-                        
+
                     </ScrollViewer>
 
                 </TabItem>

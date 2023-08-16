@@ -342,42 +342,48 @@ namespace SofarHVMExe.ViewModel
         #region 读
         private void StartRead(object o)
         {
-            //if (!CheckConnect())
-            //    return;
-
-            if (FilePath == null || FilePath == "")
+            try
             {
-                MessageBox.Show("未加载文件，请先导入map文件！", "提示");
-                return;
+                //if (!CheckConnect())
+                //    return;
+
+                if (FilePath == null || FilePath == "")
+                {
+                    MessageBox.Show("未加载文件，请先导入map文件！", "提示");
+                    return;
+                }
+
+                startRead = !startRead;
+                IntervalEnable = !startRead;
+
+                //更新界面
+                {
+                    if (startRead)
+                    {
+                        cancelTokenSource = new CancellationTokenSource();
+                        //停止按钮
+                        ReadBtnText = "停止";
+                    }
+                    else
+                    {
+                        cancelTokenSource.Cancel();
+                        //开始读取按钮
+                        ReadBtnText = "开始读取";
+                    }
+                }
+
+                //读取数据
+                {
+                    if (startRead)
+                    {
+                        Task.Factory.StartNew(ReadData, cancelTokenSource.Token);
+                    }
+                }
             }
-
-            startRead = !startRead;
-            IntervalEnable = !startRead;
-
-           //更新界面
-           {
-               if (startRead)
-               {
-                   cancelTokenSource = new CancellationTokenSource();
-                   //停止按钮
-                   ReadBtnText = "停止";
-               }
-               else
-               {
-                   cancelTokenSource.Cancel();
-                   //开始读取按钮
-                   ReadBtnText = "开始读取";
-               }
-           }
-
-           //读取数据
-           {
-               if (startRead)
-               {
-                   Task.Factory.StartNew(ReadData, cancelTokenSource.Token);
-               }
-           }
-
+            catch (Exception ex)
+            {
+                MessageBox.Show("执行错误，" + ex.Message);
+            }
         }//func
         private void ReadData()
         {
@@ -403,8 +409,8 @@ namespace SofarHVMExe.ViewModel
                 string value = mem.Value;
                 string address = "";
 
-                    if (string.IsNullOrEmpty(addressOrName))
-                        continue;
+                if (string.IsNullOrEmpty(addressOrName))
+                    continue;
 
                 //地址
                 if (addressOrName.Contains("0x") || addressOrName.Contains("0X"))
@@ -423,69 +429,80 @@ namespace SofarHVMExe.ViewModel
                         }
                     }
 
-                    if (address == "")
+                    /*if (address == "")
                     {
-                        //MessageBox.Show($"变量[{addressOrName}]未找到地址！", "提示");
+                        MessageBox.Show($"变量[{addressOrName}]未找到地址！", "提示");
                         continue;
-                    }
+                    }*/
                 }
 
-                byte[] addrBytes = HexDataHelper.HexStringToByte2(address);
-                for (int i = 0; i < 4; i++)
+                if (address != "")
                 {
-                    sendBytes[i + 4] = addrBytes[i];
-                }
-
-                //坐标
-                sendBytes[3] = Convert.ToByte(sendIndex);
-
-                //类型
-                sendBytes[1] = ConvertType(type);
-
-                //设置指定设备地址
-                uint id = _id;
-                {
-                    byte addr = DeviceManager.Instance().GetSelectDev();
-                    if (addr != 0)
+                    byte[] addrBytes = HexDataHelper.HexStringToByte2(address);
+                    for (int i = 0; i < 4; i++)
                     {
-                        //指定发送数据给某台设备
-                        sendBytes[2] = addr;
+                        sendBytes[i + 4] = addrBytes[i];
                     }
-                }
 
-                //1、发送
-                SendFrame(id, sendBytes);
-                DebugTool.OutputBytes($"读请求-{id.ToString("X")}", sendBytes);
+                    //坐标
+                    sendBytes[3] = Convert.ToByte(sendIndex);
 
-                //2、处理接收
-                {
-                    ///在指定内如果收到正确应答则ok
-                    Stopwatch timer = new Stopwatch();
-                    timer.Start();
-                    while (true)
+                    //类型
+                    sendBytes[1] = ConvertType(type);
+
+                    //设置指定设备地址
+                    uint id = _id;
                     {
-                        if (ReadDataRequestCheck())
+                        byte addr = DeviceManager.Instance().GetSelectDev();
+                        if (addr != 0)
                         {
-                            _recvData.ID = 0;
-                            UpdateDataSource(mem.AddressOrName);
-                            break;
-                        }
-
-                        if (timer.ElapsedMilliseconds > 100)
-                        {
-                            timer.Stop();
-                            break;
+                            //指定发送数据给某台设备
+                            sendBytes[2] = addr;
                         }
                     }
-                }
 
-                Thread.Sleep(IntervalVal);
+                    //1、发送
+                    SendFrame(id, sendBytes);
+                    DebugTool.OutputBytes($"读请求-{id.ToString("X")}", sendBytes);
+
+                    //2、处理接收
+                    {
+                        ///在指定内如果收到正确应答则ok
+                        Stopwatch timer = new Stopwatch();
+                        timer.Start();
+                        while (true)
+                        {
+                            if (ReadDataRequestCheck())
+                            {
+                                _recvData.ID = 0;
+                                UpdateDataSource(mem.AddressOrName);
+                                break;
+                            }
+
+                            if (timer.ElapsedMilliseconds > 100)
+                            {
+                                timer.Stop();
+                                break;
+                            }
+                        }
+                    }
+
+                    Thread.Sleep(IntervalVal);
+                }
+                else
+                {
+                    UpdateDataSourceTonull(mem.AddressOrName);
+                }
 
                 //更新坐标值
                 if (sendIndex == dataList.Count - 1)
+                {
                     sendIndex = 0;
+                }
                 else
+                {
                     sendIndex++;
+                }
             }//while
         }
 
@@ -593,13 +610,11 @@ namespace SofarHVMExe.ViewModel
             //检查数据
             switch (mem.Type)
             {
-                case "I16":
-                    
-                    break;
-                case "U16":break;
-                case "U32":break;
-                case "float":break;
-                case "I32":break;
+                case "I16": break;
+                case "U16": break;
+                case "U32": break;
+                case "float": break;
+                case "I32": break;
                 default:
                     break;
             }
@@ -788,6 +803,40 @@ namespace SofarHVMExe.ViewModel
                     mem.Value = _ackValue.ToString();
                 });
             }
+
+            //变量名转地址
+            string address = "";
+            foreach (var pair in _addrVariableDic)
+            {
+                if (pair.Value == addressOrName)
+                {
+                    address = pair.Key;
+                    break;
+                }
+            }
+            System.Windows.Application.Current.Dispatcher.Invoke(() =>
+            {
+                mem.Address = address.ToString();
+            });
+
+            MultiLanguages.Common.LogHelper.WriteLog($"地址名称：{addressOrName}，数值：{mem.Value}");
+        }
+        private void UpdateDataSourceTonull(string addressOrName)
+        {
+            List<MemoryModel> memList = new List<MemoryModel>(DataSource);
+            int index = memList.FindIndex((o) =>
+            {
+                return o.AddressOrName == addressOrName;
+            });
+
+            if (index == -1)
+                return;
+
+            MemoryModel mem = DataSource[index];
+            System.Windows.Application.Current.Dispatcher.Invoke(() =>
+            {
+                mem.Value = "未响应.";
+            });
 
             //变量名转地址
             string address = "";

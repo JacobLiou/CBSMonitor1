@@ -14,7 +14,7 @@ namespace SofarHVMExe.Util.TI
     public class TIAddressChecker
     {
 
-        public bool LoadDwarfXml(string filepath = "")
+        public void LoadDwarfXml(string filepath = "")
         {
             if (filepath.Length == 0)
             {
@@ -25,17 +25,7 @@ namespace SofarHVMExe.Util.TI
                 DwarfXmlPath = filepath;
             }
 
-            try
-            {
-                _dwarfInfo = XDocument.Load(filepath);
-                return true;
-            }
-            catch (Exception e)
-            {
-                return false;
-            }
-
-            
+            _dwarfInfo = XDocument.Load(filepath);
         }
 
         public bool IsDwarfXmlLoaded()
@@ -49,79 +39,38 @@ namespace SofarHVMExe.Util.TI
         }
 
         /// <summary>
-        /// 调用TI的OFD.exe将.out文件中的转化为.xml文件，.xml文件中包含DWARF信息
+        /// 裁剪DWARF.xml文件
         /// </summary>
-        /// <param name="ofdExePath"></param>
-        /// <param name="objFilePath"></param>
-        /// <param name="dwarfXmlSavePath"></param>
-        /// <param name="timeoutSec"></param>
-        /// <returns></returns>
-        public static Task<bool> GetXmlByTiOfdTask(string ofdExePath, string objFilePath, string dwarfXmlSavePath, int timeoutSec = 30)
+        /// <param name="dwarfXmlPath"></param>
+        /// <exception cref="Exception"></exception>
+        public static void TrimDwarfXml(string dwarfXmlPath)
         {
-            var ofdTCS = new TaskCompletionSource<bool>();
-
-            new Thread(() => {
-                using (var ofdProcess = new System.Diagnostics.Process())
+            try
+            {
+                XDocument fullXml = XDocument.Load(dwarfXmlPath);
+                var dwarfInfo = fullXml.XPathSelectElement("//dwarf");
+                var dwarfSections = dwarfInfo.Elements("section").ToList();
+                for (int i = 0; i < dwarfSections.Count; i++)
                 {
-                    ofdProcess.StartInfo.FileName = ofdExePath;
-                    ofdProcess.StartInfo.Arguments = $"-gx -o {dwarfXmlSavePath} {objFilePath}";
-                    ofdProcess.StartInfo.CreateNoWindow = true;
-                    ofdProcess.StartInfo.UseShellExecute = false;
-                    ofdProcess.StartInfo.RedirectStandardError = true;
-
-                    ofdProcess.Start();
-                    ofdProcess.WaitForExit(timeoutSec * 1000);
-                    if (ofdProcess.HasExited)
+                    var secName = dwarfSections[i].Element("name")?.Value;
+                    if (secName == ".debug_info" ||
+                        secName == ".debug_pubnames")
                     {
-                        if (ofdProcess.ExitCode != 0)
-                        {
-                            var errMsg = ofdProcess.StandardError.ReadToEnd();
-                            ofdTCS.SetException(new Exception(
-                                "The OFD process exited incorrectly with the error message: " + errMsg));
-                        }
-                    }
-                    else
-                    {
-                        ofdProcess.Kill();
-                        ofdTCS.SetException(new Exception("The OFD process was killed due to timeout."));
-                    }
-                }
-
-                Thread.Sleep(200);
-
-                // 只截取保存DWARF信息
-                try
-                {
-                    XDocument fullXml = XDocument.Load(dwarfXmlSavePath);
-                    var dwarfInfo = fullXml.XPathSelectElement("//dwarf");
-                    var dwarfSections = dwarfInfo.Elements("section").ToList();
-                    for (int i = 0; i < dwarfSections.Count; i++)
-                    {
-                        var secName = dwarfSections[i].Element("name")?.Value;
-                        if (secName == ".debug_info" ||
-                            secName == ".debug_pubnames")
-                        {
-                            // 目前只需要".debug_info"和".debug_pubnames"两部分
-                            continue;
-                        }
-
-                        dwarfSections[i].Remove();
+                        // 目前只需要".debug_info"和".debug_pubnames"两部分
+                        continue;
                     }
 
-                    var dwarfDoc = new XDocument();
-                    dwarfDoc.Add(dwarfInfo);
-                    dwarfDoc.Save(dwarfXmlSavePath);
-                    ofdTCS.SetResult(true);
-                }
-                catch
-                {
-                    ofdTCS.SetException(new Exception("There may be something wrong with the DWARF.xml"));
+                    dwarfSections[i].Remove();
                 }
 
-            }).Start();
-
-
-            return ofdTCS.Task;
+                var dwarfDoc = new XDocument();
+                dwarfDoc.Add(dwarfInfo);
+                dwarfDoc.Save(dwarfXmlPath);
+            }
+            catch
+            {
+                throw new Exception("There may be something wrong with the DWARF.xml");
+            }
         }
 
 
@@ -131,10 +80,6 @@ namespace SofarHVMExe.Util.TI
         /// <param name="varName"></param>
         /// <param name="sn"></param>
         /// <returns></returns>
-        /// <exception cref="InvalidOperationException"></exception>
-        /// <exception cref="FormatException"></exception>
-        /// <exception cref="NullReferenceException"></exception>
-        /// <exception cref="ArgumentNullException"></exception>
         public UInt32 SearchAddressByName(string varName, int id = 1)
         {   
             if (_dwarfInfo == null)

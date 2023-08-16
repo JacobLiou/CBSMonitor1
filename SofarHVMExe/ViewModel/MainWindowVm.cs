@@ -22,12 +22,14 @@ using System.Windows.Media;
 using static SofarHVMExe.Utilities.Global.GlobalManager;
 using MessageBox = System.Windows.MessageBox;
 using SofarHVMExe.SubPubEvent;
+using log4net.Util;
+using System.Reflection.Metadata;
 
 namespace SofarHVMExe.ViewModel
 {
     partial class MainWindowVm : ObservableObject
     {
-        public static object CurVM { get; set; } 
+        public static object CurVM { get; set; }
 
         public MainWindowVm()
         {
@@ -217,6 +219,7 @@ namespace SofarHVMExe.ViewModel
             CurrentView = monitorPageVm;
 
             GlobalManager.Instance().CurrentPage = GlobalManager.Page.Monitor;
+            monitorPageVm.UpdateFaultDisplay("");
         }
         private void SetPageMapOpt(Object o)
         {

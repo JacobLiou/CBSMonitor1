@@ -9,7 +9,7 @@
              mc:Ignorable="d" 
              xmlns:vm ="clr-namespace:SofarHVMExe.ViewModel"
              d:DataContext="{d:DesignInstance vm:DownloadPageVm}"
-             d:DesignHeight="450" d:DesignWidth="1100">
+             d:DesignHeight="450" d:DesignWidth="800">
 
     <Border>
         <Grid >
@@ -64,10 +64,10 @@
 
                                 <TextBlock Text="数据块个数" VerticalAlignment="Center" />
                                 <TextBox Text="{Binding BlockNum}" VerticalContentAlignment="Center" Width="40" Height="25"
-                                         Margin="5 0 0 0"/>
+                                         Margin="5 0 0 0" IsReadOnly="True"/>
                                 <TextBlock Text="数据块大小" VerticalAlignment="Center" Margin="10 0 0 0" />
                                 <TextBox Text="{Binding BlockSize}" VerticalContentAlignment="Center" Width="40" Height="25"
-                                         Margin="5 0 0 0"/>
+                                         Margin="5 0 0 0" IsReadOnly="True"/>
                                 <TextBlock Text="间隔时间(ms)" VerticalAlignment="Center" Margin="10 0 0 0" />
                                 <TextBox Text="{Binding SendInterval}" VerticalContentAlignment="Center" Width="40" Height="25"
                                          Margin="5 0 0 0"/>
@@ -102,6 +102,7 @@
                                 <ctrl:MyDateTimePicker BorderBrush="Gray" Height="27" Width="150" Margin="10,0,0,0" DateTimeStr="{Binding MyDateTime,Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"></ctrl:MyDateTimePicker>
                             </StackPanel>-->
                         </DockPanel>
+                        <!--
                         <DockPanel Margin="0 15 0 0" LastChildFill="True">
                             <TextBlock Text="文件路径" VerticalAlignment="Center" DockPanel.Dock="Left"/>
                             <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
@@ -111,9 +112,19 @@
                                 <Button Content="清除" Command="{Binding ClearMsgCommand}" HorizontalAlignment="Right" Margin="10 0 0 0" />
                             </StackPanel>
                             <TextBox Text="{Binding FilePath}" VerticalContentAlignment="Center" Height="28" Margin="10 0 0 0"/>
-                        </DockPanel>
+                             <TextBox Text="{Binding BinFilePath, UpdateSourceTrigger=PropertyChanged}" IsReadOnly="True" VerticalContentAlignment="Center" Width="600" Height="28" Margin="10 0 0 0"/>
+                        </DockPanel>-->
+                        <StackPanel Margin="0 15 0 0" Orientation="Horizontal">
+                            <TextBlock Text="文件路径" VerticalAlignment="Center" />
+                            <TextBox Text="{Binding FirmwareFilePath, UpdateSourceTrigger=PropertyChanged}" IsReadOnly="True" 
+                                     VerticalContentAlignment="Center" MinWidth="520" Height="28" Margin="10 0 0 0"/>
+
+                            <Button Content="导入" Command="{Binding ImportCommand}" Margin="10 0 0 0"/>
+                            <Button Content="开始更新" Command="{Binding StartDownloadCommand}" Margin="10 0 0 0"/>
+                            <Button Content="停止更新" Command="{Binding StopDownloadCommand}" Margin="10 0 0 0"/>
+                            <Button Content="清除" Command="{Binding ClearMsgCommand}" HorizontalAlignment="Right" Margin="10 0 0 0" />
+                        </StackPanel>
                     </StackPanel>
-                    
                     <TextBox Grid.Row="1" Margin="0 15 0 0" Padding="3 3 3 10" TextWrapping="Wrap" AcceptsReturn="True" 
                              VerticalScrollBarVisibility="Auto" UndoLimit="0"
                              Text="{Binding Message}">

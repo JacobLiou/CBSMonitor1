@@ -19,6 +19,7 @@ using System.Security.Policy;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Forms;
 using System.Windows.Input;
@@ -26,6 +27,9 @@ using System.Windows.Markup;
 using System.Windows.Media.Animation;
 using static log4net.Appender.RollingFileAppender;
 using MessageBox = System.Windows.MessageBox;
+using SofarHVMExe.Util.TI;
+using System.Windows;
+using NPOI.OpenXmlFormats.Spreadsheet;
 
 namespace SofarHVMExe.ViewModel
 {
@@ -45,6 +49,7 @@ namespace SofarHVMExe.ViewModel
         private byte[] fileData;
         private int realBlockNum = 0; //实际数据块个数
         private int validBlockNum = 0;//有效的数据块个数（不全是0xFF的数据）
+        private const int KeepSignatureBytes = 1024 * 1 + 64; //固件数据最后的签名数据必须保留
         private int fileDataCrc = 0;  //固件文件数据crc校验值
         private List<byte> blockData = new List<byte>(); //用于收集每个数据块，计算校验
         private List<byte> totalBlockData = new List<byte>(); //用于收集所有数据块，计算校验
@@ -159,7 +164,7 @@ namespace SofarHVMExe.ViewModel
                 }
             }
         }
-        private string filePath = "";
+        /*private string filePath = "";
         public string FilePath
         {
             get => filePath;
@@ -168,7 +173,18 @@ namespace SofarHVMExe.ViewModel
                 filePath = value;
                 OnPropertyChanged();
             }
+        }*/
+        private string firmwareFilePath = "";
+        public string FirmwareFilePath
+        {
+            get => firmwareFilePath;
+            set
+            {
+                firmwareFilePath = value;
+                OnPropertyChanged();
+            }
         }
+
         private string message = "";
         public string Message
         {
@@ -392,26 +408,65 @@ namespace SofarHVMExe.ViewModel
         {
             OpenFileDialog dlg = new OpenFileDialog();
             dlg.Title = "选择升级文件";
-            dlg.Filter = "升级文件(*.bin)|*.bin|烧录文件(*.out)|*.out|打包文件(*.sofar)|*.sofar";
+            dlg.Filter = "固件文件|*.bin;*.out;*.sofar";
             dlg.Multiselect = false;
             dlg.RestoreDirectory = true;
             if (dlg.ShowDialog() != DialogResult.OK)
                 return;
 
-            FilePath = dlg.FileName;
+            var saveDir = System.IO.Directory.CreateDirectory(System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "temp", "FirmwareUpdate"));
 
-            string fileType = FilePath.Substring(FilePath.LastIndexOf(".") + 1);
-            if (fileType == "out")
+            // 清除过期文件
+            foreach (var fileInfo in saveDir.GetFiles())
             {
-                string tempPath = FilePath;
-                combineBin(ref tempPath);
-                FilePath = tempPath;
-
-                Thread.Sleep(60 * 1000);
+                var lastWriteTime = fileInfo.LastWriteTime;
+                var currentTime = DateTime.Now;
+                if (currentTime - lastWriteTime > TimeSpan.FromHours(12))
+                {
+                    fileInfo.Delete();
+                }
             }
 
+            // .out转.bin
+            string realBinPath = dlg.FileName;
+            if (System.IO.Path.GetExtension(dlg.FileName) == ".out")
+            {
+                // 复制文件
+                string objFileName = System.IO.Path.GetFileName(dlg.FileName);
+                string copyFilePath = System.IO.Path.Combine(saveDir.FullName, objFileName);
+                System.IO.File.Copy(dlg.FileName, copyFilePath);
+
+                string hexSavePath = System.IO.Path.Combine(saveDir.FullName, System.IO.Path.GetFileNameWithoutExtension(copyFilePath) + ".hex");
+                string binSavePath = System.IO.Path.Combine(saveDir.FullName, System.IO.Path.GetFileNameWithoutExtension(copyFilePath) + ".bin");
+
+                FirmwareFilePath = "加载中...";
+
+                try
+                {
+
+                    TIPluginHelper.ConvertCoffToHexAsync(copyFilePath, hexSavePath, saveDir.FullName).Wait();
+                    TIPluginHelper.ConvertHexToBinAsync(hexSavePath, binSavePath, saveDir.FullName).Wait();
+                    FirmwareFilePath = dlg.FileName;
+                    realBinPath = binSavePath;
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(ex.ToString(), "导入失败", MessageBoxButton.OK, MessageBoxImage.Error);
+                    FirmwareFilePath = "";
+                    return;
+                }
+
+            }
+            else
+            {
+                FirmwareFilePath = dlg.FileName;
+            }
+
+            MessageBox.Show($"文件路径：{FirmwareFilePath}", "导入成功", MessageBoxButton.OK, MessageBoxImage.Information);
+
+            // 读取文件
             int fileLength = 0;
-            FileStream file = new FileStream(FilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            FileStream file = new FileStream(realBinPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
             {
                 fileLength = (int)file.Length;
                 fileData = new byte[fileLength];
@@ -427,6 +482,7 @@ namespace SofarHVMExe.ViewModel
             }*/
 
             fileDataCrc = CRCHelper.ComputeCrc16(fileData, fileLength);
+
             //文件数据块总数：等于文件大小/数据块的大小 或者 文件大小/数据块的大小+1
             blockNum = (fileLength % blockSize == 0) ? (fileLength / blockSize) : (fileLength / blockSize + 1);
             realBlockNum = blockNum;
@@ -435,64 +491,32 @@ namespace SofarHVMExe.ViewModel
         private void StartDownload(object o)
         {
             bool result = true;
-            int firmwarIndex = 0;
             Task.Factory.StartNew(() =>
             {
-                //do
-                //{
-                    //if (!CheckConnect())
-                    //    return;
+                if (!CheckConnect())
+                    return;
 
-                    if (isUpdating)
-                        return;
+                if (isUpdating)
+                    return;
 
-                    if (FilePath == null || FilePath == "")
-                    {
-                        MessageBox.Show("请先导入文件！", "提示");
-                        return;
-                    }
+                if (string.IsNullOrEmpty(FirmwareFilePath))
+                {
+                    MessageBox.Show("请先导入文件！", "提示");
+                    return;
+                }
 
-                    if (false)
-                    {
-                        stopUpdate = false;
-                        isUpdating = true;
-                        debugInfoSb.Clear();
+                stopUpdate = false;
+                isUpdating = true;
+                debugInfoSb.Clear();
+                CollectFileData();
 
-                        FirmwareModel model = firmwareModels[firmwarIndex];
-                        fileDataList.Clear();
-                        validBlockNum = 0;
+                //设置新的log文件
+                LogHelper.SubDirectory = "Download";
+                LogHelper.CreateNewLogger();
+                LogHelper.AddLog("**************** 程序下载日志 ****************");
 
-                        int _fileLength = Convert.ToInt32(model.FirmwareLength);
-                        blockNum = (_fileLength % blockSize == 0) ? (_fileLength / blockSize) : (_fileLength / blockSize + 1);
-                        realBlockNum = blockNum;
-                        BlockNum = blockNum.ToString();
-                        for (int i = 0; i < blockNum; i++)
-                        {
-                            byte[] dataArr = fileData.Skip(i * blockSize).Take(blockSize).ToArray();
-                            fileDataList.Add(dataArr);
-
-                            validBlockNum++;
-                        }
-
-                        firmwarIndex++;
-                    }
-
-                    stopUpdate = false;
-                    isUpdating = true;
-                    debugInfoSb.Clear();
-                    CollectFileData();
-                    firmwarIndex = 2;
-
-
-                    //设置新的log文件
-                    LogHelper.SubDirectory = "Download";
-                    LogHelper.CreateNewLogger();
-                    LogHelper.AddLog("**************** 程序下载日志 ****************");
-                    //eventResetEvent.Set();
-
-                    //开始升级
-                    Update();
-                //} while (firmwarIndex != 2);
+                //开始升级
+                Task.Factory.StartNew(() => { Update(); });
             });
         }
         private void Update()
@@ -758,18 +782,21 @@ namespace SofarHVMExe.ViewModel
             cid.Priority = 7;
             cid.FrameType = 2;
             cid.ContinuousFlag = 0;
-            cid.FC = 50;    //功能码
+            cid.FC = 50;
             cid.DstType = Convert.ToByte(dstAndSrcTypes[0]);
-            cid.DstAddr = targetAddr; //目标地址
+            cid.DstAddr = targetAddr;
             cid.SrcType = Convert.ToByte(dstAndSrcTypes[1]);
-            cid.SrcAddr = 1;//地址1
+            cid.SrcAddr = 1;
             uint id = cid.ID;
 
             byte[] send = new byte[8];
             send[0] = Convert.ToByte(realBlockNum & 0xff); //文件数据块总数realBlockNum->validBlockNum有效传输大小，PCS待修改
             send[1] = Convert.ToByte(realBlockNum >> 8);
-            send[2] = Convert.ToByte(blockSize & 0xff);    //数据块大小
-            send[3] = Convert.ToByte(blockSize >> 8);
+            //send[2] = Convert.ToByte(blockSize & 0xff);    //数据块大小
+            //send[3] = Convert.ToByte(blockSize >> 8);
+            send[2] = Convert.ToByte(validBlockNum & 0xff);  //有效数据块数目
+            send[3] = Convert.ToByte(validBlockNum >> 8);
+
             if (FirmwareIndex == 1 || FirmwareIndex == 2)
             {
                 send[4] = Convert.ToByte(chipRole);
@@ -790,19 +817,21 @@ namespace SofarHVMExe.ViewModel
             if (block.Length == 0)
                 return;
 
-            CanFrameID cid = new CanFrameID();
-            cid.ContinuousFlag = 1;
-            cid.Priority = 7;
-            cid.FrameType = 1;
-            cid.FC = 52;
-            cid.DstType = Convert.ToByte(dstAndSrcTypes[0]);//PCS
-            cid.DstAddr = dstAddr; //目标地址
-            cid.SrcType = Convert.ToByte(dstAndSrcTypes[1]);//CSU-MCU1  010
-            cid.SrcAddr = 1;//地址1
+            CanFrameID cid = new CanFrameID
+            {
+                ContinuousFlag = 1,
+                Priority = 7,
+                FrameType = 1,
+                FC = 52,
+                DstType = Convert.ToByte(dstAndSrcTypes[0]),//PCS
+                DstAddr = dstAddr, //目标地址
+                SrcType = Convert.ToByte(dstAndSrcTypes[1]),//CSU-MCU1  010
+                SrcAddr = 1
+            };
+
             uint id = cid.ID;
 
             int index = 0;
-
             //起始帧
             {
                 byte[] send = new byte[3];
@@ -942,15 +971,18 @@ namespace SofarHVMExe.ViewModel
         }
         private void write_firmware_result_request(byte dstAddr)
         {
-            CanFrameID cid = new CanFrameID();
-            cid.Priority = 7;
-            cid.FrameType = 2;
-            cid.ContinuousFlag = 0;
-            cid.FC = 53;
-            cid.DstType = Convert.ToByte(dstAndSrcTypes[0]);
-            cid.DstAddr = dstAddr; //目标地址
-            cid.SrcType = Convert.ToByte(dstAndSrcTypes[1]);
-            cid.SrcAddr = 1;//地址1
+            CanFrameID cid = new CanFrameID
+            {
+                Priority = 7,
+                FrameType = 2,
+                ContinuousFlag = 0,
+                FC = 53,
+                DstType = Convert.ToByte(dstAndSrcTypes[0]),
+                DstAddr = dstAddr,
+                SrcType = Convert.ToByte(dstAndSrcTypes[1]),
+                SrcAddr = 1
+            };
+
             uint id = cid.ID;
 
             byte[] send = new byte[8];
@@ -976,15 +1008,18 @@ namespace SofarHVMExe.ViewModel
         private void write_upgrade_execute_request(int code = 0x02)
         {
             //code：01:查询执行结果 02:启动升级 03:暂存升级
-            CanFrameID cid = new CanFrameID();
-            cid.Priority = 7;
-            cid.FrameType = 2;
-            cid.ContinuousFlag = 0;
-            cid.FC = 54;    //功能码
-            cid.DstType = Convert.ToByte(dstAndSrcTypes[0]);
-            cid.DstAddr = targetAddr; //目标地址
-            cid.SrcType = Convert.ToByte(dstAndSrcTypes[1]);
-            cid.SrcAddr = 1;//地址1
+            CanFrameID cid = new CanFrameID
+            {
+                Priority = 7,
+                FrameType = 2,
+                ContinuousFlag = 0,
+                FC = 54,
+                DstType = Convert.ToByte(dstAndSrcTypes[0]),
+                DstAddr = targetAddr,
+                SrcType = Convert.ToByte(dstAndSrcTypes[1]),
+                SrcAddr = 1
+            };
+
             uint id = cid.ID;
 
             byte[] send = new byte[8];
@@ -1004,15 +1039,18 @@ namespace SofarHVMExe.ViewModel
         }
         private void write_upgrade_time_request(bool upgradetime, byte[] data)
         {
-            CanFrameID cid = new CanFrameID();
-            cid.Priority = 7;
-            cid.FrameType = 2;
-            cid.ContinuousFlag = 0;
-            cid.FC = 55;    //功能码
-            cid.DstType = 1;//PCS
-            cid.DstAddr = targetAddr; //目标地址
-            cid.SrcType = 2;//CSU-MCU1  010
-            cid.SrcAddr = 1;//地址1
+            CanFrameID cid = new CanFrameID
+            {
+                Priority = 7,
+                FrameType = 2,
+                ContinuousFlag = 0,
+                FC = 55,
+                DstType = 1,
+                DstAddr = targetAddr,
+                SrcType = 2,
+                SrcAddr = 1
+            };
+
             uint id = cid.ID;
 
             //强制进入boot升级功能，无时间帧数据；
@@ -1034,49 +1072,6 @@ namespace SofarHVMExe.ViewModel
             }
             //SendFrame(id, data);
             //LogHelper.AddLog($"[发送]请求帧，0x{id.ToString("X")} {BitConverter.ToString(data)}");
-        }
-        private void combineBin(ref string path)
-        {
-            // 第1步，将out文件转成bin文件
-            Process cmd = new Process();
-            // 这个弄成相对于这个工具的相对路径，我不知道该怎么写
-            cmd.StartInfo.FileName = $@"{Application.StartupPath}\02_exe\c2000_out_to_hex.exe";
-            // 同上，弄成相对于这个工具的相对路径
-            cmd.StartInfo.WorkingDirectory = $@"{Application.StartupPath}\02_exe";
-            cmd.StartInfo.CreateNoWindow = true;
-            cmd.StartInfo.WindowStyle = ProcessWindowStyle.Normal;
-            // 第一个参数必须如下，已经固定写死
-            string para1 = "-romwidth 16 -memwidth 16 -i -o";
-            // 输出hex的文件名，如果没有指定路径，会输出到上面指定的WorkingDirectory路径中
-            string para2 = "01_boot_no_crc.hex";
-            // 输入out文件名，如果没有指定路径，默认你的out文件时放在WorkingDirectory中
-            string para3 = path;
-            // 参数拼接，注意顺序不能乱
-            cmd.StartInfo.Arguments = para1 + " " + para2 + " " + para3;
-            // 启动执行
-            cmd.Start();
-
-            //第2步，将bin文件转成bin文件
-            //这个路径弄成相对于这个工具的相对路径，我不知道该怎么写
-            cmd.StartInfo.FileName = $@"{Application.StartupPath}\02_exe\c2000_hex_to_bin.exe";
-            // 同上，弄成相对于这个工具的相对路径
-            cmd.StartInfo.WorkingDirectory = $@"{Application.StartupPath}\02_exe";
-            cmd.StartInfo.CreateNoWindow = true;
-            cmd.StartInfo.WindowStyle = ProcessWindowStyle.Normal;
-            // 要输入hex的文件名，如果没有指定路径，默认你的hex文件时放在WorkingDirectory中
-            string para4 = "01_boot_no_crc.hex";
-            // 要输出的bin文件名，如果没有指定路径，默认你的bin文件时放在WorkingDirectory中
-            string para5 = "PCS_APP.bin";
-            //flash地址最小值，16进制格式，做工具时候建议把这个参数做成由用户输入，不能写死
-            string para6 = "0x86000";
-            //flash地址最大值，16进制格式，做工具时候建议把这个参数做成由用户输入，不能写死0xBFDFD
-            string para7 = "0xBFFFD";
-            // 参数拼接，注意顺序不能乱
-            cmd.StartInfo.Arguments = para4 + " " + para5 + " " + para6 + " " + para7;
-            // 启动执行
-            cmd.Start();
-
-            path = $@"{Application.StartupPath}\02_exe\PCS_APP.bin";
         }
         private void AnalysisData(byte[] binchar)
         {
@@ -1163,14 +1158,14 @@ namespace SofarHVMExe.ViewModel
                 CanFrameData frameDate = frame.FrameDatas[0];
                 byte[] data = frameDate.Data;
 
-                LogHelper.AddLog($"[接收]请求应答帧，0x{id.ToString("X")} {BitConverter.ToString(data)}");
+                LogHelper.AddLog($"[接收]请求应答帧，0x{id:X)} {BitConverter.ToString(data)}");
 
                 if (frameId.FC != 50)
                     return false;
 
                 if (data.Length == 0)
                 {
-                    LogHelper.AddLog($"[接收]请求应答帧，0x{id.ToString("X")} 数据为空！)");
+                    LogHelper.AddLog($"[接收]请求应答帧，0x{id:X)} 数据为空！)");
                     return false;
                 }
 
@@ -1330,19 +1325,20 @@ namespace SofarHVMExe.ViewModel
                 LostPackage package = new LostPackage() { id = 0x1b3521a0, blockIdxList = _multiPackData };
                 frameId.ID = package.id;
                 //待调整区域
-
+                int retryCnt = 0;
                 do
                 {
                     if (SendLostPackage(package))
                     {
-                        MaxPackageNum = -1;
+                        break;
                     }
                     else
                     {
                         AddMsg("丢包失败，重新执行补包流程！");
+                        retryCnt++;
                     }
 
-                } while (MaxPackageNum-- > 0);
+                } while (retryCnt < MaxPackageNum);
 
                 //if (SendLostPackage2(package))
                 //{
@@ -1748,12 +1744,13 @@ namespace SofarHVMExe.ViewModel
             fileDataList.Clear();
             validBlockNum = 0;
 
+            var keepLastPacks = KeepSignatureBytes / blockSize + 1;
             for (int i = 0; i < blockNum; i++)
             {
                 byte[] dataArr = fileData.Skip(i * blockSize).Take(blockSize).ToArray();
 
                 //过滤字节全为FF的数据块，但是数据块索引不变
-                if (deleteFFData)
+                if (deleteFFData && i < blockNum - keepLastPacks)
                 {
                     bool hasValidData = false;
                     foreach (byte d in dataArr)

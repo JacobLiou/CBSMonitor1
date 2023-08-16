@@ -58,9 +58,9 @@
                                 <uc:MenuButton Title="监控" Icon="Tv"  Command="{Binding MonitorPageCommand}"/>
                                 <uc:MenuButton Title="Map操作" Icon="Microchip"  Command="{Binding MapOptPageCommand}"/>
                                 <uc:MenuButton Title="文件数据" Icon="TableCells" Command="{Binding FilePageCommand}" />
-                                <uc:MenuButton Title="黑匣子" Icon="BoxArchive" />
                                 <uc:MenuButton Title="示波器" Icon="WaveSquare" Command="{Binding OscilloscopeCommand}"/>
-                                <!--<uc:MenuButton Title="波特图" Icon="ChartGantt" />-->
+                                <!--<uc:MenuButton Title="黑匣子" Icon="BoxArchive" />
+                                <uc:MenuButton Title="波特图" Icon="ChartGantt" />-->
                                 <uc:MenuButton Title="程序更新" Icon="Download" Command="{Binding DownloadPageCommand}"/>
                                 <uc:MenuButton Title="配置" Icon="Gear" Command="{Binding ConfigPageCommand}"/>
                             </StackPanel>

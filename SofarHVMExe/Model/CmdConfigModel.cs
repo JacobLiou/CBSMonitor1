@@ -122,6 +122,14 @@ namespace SofarHVMExe.Model
             if (valueArr.Length <= 0)
                 return;
 
+            if (!setValue.Contains(',') && !double.TryParse(setValue, out _) && !setValue.StartsWith("0x") && !setValue.StartsWith("0X"))
+            {
+                //字符串拆分
+                valueArr = Enumerable.Range(0, (int)Math.Ceiling(setValue.Length / 2.0))
+                    .Select(i => setValue.Substring(i * 2, Math.Min(2, setValue.Length - i * 2)))
+                    .ToArray();
+            }
+
             List<CanFrameDataInfo> dataInfos = new List<CanFrameDataInfo>();
             CanFrameData frameData = frameModel.FrameDatas[0];
             foreach (CanFrameDataInfo dataInfo in frameData.DataInfos)

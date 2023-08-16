@@ -50,7 +50,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Remove="3rdParty\ECAN\ECanVci.h" />
     <None Remove="App.config" />
     <None Remove="Resource\logo.ico" />
   </ItemGroup>
@@ -126,24 +125,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="3rdParty\ECAN\CHUSBDLL64.dll">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="3rdParty\ECAN\ECanVci64.dll">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="3rdParty\ECAN\ECanVci64.lib">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="3rdParty\TI\c2000_hex2bin.exe">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="3rdParty\TI\hex2000.exe">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="3rdParty\TI\ofd2000.exe">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
     <None Update="Dll\ECanVci.dll">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </None>

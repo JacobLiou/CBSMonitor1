@@ -299,7 +299,7 @@ namespace Communication.Can
         /// <param name="DevIndex">设备索引号，比如当只有一个设备时，索引号为0，有两个时可以为0或1</param>
         /// <param name="Reserved">参数无意义</param>
         /// <returns></returns>
-        [DllImport("ECanVci64.dll", EntryPoint = "OpenDevice")]
+        [DllImport("./3rdParty/ECAN/ECanVci64.dll", EntryPoint = "OpenDevice")]
         public static extern ECANStatus OpenDevice(
             UInt32 DevType,
             UInt32 DevIndex,
@@ -311,8 +311,7 @@ namespace Communication.Can
         /// <param name="DevType">设备类型号</param>
         /// <param name="DevIndex">设备索引号，比如当只有一个设备时，索引号为0，有两个时可以为0或1</param>
         /// <returns></returns>
-
-        [DllImport("ECanVci64.dll", EntryPoint = "CloseDevice")]
+        [DllImport("./3rdParty/ECAN/ECanVci64.dll", EntryPoint = "CloseDevice")]
         public static extern ECANStatus CloseDevice(
             UInt32 DevType,
             UInt32 DevIndex);
@@ -325,7 +324,7 @@ namespace Communication.Can
         /// <param name="CANIndex">第几路CAN</param>
         /// <param name="InitConfig">初始化参数结构</param>
         /// <returns></returns>
-        [DllImport("ECanVci64.dll", EntryPoint = "InitCAN")]
+        [DllImport("./3rdParty/ECAN/ECanVci64.dll", EntryPoint = "InitCAN")]
         public static extern ECANStatus InitCan(
             UInt32 DevType,
             UInt32 DevIndex,
@@ -339,7 +338,7 @@ namespace Communication.Can
         /// <param name="DevIndex">设备索引号，比如当只有一个设备时，索引号为0，有两个时可以为0或1</param>
         /// <param name="INFO">用来存储设备信息的BOARD_INFO结构指针</param>
         /// <returns></returns>
-        [DllImport("ECanVci64.dll", EntryPoint = "ReadBoardInfo")]
+        [DllImport("./3rdParty/ECAN/ECanVci64.dll", EntryPoint = "ReadBoardInfo")]
         public static extern ECANStatus ReadBoardInfo(
             UInt32 DevType,
             UInt32 DevIndex,
@@ -353,7 +352,7 @@ namespace Communication.Can
         /// <param name="CANIndex">第几路CAN</param>
         /// <param name="ErrInfo">用来存储错误信息的ERR_INFO结构指针</param>
         /// <returns></returns>
-        [DllImport("ECanVci64.dll", EntryPoint = "ReadErrInfo")]
+        [DllImport("./3rdParty/ECAN/ECanVci64.dll", EntryPoint = "ReadErrInfo")]
         public static extern ECANStatus ReadErrInfo(
             UInt32 DevType,
             UInt32 DevIndex,
@@ -368,7 +367,7 @@ namespace Communication.Can
         /// <param name="CANIndex"></param>
         /// <param name="CANSTATUS"></param>
         /// <returns></returns>
-        [DllImport("ECanVci64.dll", EntryPoint = "ReadCanStatus")]
+        [DllImport("./3rdParty/ECAN/ECanVci64.dll", EntryPoint = "ReadCanStatus")]
         public static extern ECANStatus ReadCanStatus(
             UInt32 DevType,
             UInt32 DevIndex,
@@ -384,7 +383,7 @@ namespace Communication.Can
         /// <param name="RefType">参数类型</param>
         /// <param name="DATA">用来存储参数有关数据缓冲区地址首指针</param>
         /// <returns></returns>
-        [DllImport("ECanVci64.dll", EntryPoint = "GetReference")]
+        [DllImport("./3rdParty/ECAN/ECanVci64.dll", EntryPoint = "GetReference")]
         public static extern ECANStatus GetReference(
             UInt32 DevType,
             UInt32 DevIndex,
@@ -401,7 +400,7 @@ namespace Communication.Can
         /// <param name="RefType">参数类型</param>
         /// <param name="DATA">用来存储参数有关数据缓冲区地址首指针</param>
         /// <returns></returns>
-        [DllImport("ECanVci64.dll", EntryPoint = "SetReference")]
+        [DllImport("./3rdParty/ECAN/ECanVci64.dll", EntryPoint = "SetReference")]
         public static extern ECANStatus SetReference(
             UInt32 DevType,
             UInt32 DevIndex,
@@ -416,7 +415,7 @@ namespace Communication.Can
         /// <param name="DevIndex">设备索引号，比如当只有一个设备时，索引号为0，有两个时可以为0或1</param>
         /// <param name="CANIndex">第几路CAN</param>
         /// <returns>返回尚未被读取的帧数</returns>
-        [DllImport("ECanVci64.dll", EntryPoint = "GetReceiveNum")]
+        [DllImport("./3rdParty/ECAN/ECanVci64.dll", EntryPoint = "GetReceiveNum")]
         public static extern ECANStatus GetReceiveNum(
             UInt32 DevType,
             UInt32 DevIndex,
@@ -429,7 +428,7 @@ namespace Communication.Can
         /// <param name="DevIndex">设备索引号，比如当只有一个设备时，索引号为0，有两个时可以为0或1</param>
         /// <param name="CANIndex">第几路CAN</param>
         /// <returns></returns>
-        [DllImport("ECanVci64.dll", EntryPoint = "ClearBuffer")]
+        [DllImport("./3rdParty/ECAN/ECanVci64.dll", EntryPoint = "ClearBuffer")]
         public static extern ECANStatus ClearBuffer(
             UInt32 DevType,
             UInt32 DevIndex,
@@ -442,7 +441,7 @@ namespace Communication.Can
         /// <param name="DevIndex">设备索引号，比如当只有一个设备时，索引号为0，有两个时可以为0或1</param>
         /// <param name="CANIndex">第几路CAN</param>
         /// <returns></returns>
-        [DllImport("ECanVci64.dll", EntryPoint = "StartCAN")]
+        [DllImport("./3rdParty/ECAN/ECanVci64.dll", EntryPoint = "StartCAN")]
         public static extern ECANStatus StartCAN(
             UInt32 DevType,
             UInt32 DevIndex,
@@ -457,7 +456,7 @@ namespace Communication.Can
         /// <param name="send">要发送的数据帧数组的首指针</param>
         /// <param name="Len">要发送的数据帧数组的长度</param>
         /// <returns>返回实际发送的帧数</returns>
-        [DllImport("ECanVci64.dll", EntryPoint = "Transmit")]
+        [DllImport("./3rdParty/ECAN/ECanVci64.dll", EntryPoint = "Transmit")]
         public static extern ECANStatus Transmit(
             UInt32 DevType,
             UInt32 DevIndex,
@@ -475,7 +474,7 @@ namespace Communication.Can
         /// <param name="Len">用来接收的数据帧数组的长度</param>
         /// <param name="WaitTime">等待超时时间，以毫秒为单位</param>
         /// <returns>返回实际读取到的帧数。如果返回值为0xFFFFFFFF，则表示读取数据失败，有错误发生，请调用ReadErrInfo函数来获取错误码</returns>
-        [DllImport("ECanVci64.dll", EntryPoint = "Receive")]
+        [DllImport("./3rdParty/ECAN/ECanVci64.dll", EntryPoint = "Receive")]
         public static extern ECANStatus Receive(
             UInt32 DevType,
             UInt32 DevIndex,
@@ -491,7 +490,7 @@ namespace Communication.Can
         /// <param name="DevIndex">设备索引号，比如当只有一个设备时，索引号为0，有两个时可以为0或1</param>
         /// <param name="CANIndex">第几路CAN</param>
         /// <returns></returns>
-        [DllImport("ECanVci64.dll", EntryPoint = "ResetCAN")]
+        [DllImport("./3rdParty/ECAN/ECanVci64.dll", EntryPoint = "ResetCAN")]
         public static extern ECANStatus ResetCAN(
             UInt32 DevType,
             UInt32 DevIndex,

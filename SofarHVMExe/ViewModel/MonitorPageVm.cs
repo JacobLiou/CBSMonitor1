@@ -281,8 +281,8 @@ namespace SofarHVMExe.ViewModel
         }
         private void SendSelData(object o)
         {
-            if (!CheckConnect())
-                return;
+            //if (!CheckConnect())
+            //    return;
 
             if (SelectCmdCfgModel == null || SelectCmdCfgModel.FrameModel == null)
                 return;
@@ -736,7 +736,41 @@ namespace SofarHVMExe.ViewModel
                 devAddr = 0;
             }
 
-            if (frameId.ContinuousFlag == 0)
+            if ((id >> 16) == 0x197F)//心跳帧特殊处理
+            {
+                if ((devAddr != 0 && frameId.SrcAddr != devAddr) || recvData.Data.Length != 8)
+                {
+                    return;
+                }
+                for (int i = 0; i < 2; i++)
+                {
+                    SendRecvFrameInfo newFrameInfo = new SendRecvFrameInfo();
+                    newFrameInfo.IsSend = false;
+                    newFrameInfo.Time = currentTime;
+                    newFrameInfo.ID = "0x" + id.ToString("X8");
+                    newFrameInfo.IsContinue = false;
+                    newFrameInfo.Addr = "0";
+                    newFrameInfo.PackageNum = i.ToString();
+                    if (i == 0)
+                    {
+                        newFrameInfo.Info1 = "PCS运行模式";
+                        newFrameInfo.Value1 = BitConverter.ToInt16(recvData.Data, 0).ToString();
+                        newFrameInfo.Info2 = "故障信息";
+                        newFrameInfo.Value2 = recvData.Data[2] == 1 ? "有" : "无";
+                        newFrameInfo.Info3 = "状态机主状态";
+                        newFrameInfo.Value3 = recvData.Data[3].ToString();
+                    }
+                    else
+                    {
+                        newFrameInfo.Info1 = "降额后的发电能力";
+                        newFrameInfo.Value1 = (BitConverter.ToInt16(recvData.Data, 4) * 0.01).ToString() + " kW";
+                        newFrameInfo.Info2 = "降额后的充电能力";
+                        newFrameInfo.Value2 = (BitConverter.ToInt16(recvData.Data, 6) * 0.01).ToString() + "kW";
+                    }
+                    UpdateContinueRecv(newFrameInfo);
+                }
+            }
+            else if (frameId.ContinuousFlag == 0)
             {
                 //非连续
                 recvTime = currentTime;
@@ -1307,7 +1341,7 @@ namespace SofarHVMExe.ViewModel
         /// 更新界面故障信息显示
         /// </summary>
         /// <param name="faultMsg"></param>
-        private void UpdateFaultDisplay(string faultMsg)
+        public void UpdateFaultDisplay(string faultMsg)
         {
             //不是当前界面则不更新显示
             if (GlobalManager.Instance().CurrentPage != GlobalManager.Page.Monitor)

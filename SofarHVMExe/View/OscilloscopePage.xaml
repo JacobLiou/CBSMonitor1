@@ -333,9 +333,9 @@
 
                                         <Button x:Name="StartButton" Content="Start" Height="50" Width="50" Margin="5" Background="LimeGreen"
                                                 IsEnabled="{Binding OscilloscopeVm.IsStartAllowed}"
-                                                Command="{Binding OscilloscopeVm.StartButtonCommand}" />
+                                                Command="{Binding OscilloscopeVm.StartCommand}" />
                                         <Button x:Name="StopButton" Content="Stop"  Height="50" Width="50" Margin="5"  Background="LightCoral"
-                                                Command="{Binding OscilloscopeVm.StopButtonCommand}"/>
+                                                Command="{Binding OscilloscopeVm.StopCommand}"/>
 
                                         <StackPanel Orientation="Horizontal">
                                             <TextBlock Text="启动模式:" Margin="5" Width="50" VerticalAlignment="Center" TextAlignment="Right"/>

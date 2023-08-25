@@ -445,16 +445,22 @@ namespace Communication.Can
                     dataStr += data[i].ToString("X2") + " ";
                 }
 
-                // LogHelper.AddLog($"[send]-{DateTime.Now.ToString("HH:mm:ss.fff"),-15}\t{id,-10}     {length}    {dataStr}\r\n");
-
-                MultiLanguages.Common.LogHelper.WriteLog("发送（全局）：" + $"0x{id:X8}: " + dataStr);
+                //MultiLanguages.Common.LogHelper.WriteLog("发送（全局）：" + $"0x{id:X8}: " + dataStr);
 
                 return true;
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"CAN发送数据错误-通道{canIndex}: " + ex.ToString());
-                return false;
+                //Debug.WriteLine($"CAN发送数据错误-通道{canIndex}: " + ex.ToString());
+                //return false;
+
+                if (EcanMethod.ReadErrInfo(devType, devIndex, canIndex, out ERR_INFO errInfo) == ECANStatus.STATUS_OK)
+                {
+                    errcode = errInfo.ErrCode;
+                    SofarHVMExe.Utilities.Global.GlobalManager.Instance().UpdateStatusBar_CanErrInfo(errInfo.ErrCode == 0 ? "" :
+                        SofarHVMExe.Commun.EnumHelper.GetCombinedDescription((ErrCode)errInfo.ErrCode));
+                }
+                throw new System.Exception("发送消息失败！" + ex.Message);
             }
         }
 

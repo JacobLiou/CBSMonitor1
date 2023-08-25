@@ -49,6 +49,15 @@ namespace SofarHVMExe.ViewModel
         private FileConfigModel? fileCfgModel = null;
         public EcanHelper? ecanHelper = null; //声明CancellationTokenSource对象
         private int sendIndex = 0;
+
+        private Dictionary<string, string> _addrVariableDic = new Dictionary<string, string>(); //地址和变量映射字典
+
+        public bool startRead = false;
+        public bool IsWriting = false;
+        public bool IsRepeat = false;
+        private uint _id = 0x1FFA5A5; //读写DSP数据指令的id
+        private object? ackValue = null;
+        private CAN_OBJ _recvData;
         #endregion
 
 
@@ -114,18 +123,6 @@ namespace SofarHVMExe.ViewModel
                 OnPropertyChanged();
             }
         }
-        private Dictionary<string, string> _addrVariableDic = new Dictionary<string, string>(); //地址和变量映射字典
-        public static bool _second = false;
-        public static bool _frist = false;
-        public static bool _start = false;
-
-        public bool startRead = false;
-        public bool IsWriting = false;
-        private uint _id = 0x1FFA5A5; //读写DSP数据指令的id
-        private int _ackValue1; //dsp应答数据 int类型
-        private uint _ackValue; //dsp应答数据 uint类型
-        private float _ackFltValue; //dsp应答数据 float类型
-        private CAN_OBJ _recvData;
         #endregion
 
 
@@ -180,116 +177,105 @@ namespace SofarHVMExe.ViewModel
         }
         private void Import(object o)
         {
-            OpenFileDialog dlg = new OpenFileDialog();
-            dlg.Title = "选择map文件";
-            dlg.Filter = "map(*.map)|*.map";
-            dlg.Multiselect = false;
-            dlg.RestoreDirectory = true;
-            if (dlg.ShowDialog() != DialogResult.OK)
-                return;
-
-            FilePath = dlg.FileName;
-
-            if (!File.Exists(FilePath))
-            {
-                MessageBox.Show("文件不存在");
-                return;
-            }
-
-            //打开文件
-            string line;
-            int counter = 0;
-            int addrIndex = 0;
-            int variableIndex = 0;
-
-            //收集map文件中的地址和变量数据
-            _addrVariableDic = new Dictionary<string, string>();
-
-            StreamReader file = new StreamReader(FilePath);
             try
             {
-                while ((line = file.ReadLine()) != null)
+                OpenFileDialog dlg = new OpenFileDialog();
+                dlg.Title = "选择map文件";
+                dlg.Filter = "map(*.map)|*.map";
+                dlg.Multiselect = false;
+                dlg.RestoreDirectory = true;
+                if (dlg.ShowDialog() == DialogResult.OK)
                 {
-                    if (line.Trim() == "")
-                        continue;
-
-                    if (/*line.Contains("GLOBAL") && */line.Contains("SYMBOLS"))
+                    if (!File.Exists(dlg.FileName))
                     {
-                        _frist = true;
+                        throw new FileNotFoundException("文件不存在");
                     }
-                    else if (_frist && (line.Contains("page") && line.Contains("address") && line.Contains("name")))
-                    {
-                        _frist = false;
-                        _second = true;
 
-                        //解析地址和变量所在列号
+                    //文件路径
+                    FilePath = dlg.FileName;
+
+                    //收集map文件中的地址和变量数据
+                    _addrVariableDic = new Dictionary<string, string>();
+
+                    StreamReader file = new StreamReader(FilePath);
+
+                    try
+                    {
+                        int flagIndex = 0,
+                            addrIndex = 0,
+                            variableIndex = 0;
+
+                        string line = string.Empty;
+                        while ((line = file.ReadLine()) != null)
                         {
-                            var strs = System.Text.RegularExpressions.Regex.Split(line, @"\s{1,}");
-
-                            for (int i = 0; i < strs.Length; i++)
-                            {
-                                string s = strs[i];
-                                if (s.Contains("address"))
-                                {
-                                    addrIndex = i;
-                                }
-                                else if (s.Contains("name"))
-                                {
-                                    variableIndex = i;
-                                }
-                            }
-                        }
-                    }
-                    else if (_second)
-                    {
-                        _second = false;
-                        _start = true;
-                    }
-                    else if (_start)
-                    {
-                        try
-                        {
-                            var strs = System.Text.RegularExpressions.Regex.Split(line, @"\s{1,}");
-                            string addr = strs[addrIndex];
-                            if (addr == "ffffffff" ||
-                                strs.Length < (variableIndex + 1))
+                            if (line.Trim() == "")
                                 continue;
 
-                            string variable = strs[variableIndex];
-                            if (variable.StartsWith("__"))
+                            switch (flagIndex)
                             {
-                                int aa = 10;
-                            }
+                                case 0:
+                                    if (line.Contains("SYMBOLS"))
+                                    {
+                                        //检测已进入第一行Title
+                                        flagIndex = 1;
+                                    }
+                                    break;
+                                case 1:
+                                    if (line.Contains("page") && line.Contains("address") && line.Contains("name"))
+                                    {
+                                        //检测已进入第二行Title
+                                        flagIndex = 2;
 
-                            if (variable[0] == '_')
-                            {
-                                variable = variable.Remove(0, 1);
+                                        //解析地址和变量所在列号
+                                        var strLine = System.Text.RegularExpressions.Regex.Split(line, @"\s{1,}");
+                                        for (int i = 0; i < strLine.Length; i++)
+                                        {
+                                            string s = strLine[i];
+                                            if (s.Contains("address"))
+                                            {
+                                                addrIndex = i;
+                                            }
+                                            else if (s.Contains("name"))
+                                            {
+                                                variableIndex = i;
+                                            }
+                                        }
+                                    }
+                                    break;
+                                case 2:
+                                    var strs = System.Text.RegularExpressions.Regex.Split(line, @"\s{1,}");
+                                    string addr = strs[addrIndex];
+                                    if (addr == "ffffffff" || strs.Length < (variableIndex + 1) || strs[variableIndex] == "")
+                                        continue;
+
+                                    string variable = strs[variableIndex];
+                                    if (variable[0] == '_')
+                                    {
+                                        variable = variable.Remove(0, 1);
+                                    }
+                                    _addrVariableDic[addr] = variable;
+                                    break;
+                                default:
+                                    break;
                             }
-                            _addrVariableDic[addr] = variable;
-                        }
-                        catch (Exception ex)
-                        {
-                            int stop = 10;
                         }
 
+                        flagIndex = 0;
                     }
-                    counter++;
+                    catch (Exception ex)
+                    {
+                        throw new Exception(ex.Message);
+                    }
+                    finally
+                    {
+                        file.Close();
+                    }
                 }
-
-                _start = false;
             }
             catch (Exception ex)
             {
-                Console.WriteLine("ERROR:" + ex.ToString());
-                return;
+                MessageBox.Show(ex.Message);
             }
-            finally
-            {
-                file.Close();
-                Console.WriteLine("There were {0} lines.", counter);
-            }
-
-            return;
         }
         private void Add(object o)
         {
@@ -298,12 +284,7 @@ namespace SofarHVMExe.ViewModel
         }
         private void Delete(object o)
         {
-            if (SelectData == null)
-            {
-                MessageBox.Show("请选择一条数据！", "提示");
-                return;
-            }
-
+            //移除当前选择项，为空时不会删除掉现有数据
             DataSource.Remove(SelectData);
 
             //选择最后一个
@@ -344,39 +325,40 @@ namespace SofarHVMExe.ViewModel
         {
             try
             {
-                //if (!CheckConnect())
-                //    return;
-
-                if (FilePath == null || FilePath == "")
+                if (!CheckConnect())
                 {
-                    MessageBox.Show("未加载文件，请先导入map文件！", "提示");
-                    return;
+                    MessageBox.Show("未连接设备，请先连接CAN操作", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
                 }
-
-                startRead = !startRead;
-                IntervalEnable = !startRead;
-
-                //更新界面
+                else if (string.IsNullOrEmpty(FilePath))
                 {
+                    MessageBox.Show("未加载文件，请先导入MAP文件", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+                else if (DataSource.Count == 0)
+                {
+                    MessageBox.Show("未加载数据，请先编辑MAP表", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+                else if (DeviceManager.Instance().GetSelectDev() == 0)
+                {
+                    MessageBox.Show("未选择设备，请先选择设备", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+                else
+                {
+                    startRead = !startRead;
+                    IntervalEnable = !startRead;
+
                     if (startRead)
                     {
+                        ReadBtnText = "终止读取";
+
                         cancelTokenSource = new CancellationTokenSource();
-                        //停止按钮
-                        ReadBtnText = "停止";
+
+                        Task.Factory.StartNew(ReadData, cancelTokenSource.Token);
                     }
                     else
                     {
-                        cancelTokenSource.Cancel();
-                        //开始读取按钮
                         ReadBtnText = "开始读取";
-                    }
-                }
 
-                //读取数据
-                {
-                    if (startRead)
-                    {
-                        Task.Factory.StartNew(ReadData, cancelTokenSource.Token);
+                        cancelTokenSource.Cancel();
                     }
                 }
             }
@@ -387,34 +369,130 @@ namespace SofarHVMExe.ViewModel
         }//func
         private void ReadData()
         {
-            List<MemoryModel> dataList = new List<MemoryModel>(DataSource);
-
             while (!cancelTokenSource.IsCancellationRequested)
             {
+                //检查是否为开始读取状态
                 if (!startRead)
                     break;
 
-                if (dataList.Count == 0)
+                //处于“正在编辑数据”或者“数据源为空”的时候，暂停读取更新
+                if (IsWriting || DataSource.Count == 0)
                     continue;
 
-                //正在写的时候暂停读取更新
-                if (IsWriting)
-                    continue;
+                try
+                {
+                    //实时更新当前数据源的情况
+                    List<MemoryModel> dataList = new List<MemoryModel>(DataSource);
 
-                //循环读取每一个变量
-                MemoryModel mem = dataList[sendIndex];
-                byte[] sendBytes = new byte[8] { 0x1, 0, 0, 0, 0, 0, 0, 0 };
-                string addressOrName = mem.AddressOrName;
-                string type = mem.Type;
-                string value = mem.Value;
+                    //循环读取每一个变量
+                    MemoryModel mem = dataList[sendIndex];
+                    byte[] sendBytes = new byte[8] { 0x1, 0, 0, 0, 0, 0, 0, 0 };
+                    string addressOrName = mem.AddressOrName;
+                    string type = mem.Type;
+                    string value = mem.Value;
+                    string address = string.Empty;
+
+                    //地址不为空或名称不为空即可执行
+                    if (!string.IsNullOrEmpty(addressOrName))
+                    {
+                        address = checkAddr(addressOrName);
+
+                        if (!string.IsNullOrEmpty(address))
+                        {
+                            //转义地址为字节数组
+                            byte[] addrBytes = HexDataHelper.HexStringToByte2(address);
+                            for (int i = 0; i < 4; i++)
+                            {
+                                sendBytes[i + 4] = addrBytes[i];
+                            }
+
+                            //坐标
+                            sendBytes[3] = Convert.ToByte(sendIndex);
+
+                            //类型
+                            sendBytes[1] = ConvertType(type);
+
+                            //设置指定设备地址
+                            uint id = _id;
+                            {
+                                byte addr = DeviceManager.Instance().GetSelectDev();
+                                if (addr != 0)
+                                {
+                                    sendBytes[2] = addr; //指定发送数据给某台设备
+                                }
+                            }
+
+                            //1、发送
+                            SendFrame(id, sendBytes);
+                            DebugTool.OutputBytes($"读请求-{id.ToString("X")}", sendBytes);
+
+                            //2、处理接收
+                            {
+                                ///在指定内如果收到正确应答则ok
+                                Stopwatch timer = new Stopwatch();
+                                timer.Start();
+                                while (true)
+                                {
+                                    Thread.Sleep(100);
+
+                                    int result = ReadDataRequestCheck();
+                                    if (result == 0)
+                                    {
+                                        _recvData.ID = 0;
+                                        UpdateDataSource(mem.AddressOrName);
+                                        break;
+                                    }
+                                    /*else if (result == 1)
+                                    {
+                                        UpdateDataSourceTonull(mem.AddressOrName, "Fail:响应为空或长度不等于8");
+                                    }
+                                    else if (result == 2)
+                                    {
+                                        UpdateDataSourceTonull(mem.AddressOrName, "Error:响应非读应答帧");
+                                    }
+                                    else if (result == 3)
+                                    {
+                                        UpdateDataSourceTonull(mem.AddressOrName, "Error:响应非请求编码");
+                                    }*/
+
+                                    if (timer.ElapsedMilliseconds > 100)
+                                    {
+                                        timer.Stop();
+                                        break;
+                                    }
+                                }
+                            }
+
+                            Thread.Sleep(IntervalVal);
+                            IsWriting = false;
+                        }
+                        else
+                        {
+                            UpdateDataSourceTonull(mem.AddressOrName, $"变量[{addressOrName}]未找到地址！");
+                        }
+                    }
+
+                    //更新坐标值
+                    if (sendIndex == dataList.Count - 1)
+                        sendIndex = 0;
+                    else
+                        sendIndex++;
+                }
+                catch (Exception ex)
+                {
+                    throw new Exception(ex.Message);
+                }
+            }//while
+        }
+
+        private string checkAddr(string addressOrName)
+        {
+            try
+            {
                 string address = "";
-
-                if (string.IsNullOrEmpty(addressOrName))
-                    continue;
-
-                //地址
                 if (addressOrName.Contains("0x") || addressOrName.Contains("0X"))
                 {
+                    //地址
                     address = addressOrName;
                 }
                 else
@@ -428,112 +506,42 @@ namespace SofarHVMExe.ViewModel
                             break;
                         }
                     }
-
-                    /*if (address == "")
-                    {
-                        MessageBox.Show($"变量[{addressOrName}]未找到地址！", "提示");
-                        continue;
-                    }*/
                 }
-
-                if (address != "")
-                {
-                    byte[] addrBytes = HexDataHelper.HexStringToByte2(address);
-                    for (int i = 0; i < 4; i++)
-                    {
-                        sendBytes[i + 4] = addrBytes[i];
-                    }
-
-                    //坐标
-                    sendBytes[3] = Convert.ToByte(sendIndex);
-
-                    //类型
-                    sendBytes[1] = ConvertType(type);
-
-                    //设置指定设备地址
-                    uint id = _id;
-                    {
-                        byte addr = DeviceManager.Instance().GetSelectDev();
-                        if (addr != 0)
-                        {
-                            //指定发送数据给某台设备
-                            sendBytes[2] = addr;
-                        }
-                    }
-
-                    //1、发送
-                    SendFrame(id, sendBytes);
-                    DebugTool.OutputBytes($"读请求-{id.ToString("X")}", sendBytes);
-
-                    //2、处理接收
-                    {
-                        ///在指定内如果收到正确应答则ok
-                        Stopwatch timer = new Stopwatch();
-                        timer.Start();
-                        while (true)
-                        {
-                            if (ReadDataRequestCheck())
-                            {
-                                _recvData.ID = 0;
-                                UpdateDataSource(mem.AddressOrName);
-                                break;
-                            }
-
-                            if (timer.ElapsedMilliseconds > 100)
-                            {
-                                timer.Stop();
-                                break;
-                            }
-                        }
-                    }
-
-                    Thread.Sleep(IntervalVal);
-                }
-                else
-                {
-                    UpdateDataSourceTonull(mem.AddressOrName);
-                }
-
-                //更新坐标值
-                if (sendIndex == dataList.Count - 1)
-                {
-                    sendIndex = 0;
-                }
-                else
-                {
-                    sendIndex++;
-                }
-            }//while
+                return address;
+            }
+            catch (Exception)
+            {
+                return "";
+            }
         }
 
-        private bool ReadDataRequestCheck()
+        private int ReadDataRequestCheck()
         {
             byte[] datas = _recvData.Data;
             if (_recvData.ID == 0 || datas.Length != 8)
-                return false;
+                return 1;
 
             byte funcCode = datas[0];
             if (funcCode != 1)
-                return false;
+                return 2;
 
             int funcIndex = datas[3];
             if (funcIndex != sendIndex)
-                return false;
+                return 3;
 
             byte type = datas[1];
             List<byte> valueList = new List<byte>(datas.Skip(4).Take(4));
             if (type == 1)
             {
-                //u8
-                //_ackValue = valueList[0];
+                //i16
                 string byte1 = valueList[0].ToString("X2");
                 string byte2 = valueList[1].ToString("X2");
-                _ackValue1 = Convert.ToInt16(byte2 + byte1, 16);
+                ackValue = Convert.ToInt16(byte2 + byte1, 16);
             }
             else if (type == 2)
             {
                 //u16
-                _ackValue = (uint)(valueList[0] | (valueList[1] << 8));
+                ackValue = ackValue = Convert.ToUInt16(valueList[0] | (valueList[1] << 8));
             }
             else if (type == 3)
             {
@@ -542,12 +550,12 @@ namespace SofarHVMExe.ViewModel
                 int b2 = valueList[1] << 8;
                 int b3 = valueList[2] << 16;
                 int b4 = valueList[3] << 24;
-                _ackValue = (uint)(b1 | b2 | b3 | b4);
+                ackValue = Convert.ToUInt32(b1 | b2 | b3 | b4);
             }
             else if (type == 4)
             {
                 //float
-                _ackFltValue = BitConverter.ToSingle(valueList.ToArray());
+                ackValue = BitConverter.ToSingle(valueList.ToArray());
             }
             else if (type == 5)
             {
@@ -556,134 +564,169 @@ namespace SofarHVMExe.ViewModel
                 string byte2 = valueList[1].ToString("X2");
                 string byte3 = valueList[2].ToString("X2");
                 string byte4 = valueList[3].ToString("X2");
-                _ackValue1 = Convert.ToInt32(byte4 + byte3 + byte2 + byte1, 16);
+                ackValue = Convert.ToInt32(byte4 + byte3 + byte2 + byte1, 16);
             }
-            return true;
+
+            return 0;
         }
         #endregion
 
         #region 写
         public void StartWriteData(MemoryModel mem)
         {
-            WriteDataRequest(mem);
-
-            //处理接收
+            try
             {
-                ///在指定内如果收到正确应答则ok
-                Stopwatch timer = new Stopwatch();
-                timer.Start();
-                while (true)
-                {
-                    if (WriteDataRequestCheck())
-                    {
-                        WriteData(mem);
-                        break;
-                    }
+                //写入数据请求
+                WriteDataRequest(mem);
 
-                    if (timer.ElapsedMilliseconds > 100)
+                //处理接收
+                {
+                    ///在指定内如果收到正确应答则ok
+                    Stopwatch timer = new Stopwatch();
+                    timer.Start();
+                    while (true)
                     {
-                        timer.Stop();
-                        break;
+                        string result = "";
+                        if (WriteDataRequestCheck(out result))
+                        {
+                            WriteData(mem);
+                            break;
+                        }
+                        else
+                        {
+                            //MessageBox.Show(result, "提示");
+                        }
+
+                        if (timer.ElapsedMilliseconds > 100)
+                        {
+                            timer.Stop();
+                            break;
+                        }
                     }
                 }
             }
-
-            IsWriting = false;
+            catch (Exception ex)
+            {
+                throw new Exception(ex.Message);
+            }
+            finally
+            {
+                IsWriting = false;
+            }
         }
         public void WriteDataRequest(MemoryModel mem)
         {
             //if (!CheckConnect())
             //    return;
 
-            if (mem == null)
+            if (mem != null)
             {
-                MessageBox.Show("未选择数据，请先选中操作行！", "提示");
-                return;
-            }
-
-            byte[] sendBytes = new byte[8] { 0x2, 0, 0, 0, 0, 0, 0, 0 };
-            string addressOrName = mem.AddressOrName;
-            string type = mem.Type;
-            string value = mem.Value;
-            string address = "";
-
-            //检查数据
-            switch (mem.Type)
-            {
-                case "I16": break;
-                case "U16": break;
-                case "U32": break;
-                case "float": break;
-                case "I32": break;
-                default:
-                    break;
-            }
-
-            if (string.IsNullOrEmpty(addressOrName) || value == "")
-                return;
-
-            //地址
-            if (addressOrName.Contains("0x") || addressOrName.Contains("0X"))
-            {
-                address = addressOrName;
-            }
-            else
-            {
-                //变量名转地址
-                foreach (var pair in _addrVariableDic)
+                /* 检查数据
+                 * 1.如果为空return、
+                 * 2.如果数值越界return*/
+                if (string.IsNullOrEmpty(mem.AddressOrName) || mem.Value == "")
                 {
-                    if (pair.Value == addressOrName)
-                    {
-                        address = pair.Key;
+                    MessageBox.Show($"ERROR:写入时地址/变量名和值不能为空", "提示");
+                    return;
+                }
+
+                byte[] sendBytes = new byte[8] { 0x2, 0, 0, 0, 0, 0, 0, 0 };
+                string addressOrName = mem.AddressOrName;
+                string type = mem.Type;
+                string value = mem.Value;
+                string address = string.Empty;
+
+                bool isError = false;
+                switch (mem.Type)
+                {
+                    case "I16":
+                        short tempShort = 0;
+                        isError = Int16.TryParse(value, out tempShort);
                         break;
+                    case "U16":
+                        ushort tempUshort = 0;
+                        isError = UInt16.TryParse(value, out tempUshort);
+                        break;
+                    case "I32":
+                        int tempInt = 0;
+                        isError = Int32.TryParse(value, out tempInt);
+                        break;
+                    case "U32":
+                        uint tempUint = 0;
+                        isError = UInt32.TryParse(value, out tempUint);
+                        break;
+                    case "float":
+                        float tempFloat = 0;
+                        isError = float.TryParse(value, out tempFloat);
+                        break;
+                    default:
+                        break;
+                }
+
+                if (!isError)
+                {
+                    MessageBox.Show($"ERROR:写入的值为非法数据，请输入数据类型对应的范围值", "提示");
+                    return;
+                }
+
+                //地址
+                address = checkAddr(addressOrName);
+                if (string.IsNullOrEmpty(address))
+                {
+                    UpdateDataSourceTonull(mem.AddressOrName, $"变量[{addressOrName}]未找到地址！");
+                    return;
+                }
+
+                byte[] addrBytes = HexDataHelper.HexStringToByte2(address);
+                for (int i = 0; i < 4; i++)
+                {
+                    sendBytes[i + 4] = addrBytes[i];
+                }
+
+                //类型
+                sendBytes[1] = ConvertType(type);
+
+                // 设置id
+                uint id = _id;
+                {
+                    byte addr = DeviceManager.Instance().GetSelectDev();
+                    if (addr != 0)
+                    {
+                        //指定发送数据给某台设备
+                        sendBytes[2] = addr;
                     }
                 }
 
-                if (address == "")
-                {
-                    MessageBox.Show($"变量[{addressOrName}]未找到地址！", "提示");
-                    return;
-                }
-            }
+                //发送
+                SendFrame(id, sendBytes);
 
-            byte[] addrBytes = HexDataHelper.HexStringToByte2(address);
-            for (int i = 0; i < 4; i++)
+                DebugTool.OutputBytes("写数据请求", sendBytes);
+            }
+            else
             {
-                sendBytes[i + 4] = addrBytes[i];
+                MessageBox.Show("未选择数据，请先选中操作行！", "提示");
             }
-
-            //类型
-            sendBytes[1] = ConvertType(type);
-
-            // 设置id
-            uint id = _id;
-            {
-                byte addr = DeviceManager.Instance().GetSelectDev();
-                if (addr != 0)
-                {
-                    //指定发送数据给某台设备
-                    sendBytes[2] = addr;
-                    //CanFrameID frameId = new CanFrameID(id);
-                    //frameId.DstAddr = addr;
-                    //id = frameId.ID;
-                }
-            }
-
-            //发送
-            SendFrame(id, sendBytes);
-
-            DebugTool.OutputBytes("写数据请求", sendBytes);
         }
-        private bool WriteDataRequestCheck()
+        private bool WriteDataRequestCheck(out string strTip)
         {
+            strTip = "";
+
             if (_recvData.ID == 0 || _recvData.DataLen != 8)
+            {
+                strTip = "Fail:响应为空或长度不等于8";
                 return false;
+            }
 
             byte[] datas = _recvData.Data;
 
             DebugTool.OutputBytes("写数据应答", datas);
 
-            return datas[4] == 1;
+            bool result = datas[4] == 1;
+            if (!result)
+            {
+                strTip = "ERROR:当前不能写数据";
+            }
+            return result;
         }
         private void WriteData(MemoryModel mem)
         {
@@ -691,14 +734,6 @@ namespace SofarHVMExe.ViewModel
             string address = mem.AddressOrName;
             string type = mem.Type;
             string strValue = mem.Value;
-
-            if (address == null ||
-                address == "" ||
-                strValue == ""
-                )
-            {
-                return;
-            }
 
             //数据
             List<byte> byteList = new List<byte>();
@@ -710,7 +745,7 @@ namespace SofarHVMExe.ViewModel
 
             if (type == "float")
             {
-                float v;
+                float v = 0;
                 if (float.TryParse(strValue, out v))
                 {
                     byteList = new List<byte>(BitConverter.GetBytes(v));
@@ -718,27 +753,21 @@ namespace SofarHVMExe.ViewModel
             }
             else if (type == "U16" || type == "U32")
             {
-                //uint
-                //byte[] arr = HexDataHelper.HexStringToByte2(strValue);
                 uint value = 0;
-                if (!uint.TryParse(strValue, out value))
+                if (uint.TryParse(strValue, out value))
                 {
-                    return;
+                    byte[] arr = HexDataHelper.UIntToByte(value, true);
+                    byteList = new List<byte>(arr);
                 }
-                byte[] arr = HexDataHelper.UIntToByte(value, true);
-                byteList = new List<byte>(arr);
             }
-
             else if (type == "I16" || type == "I32")
             {
                 int value = 0;
-                if (!int.TryParse(strValue, out value))
+                if (int.TryParse(strValue, out value))
                 {
-                    return;
+                    byte[] arr = HexDataHelper.IntToByte(value, true);
+                    byteList = new List<byte>(arr);
                 }
-                byte[] arr = HexDataHelper.IntToByte(value, true);
-                byteList = new List<byte>(arr);
-
             }
 
             for (int i = 0; i < byteList.Count; i++)
@@ -782,27 +811,12 @@ namespace SofarHVMExe.ViewModel
                 return;
 
             MemoryModel mem = DataSource[index];
-            if (mem.Type == "float")
+
+            //将解析数值进行赋值
+            System.Windows.Application.Current.Dispatcher.Invoke(() =>
             {
-                System.Windows.Application.Current.Dispatcher.Invoke(() =>
-                {
-                    mem.Value = _ackFltValue.ToString();
-                });
-            }
-            else if (mem.Type == "I16" || mem.Type == "I32")
-            {
-                System.Windows.Application.Current.Dispatcher.Invoke(() =>
-                {
-                    mem.Value = _ackValue1.ToString();
-                });
-            }
-            else
-            {
-                System.Windows.Application.Current.Dispatcher.Invoke(() =>
-                {
-                    mem.Value = _ackValue.ToString();
-                });
-            }
+                mem.Value = ackValue.ToString();
+            });
 
             //变量名转地址
             string address = "";
@@ -814,6 +828,7 @@ namespace SofarHVMExe.ViewModel
                     break;
                 }
             }
+
             System.Windows.Application.Current.Dispatcher.Invoke(() =>
             {
                 mem.Address = address.ToString();
@@ -821,7 +836,8 @@ namespace SofarHVMExe.ViewModel
 
             MultiLanguages.Common.LogHelper.WriteLog($"地址名称：{addressOrName}，数值：{mem.Value}");
         }
-        private void UpdateDataSourceTonull(string addressOrName)
+
+        private void UpdateDataSourceTonull(string addressOrName, string content)
         {
             List<MemoryModel> memList = new List<MemoryModel>(DataSource);
             int index = memList.FindIndex((o) =>
@@ -835,25 +851,8 @@ namespace SofarHVMExe.ViewModel
             MemoryModel mem = DataSource[index];
             System.Windows.Application.Current.Dispatcher.Invoke(() =>
             {
-                mem.Value = "未响应.";
+                mem.Value = content;
             });
-
-            //变量名转地址
-            string address = "";
-            foreach (var pair in _addrVariableDic)
-            {
-                if (pair.Value == addressOrName)
-                {
-                    address = pair.Key;
-                    break;
-                }
-            }
-            System.Windows.Application.Current.Dispatcher.Invoke(() =>
-            {
-                mem.Address = address.ToString();
-            });
-
-            MultiLanguages.Common.LogHelper.WriteLog($"地址名称：{addressOrName}，数值：{mem.Value}");
         }
         private byte ConvertType(string type)
         {
@@ -880,11 +879,22 @@ namespace SofarHVMExe.ViewModel
         /// </summary>
         public void InitCanHelper()
         {
-            //接收处理
-            //ecanHelper.OnReceiveCan1 += RecvProcCan1;
-            //ecanHelper.OnReceiveCan2 += RecvProcCan2;
             ecanHelper.RegisterRecvProcessCan1(RecvProcCan1);
             ecanHelper.RegisterRecvProcessCan2(RecvProcCan2);
+        }
+        private void RecvProcCan1(CAN_OBJ recvData)
+        {
+            if (GlobalManager.Instance().CurrentPage != GlobalManager.Page.MapOpt)
+                return;
+
+            RecvFrame(recvData);
+        }
+        private void RecvProcCan2(CAN_OBJ recvData)
+        {
+            if (GlobalManager.Instance().CurrentPage != GlobalManager.Page.MapOpt)
+                return;
+
+            RecvFrame(recvData);
         }
         /// <summary>
         /// 检查Can连接
@@ -906,6 +916,11 @@ namespace SofarHVMExe.ViewModel
 
             return true;
         }
+        /// <summary>
+        /// 下发CAN数据
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="datas"></param>
         private void SendFrame(uint id, byte[] datas)
         {
             if (ecanHelper.IsCan1Start)
@@ -913,6 +928,10 @@ namespace SofarHVMExe.ViewModel
                 ecanHelper.SendCan1(id, datas);
             }
         }
+        /// <summary>
+        /// 接收CAN处理
+        /// </summary>
+        /// <param name="recvData"></param>
         private void RecvFrame(CAN_OBJ recvData)
         {
             //if (startRecv)
@@ -920,8 +939,7 @@ namespace SofarHVMExe.ViewModel
 
             //过滤id
             {
-                uint id = recvData.ID;
-                string strId = id.ToString("X");
+                string strId = recvData.ID.ToString("X");
 
                 //过滤心跳帧
                 if (strId.Contains("197F"))
@@ -955,23 +973,6 @@ namespace SofarHVMExe.ViewModel
 
             _recvData = recvData;
             DebugTool.OutputBytes($"接收信息：canid：{recvData.ID}、data：", recvData.Data);
-        }
-        private void RecvProcCan1(CAN_OBJ recvData)
-        {
-            if (GlobalManager.Instance().CurrentPage != GlobalManager.Page.MapOpt)
-                return;
-
-            if (recvData.ID == 0x197f4121)
-                return;
-
-            RecvFrame(recvData);
-        }
-        private void RecvProcCan2(CAN_OBJ recvData)
-        {
-            if (GlobalManager.Instance().CurrentPage != GlobalManager.Page.MapOpt)
-                return;
-
-            RecvFrame(recvData);
         }
         #endregion
 

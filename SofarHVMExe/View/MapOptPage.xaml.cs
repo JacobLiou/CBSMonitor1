@@ -26,7 +26,7 @@ namespace SofarHVMExe.View
     /// MapOptPage.xaml 的交互逻辑
     /// </summary>
     public partial class MapOptPage : UserControl
-    {       
+    {
         public MapOptPage()
         {
             InitializeComponent();
@@ -50,11 +50,11 @@ namespace SofarHVMExe.View
         /// <param name="e"></param>
         private void DataGrid_BeginningEdit(object sender, DataGridBeginningEditEventArgs e)
         {
-            //MapOptPageVm? vm = this.DataContext as MapOptPageVm;
-            //if (vm == null)
-            //    return;
+            MapOptPageVm? vm = this.DataContext as MapOptPageVm;
+            if (vm == null)
+                return;
 
-            //vm.IsWriting = true;
+            vm.IsWriting = true;
         }
 
         /// <summary>
@@ -64,18 +64,22 @@ namespace SofarHVMExe.View
         /// <param name="e"></param>
         private void DataGrid_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
         {
-            //if (!(e.EditingElement is System.Windows.Controls.TextBox tb))
-            //    return;
-            //
-            //MapOptPageVm? vm = this.DataContext as MapOptPageVm;
-            //if (vm == null)
-            //    return;
-            //
-            //MemoryModel mem = dataGrid.CurrentItem as MemoryModel;
-            //if (mem == null)
-            //    return;
+            if (!(e.EditingElement is System.Windows.Controls.TextBox tb))
+                return;
 
+            MapOptPageVm? vm = this.DataContext as MapOptPageVm;
+            if (vm == null)
+                return;
+
+            MemoryModel mem = dataGrid.CurrentItem as MemoryModel;
+            if (mem == null)
+                return;
+
+            vm.IsWriting = false;
             //vm.StartWriteData(mem);
+
+            //KEY重复检查待追加
+            vm.IsRepeat = vm.DataSource.Where(d => d.AddressOrName != string.Empty).GroupBy(d => d.AddressOrName).Where(g => g.Count() > 1).Count() > 0;
         }
 
         private void MapOptPage_OnUnloaded(object sender, RoutedEventArgs e)

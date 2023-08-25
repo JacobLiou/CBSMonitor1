@@ -38,7 +38,6 @@ namespace SofarHVMExe.Utilities.Global
                 Device dev = new Device();
                 dev.Name = "设备" + (i + 1).ToString();
                 dev.Address = (i + 1);
-                //dev.Address = -1; 
                 dev.SelectAction = new Action<Device>(ClearSelect);
                 Devices.Add(dev);
             }

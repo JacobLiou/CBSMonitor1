@@ -14,11 +14,6 @@ namespace SofarHVMExe.Model
 {
     public class Device : ViewModelBase
     {
-        public Device()
-        {
-
-        }
-
         private readonly object locker = new object();
         private Stopwatch timer = new Stopwatch();
         public Action<Device> SelectAction = null;
@@ -93,8 +88,6 @@ namespace SofarHVMExe.Model
             {
                 lock (this.locker)
                 {
-                    //后期是否可以取消该位置的锁
-                    //MultiLanguages.Common.LogHelper.WriteLog("Device_进入Lock锁：变更连接状态");
                     connected = value;
                     if (!connected)
                     {
@@ -188,14 +181,14 @@ namespace SofarHVMExe.Model
 
         public void StartDetect(Func<string, bool> callBack)
         {
-            //持续检测 10s没收到该设备心跳，则判定为掉线
+            //持续检测 20s没收到该设备心跳，则判定为掉线
             Task.Run(() =>
             {
                 timer.Restart();
 
                 while (true)
                 {
-                    if (timer.ElapsedMilliseconds > 10000)
+                    if (timer.ElapsedMilliseconds > 20000)
                     {
                         lock (this.locker)
                         {
@@ -214,9 +207,7 @@ namespace SofarHVMExe.Model
                                 OnPropertyChanged("Mode");
                             });
                             //更新连接信息
-                            //string time = DateTime.Now.ToString("HH:mm:ss.fff");
-                            //string msg = $"{time}  设备[{address}]断开，连接超时！";
-                            string msg = $"设备[{address}]断开，连接超时！";
+                            string msg = $"{DateTime.Now.ToString("HH:mm:ss.fff")}  设备[{address}]断开，连接超时！";
                             callBack.Invoke(msg);
                             break;
                         }

@@ -24,9 +24,7 @@ namespace SofarHVMExe.ViewModel
             Init();
         }
 
-
         public EcanHelper? ecanHelper = null;
-
         /// <summary>
         /// 消息框中消息文本
         /// </summary>
@@ -36,7 +34,6 @@ namespace SofarHVMExe.ViewModel
             get => message;
             set { message = value; OnPropertyChanged(); }
         }
-
         public List<Device> DataSource
         {
             get
@@ -51,10 +48,8 @@ namespace SofarHVMExe.ViewModel
             }
         }
 
-
         public ICommand StartBroadcastCommand { get; set; }
         public ICommand StopBroadcastCommand { get; set; }
-
 
         private void Init()
         {
@@ -62,11 +57,9 @@ namespace SofarHVMExe.ViewModel
             StopBroadcastCommand = new SimpleCommand(StopBroadcast);
 
             //CAN
-            //_ecanHelper = CommManager.Instance().GetCanHelper();
-            //CommManager.Instance().RegistRecvProc(RecvProcCan1, RecvProcCan2);
-
             DeviceManager.Instance().InitDevice();
         }
+
 
         /// <summary>
         /// 开始广播
@@ -90,7 +83,6 @@ namespace SofarHVMExe.ViewModel
             DebugTool.StopSimulateDevice(ecanHelper);
         }
 
-
         #region CAN操作
         /// <summary>
         /// 初始化Can设置
@@ -98,8 +90,6 @@ namespace SofarHVMExe.ViewModel
         public void InitCanHelper()
         {
             //接收处理
-            //ecanHelper.OnReceiveCan1 += RecvProcCan1;
-            //ecanHelper.OnReceiveCan2 += RecvProcCan2;
             ecanHelper.RegisterRecvProcessCan1(RecvProcCan1);
             ecanHelper.RegisterRecvProcessCan2(RecvProcCan2);
         }
@@ -142,6 +132,8 @@ namespace SofarHVMExe.ViewModel
         private void RecvFrame(CAN_OBJ recvData)
         {
             string strId = recvData.ID.ToString("X");
+            Debug.WriteLine(strId);
+
             if (!strId.Contains("197F")) //非心跳帧过滤
                 return;
 
@@ -151,6 +143,7 @@ namespace SofarHVMExe.ViewModel
 
             //指定时间内检测到设备
             Device findDev = DataSource.Find((dev) => (dev.address == addr));
+
             if (findDev != null)
             {
                 if (findDev.Connected)
@@ -164,16 +157,13 @@ namespace SofarHVMExe.ViewModel
                     //未连接
                     //1、高亮设备显示
                     findDev.Connected = true;
-                    //findDev.Selected = false;
                     findDev.ID = "0x" + strId;
                     findDev.Name = $"设备{findDev.address}";
                     findDev.address = addr;
                     UpdateDevData(findDev, recvData.Data);
                     findDev.StartDetect(UpdateMsg);
                     //2、更新信息框信息
-                    //string time = DateTime.Now.ToString("HH:mm:ss.fff");
-                    //string msg = $"{time}  设备[{addr}]已连接！";
-                    string msg = $"设备[{addr}]已连接！";
+                    string msg = $"{DateTime.Now.ToString("HH:mm:ss.fff")}  设备[{addr}]已连接！";
                     UpdateMsg(msg);
                 }
             }
@@ -187,29 +177,23 @@ namespace SofarHVMExe.ViewModel
                     unConnectedDev.Name = "设备" + addr.ToString();
                     unConnectedDev.address = addr;
                     unConnectedDev.Connected = true;
-                    //unConnectedDev.Selected = false;
                     unConnectedDev.ID = "0x" + strId;
                     UpdateDevData(unConnectedDev, recvData.Data);
                     unConnectedDev.StartDetect(UpdateMsg);
                     //2、更新信息框信息
-                    //string time = DateTime.Now.ToString("HH:mm:ss.fff");
-                    //string msg = $"{time}  设备[{addr}]已连接！";
-                    string msg = $"设备[{addr}]已连接！";
+                    string msg = $"{DateTime.Now.ToString("HH:mm:ss.fff")}  设备[{addr}]已连接！";
                     UpdateMsg(msg);
 
                     //按设备地址大小调整顺序
                     DataSource.Sort((dev1, dev2) => dev1.address.CompareTo(dev2.address));
                 }
-            }//else
-
-
-            //return; //暂时不更新下面的集合
+            }
 
             //更新状态栏已连接设备集合
             List<Device> devList = DeviceManager.Instance().GetConnectDevs();
             //List<string> devs = new List<string>();
             string devs = "";
-            devList.ForEach((dev) => 
+            devList.ForEach((dev) =>
             {
                 string tmp = "设备" + dev.address.ToString();
                 devs += tmp + ",";
@@ -226,7 +210,7 @@ namespace SofarHVMExe.ViewModel
         {
             //心跳不能加下面这个 否则切换到其他页面无法正常检测心跳帧
             //if (GlobalManager.Instance().CurrentPage == GlobalManager.Page.HeartBeat)
-                RecvFrame(recvData);
+            RecvFrame(recvData);
         }
         /// <summary>
         /// 通道2接收处理
@@ -235,7 +219,7 @@ namespace SofarHVMExe.ViewModel
         private void RecvProcCan2(CAN_OBJ recvData)
         {
             //if (GlobalManager.Instance().CurrentPage == GlobalManager.Page.HeartBeat)
-                RecvFrame(recvData);
+            RecvFrame(recvData);
         }
         #endregion
 
@@ -245,20 +229,20 @@ namespace SofarHVMExe.ViewModel
             tmp += ">" + msg + "\r\n";
 
             //添加异步线程处理
-            Task.Factory.StartNew(() =>
-            {
-                System.Windows.Application.Current?.Dispatcher.Invoke(() =>
-                {
-                    Message = tmp;
-                });
-            });
+            //Task.Factory.StartNew(() =>
+            //{
+            //    System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+            //    {
+            Message = tmp;
+            //    });
+            //});
             return true;
         }
         private void UpdateDevData(Device dev, byte[] data)
         {
             dev.Status = GetStatus(data);
             dev.Fault = GetFault(data);
-            dev.Mode = GetMode(data); 
+            dev.Mode = GetMode(data);
             dev.DischargePower = GetDischargePower(data);
             dev.ChargePower = ChargePower(data);
         }

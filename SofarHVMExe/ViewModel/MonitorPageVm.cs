@@ -719,8 +719,8 @@ namespace SofarHVMExe.ViewModel
 
             //增加到报文信息
             {
-                //string msg = $"[接收]{currentTime}  :  0x{id.ToString("X8")}\t{BitConverter.ToString(recvData.Data)}";
-                //AddDebugInfo(msg);
+                string msg = $"[接收]{currentTime}  :  0x{id.ToString("X8")}\t{BitConverter.ToString(recvData.Data)}";
+                AddDebugInfo(msg);
             }
 
             CanFrameID frameId = new CanFrameID();
@@ -763,9 +763,9 @@ namespace SofarHVMExe.ViewModel
                     else
                     {
                         newFrameInfo.Info1 = "降额后的发电能力";
-                        newFrameInfo.Value1 = (BitConverter.ToInt16(recvData.Data, 4) * 0.01).ToString() + " kW";
+                        newFrameInfo.Value1 = (BitConverter.ToInt16(recvData.Data, 4) * 0.01).ToString("0.00") + " kW";
                         newFrameInfo.Info2 = "降额后的充电能力";
-                        newFrameInfo.Value2 = (BitConverter.ToInt16(recvData.Data, 6) * 0.01).ToString() + "kW";
+                        newFrameInfo.Value2 = (BitConverter.ToInt16(recvData.Data, 6) * 0.01).ToString("0.00") + "kW";
                     }
                     UpdateContinueRecv(newFrameInfo);
                 }

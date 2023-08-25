@@ -42,22 +42,21 @@ namespace SofarHVMExe.ViewModel
         }
 
         #region 字段
-        private bool stopUpdate = false;
         private bool isUpdating = false;
         private bool startCollect = false;
         private object collectLock = new object();
         private byte[] fileData;
+        private int fileDataCrc = 0;  //固件文件数据crc校验值
         private int realBlockNum = 0; //实际数据块个数
         private int validBlockNum = 0;//有效的数据块个数（不全是0xFF的数据）
         private const int KeepSignatureBytes = 1024 * 1 + 64; //固件数据最后的签名数据必须保留
-        private int fileDataCrc = 0;  //固件文件数据crc校验值
         private List<byte> blockData = new List<byte>(); //用于收集每个数据块，计算校验
         private List<byte> totalBlockData = new List<byte>(); //用于收集所有数据块，计算校验
         private List<byte[]> fileDataList = new List<byte[]>(); //文件数据集合
 
+        public EcanHelper? ecanHelper = null;
         private FileConfigModel? fileCfgModel = null;
         private FrameConfigModel? frameCfgModel = null;
-        public EcanHelper? ecanHelper = null;
         private CanFrameModel recvFrame = new CanFrameModel();
         private List<CancellationTokenSource> sendCancellList = new List<CancellationTokenSource>(); //发送取消标志
         private CharProgressBar charProgress = new CharProgressBar();
@@ -70,7 +69,6 @@ namespace SofarHVMExe.ViewModel
         uint firmwareCrc = 0;
         FirmwareModel currentModel = null;
         List<FirmwareModel> firmwareModels = new List<FirmwareModel>();
-        //文件类型
         Dictionary<byte, string> fileTypeDic = new Dictionary<byte, string>()
         {
             { 0x00, "app" },
@@ -80,7 +78,6 @@ namespace SofarHVMExe.ViewModel
             { 0x04, "safety" },
             { 0x80, "pack" },
         };
-        //芯片角色
         Dictionary<byte, string> chipCodeDic = new Dictionary<byte, string>()
         {
             { 0x01, "旧格式_ARM" },
@@ -98,12 +95,13 @@ namespace SofarHVMExe.ViewModel
             { 0x21, "ARM" },
             { 0x22, "DSPM" },
             { 0x23, "DSPS" },
-            { 0x24, "BMS" },
+            { 0x24, "BMS/BCU" },
             { 0x25, "PCU" },
             { 0x26, "BDU" },
             { 0x27, "DCDC" },
             { 0x28, "DCDC-ARM" },
             { 0x29, "DCDC-DSP" },
+            { 0x2D, "BMU" },
             { 0x30, "PCS-M" },
             { 0x31, "PCS-S" },
             { 0x32, "PCS-C" },
@@ -164,16 +162,6 @@ namespace SofarHVMExe.ViewModel
                 }
             }
         }
-        /*private string filePath = "";
-        public string FilePath
-        {
-            get => filePath;
-            set
-            {
-                filePath = value;
-                OnPropertyChanged();
-            }
-        }*/
         private string firmwareFilePath = "";
         public string FirmwareFilePath
         {
@@ -278,7 +266,7 @@ namespace SofarHVMExe.ViewModel
                 }
             }
         }
-        private short chipRole = 0x24; //芯片角色
+        private short chipRole = 0x2D; //芯片角色0x24
         public short ChipRole
         {
             get => chipRole;
@@ -288,7 +276,7 @@ namespace SofarHVMExe.ViewModel
                 OnPropertyChanged();
             }
         }
-        private string chipNumber = "E0"; //芯片编码
+        private string chipNumber = "S3"; //芯片编码E0
         public byte[] ChipNumber
         {
             get
@@ -310,13 +298,23 @@ namespace SofarHVMExe.ViewModel
                 OnPropertyChanged();
             }
         }
-        private bool isTiming = false;//定时升级界面控制（待使用）
-        public bool IsTiming
+        private Visibility isTiming = Visibility.Collapsed;
+        public Visibility IsTiming
         {
             get => isTiming;
             set
             {
                 isTiming = value;
+                OnPropertyChanged();
+            }
+        }
+        private string buttonText = "开始更新";
+        public string ButtonText
+        {
+            get => buttonText;
+            set
+            {
+                buttonText = value;
                 OnPropertyChanged();
             }
         }
@@ -342,18 +340,23 @@ namespace SofarHVMExe.ViewModel
             set
             {
                 firmwareIndex = value;
-
-                if (firmwareIndex == 0)
+                switch (firmwareIndex)
                 {
-                    IsTiming = false;
+                    case 0:
+                        IsTiming = Visibility.Hidden;
+                        DeleteFFData = true;
+                        break;
+                    case 1:
+                        IsTiming = Visibility.Visible;
+                        DeleteFFData = false;
+                        ChipRole = 0x24;
 
-                    DeleteFFData = true;
-                }
-                else
-                {
-                    IsTiming = true;
-
-                    DeleteFFData = false;
+                        break;
+                    case 2:
+                        IsTiming = Visibility.Visible;
+                        DeleteFFData = false;
+                        ChipRole = 0x2D;
+                        break;
                 }
 
                 OnPropertyChanged();
@@ -384,7 +387,6 @@ namespace SofarHVMExe.ViewModel
         #region 命令
         public ICommand ImportCommand { get; set; }             //导入
         public ICommand StartDownloadCommand { get; set; }      //开始升级
-        public ICommand StopDownloadCommand { get; set; }       //停止升级
         public ICommand ClearMsgCommand { get; set; }           //清除信息
         public ICommand ShowDebugInfoCommand { get; set; }      //显示调试信息对话框
         public ICommand DeleteFFDataCommand { get; set; }      //显示调试信息对话框
@@ -397,7 +399,6 @@ namespace SofarHVMExe.ViewModel
         {
             ImportCommand = new SimpleCommand(ImportFile);
             StartDownloadCommand = new SimpleCommand(StartDownload);
-            StopDownloadCommand = new SimpleCommand(StopDownload);
             ClearMsgCommand = new SimpleCommand(ClearMsg);
             ShowDebugInfoCommand = new SimpleCommand(ShowDebugInfo);
             //初始化设备树列表
@@ -411,113 +412,137 @@ namespace SofarHVMExe.ViewModel
             dlg.Filter = "固件文件|*.bin;*.out;*.sofar";
             dlg.Multiselect = false;
             dlg.RestoreDirectory = true;
-            if (dlg.ShowDialog() != DialogResult.OK)
-                return;
-
-            var saveDir = System.IO.Directory.CreateDirectory(System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "temp", "FirmwareUpdate"));
-
-            // 清除过期文件
-            foreach (var fileInfo in saveDir.GetFiles())
+            if (dlg.ShowDialog() == DialogResult.OK)
             {
-                var lastWriteTime = fileInfo.LastWriteTime;
-                var currentTime = DateTime.Now;
-                if (currentTime - lastWriteTime > TimeSpan.FromHours(12))
+                var saveDir = System.IO.Directory.CreateDirectory(System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "temp", "FirmwareUpdate"));
+
+                // 清除过期文件
+                foreach (var fileInfo in saveDir.GetFiles())
                 {
                     fileInfo.Delete();
                 }
-            }
 
-            // .out转.bin
-            string realBinPath = dlg.FileName;
-            if (System.IO.Path.GetExtension(dlg.FileName) == ".out")
-            {
-                // 复制文件
-                string objFileName = System.IO.Path.GetFileName(dlg.FileName);
-                string copyFilePath = System.IO.Path.Combine(saveDir.FullName, objFileName);
-                System.IO.File.Copy(dlg.FileName, copyFilePath);
-
-                string hexSavePath = System.IO.Path.Combine(saveDir.FullName, System.IO.Path.GetFileNameWithoutExtension(copyFilePath) + ".hex");
-                string binSavePath = System.IO.Path.Combine(saveDir.FullName, System.IO.Path.GetFileNameWithoutExtension(copyFilePath) + ".bin");
-
-                FirmwareFilePath = "加载中...";
-
-                try
+                // .out转.bin
+                string realBinPath = dlg.FileName;
+                if (System.IO.Path.GetExtension(dlg.FileName) == ".out")
                 {
+                    // 复制文件
+                    string objFileName = System.IO.Path.GetFileName(dlg.FileName);
+                    string copyFilePath = System.IO.Path.Combine(saveDir.FullName, objFileName);
+                    System.IO.File.Copy(dlg.FileName, copyFilePath);
 
-                    TIPluginHelper.ConvertCoffToHexAsync(copyFilePath, hexSavePath, saveDir.FullName).Wait();
-                    TIPluginHelper.ConvertHexToBinAsync(hexSavePath, binSavePath, saveDir.FullName).Wait();
-                    FirmwareFilePath = dlg.FileName;
-                    realBinPath = binSavePath;
+                    string hexSavePath = System.IO.Path.Combine(saveDir.FullName, System.IO.Path.GetFileNameWithoutExtension(copyFilePath) + ".hex");
+                    string binSavePath = System.IO.Path.Combine(saveDir.FullName, System.IO.Path.GetFileNameWithoutExtension(copyFilePath) + ".bin");
+
+                    FirmwareFilePath = "加载中...";
+
+                    try
+                    {
+                        TIPluginHelper.ConvertCoffToHexAsync(copyFilePath, hexSavePath, saveDir.FullName).Wait();
+                        TIPluginHelper.ConvertHexToBinAsync(hexSavePath, binSavePath, saveDir.FullName).Wait();
+                        FirmwareFilePath = dlg.FileName;
+                        realBinPath = binSavePath;
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show(ex.ToString(), "导入失败", MessageBoxButton.OK, MessageBoxImage.Error);
+                        FirmwareFilePath = "";
+                        return;
+                    }
                 }
-                catch (Exception ex)
+                else
                 {
-                    MessageBox.Show(ex.ToString(), "导入失败", MessageBoxButton.OK, MessageBoxImage.Error);
+                    FirmwareFilePath = dlg.FileName;
+                }
+
+                // 读取文件
+                int fileLength = 0;
+                FileStream file = new FileStream(realBinPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                {
+                    fileLength = (int)file.Length;
+                    fileData = new byte[fileLength];
+                    file.Read(fileData, 0, fileLength);
+                    file.Close();
+                }
+
+                // 文件CRC、底层未使用
+                fileDataCrc = CRCHelper.ComputeCrc16(fileData, fileLength);
+
+                // 获取固件升级包芯片角色等信息
+                if (System.IO.Path.GetExtension(dlg.FileName) == ".sofar")
+                {
+                    firmwareCrc = CRCHelper.ComputeCrc32(fileData, fileLength);
+                    this.AnalysisData(fileData);
+                }
+
+                //文件数据块总数：等于文件大小/数据块的大小 或者 文件大小/数据块的大小+1
+                blockNum = (fileLength % blockSize == 0) ? (fileLength / blockSize) : (fileLength / blockSize + 1);
+                BlockNum = blockNum.ToString();
+
+                if (blockNum == 0)
+                {
+                    MessageBox.Show("导入失败");
                     FirmwareFilePath = "";
                     return;
                 }
 
+                realBlockNum = blockNum;
+                MessageBox.Show($"文件路径：{FirmwareFilePath}", "导入成功", MessageBoxButton.OK, MessageBoxImage.Information);
             }
-            else
-            {
-                FirmwareFilePath = dlg.FileName;
-            }
-
-            MessageBox.Show($"文件路径：{FirmwareFilePath}", "导入成功", MessageBoxButton.OK, MessageBoxImage.Information);
-
-            // 读取文件
-            int fileLength = 0;
-            FileStream file = new FileStream(realBinPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-            {
-                fileLength = (int)file.Length;
-                fileData = new byte[fileLength];
-
-                file.Read(fileData, 0, fileLength);
-                file.Close();
-            }
-
-            /*if (fileType == "sofar")
-            {
-                firmwareCrc = CRCHelper.ComputeCrc32(fileData, fileLength);
-                this.AnalysisData(fileData);
-            }*/
-
-            fileDataCrc = CRCHelper.ComputeCrc16(fileData, fileLength);
-
-            //文件数据块总数：等于文件大小/数据块的大小 或者 文件大小/数据块的大小+1
-            blockNum = (fileLength % blockSize == 0) ? (fileLength / blockSize) : (fileLength / blockSize + 1);
-            realBlockNum = blockNum;
-            BlockNum = blockNum.ToString();
         }
         private void StartDownload(object o)
         {
-            bool result = true;
-            Task.Factory.StartNew(() =>
+            if (!CheckConnect())
+                return;
+
+            if (isUpdating)
             {
-                if (!CheckConnect())
-                    return;
-
-                if (isUpdating)
-                    return;
-
-                if (string.IsNullOrEmpty(FirmwareFilePath))
+                isUpdating = false;
+                ButtonText = "开始更新";
+            }
+            else
+            {
+                Task.Factory.StartNew(() =>
                 {
-                    MessageBox.Show("请先导入文件！", "提示");
-                    return;
-                }
+                    if (string.IsNullOrEmpty(FirmwareFilePath))
+                    {
+                        MessageBox.Show("请先导入文件！", "提示");
+                        return;
+                    }
 
-                stopUpdate = false;
-                isUpdating = true;
-                debugInfoSb.Clear();
-                CollectFileData();
+                    bool isChiprole = true;
+                    foreach (var item in firmwareModels)
+                    {
+                        if (item.FirmwareChipRole != ChipRole)
+                        {
+                            isChiprole = false;
+                            break;
+                        }
+                    }
 
-                //设置新的log文件
-                LogHelper.SubDirectory = "Download";
-                LogHelper.CreateNewLogger();
-                LogHelper.AddLog("**************** 程序下载日志 ****************");
+                    if (!isChiprole)
+                    {
+                        MessageBox.Show("选择的升级固件类型与导入文件不匹配！", "提示");
+                        return;
+                    }
 
-                //开始升级
-                Task.Factory.StartNew(() => { Update(); });
-            });
+                    if (!isBroadcast)
+                        targetAddr = DeviceManager.Instance().GetSelectDev();
+
+                    isUpdating = true;
+                    ButtonText = "停止更新";
+                    debugInfoSb.Clear();
+                    CollectFileData();
+
+                    //设置新的log文件
+                    LogHelper.SubDirectory = "Download";
+                    LogHelper.CreateNewLogger();
+                    LogHelper.AddLog("**************** 程序下载日志 ****************");
+
+                    //开始升级
+                    Task.Factory.StartNew(() => { Update(); });
+                });
+            }
         }
         private void Update()
         {
@@ -529,6 +554,7 @@ namespace SofarHVMExe.ViewModel
             if (!ShakeHands())
             {
                 AddMsg($"升级失败，请再次尝试！！！☹");
+                ButtonText = "开始更新";
                 isUpdating = false;
                 return;
             }
@@ -545,14 +571,12 @@ namespace SofarHVMExe.ViewModel
             tmpMsg = Message;
             AddDebugInfo("");
 
-            //blockNum = jumpDownload ? 0 : realBlockNum;
             int downloadNum = 0;
             for (int i = 0; i < blockNum; i++)
             {
                 byte[] dataArr = fileDataList[i];
                 if (dataArr.Length == 0)
                     continue;
-
 
                 //进度条
                 {
@@ -571,9 +595,10 @@ namespace SofarHVMExe.ViewModel
                     Thread.Sleep(20);
                 }
 
-                if (stopUpdate)
+                if (!isUpdating)
                 {
                     AddMsg($"升级失败，已停止更新！！！☹");
+                    ButtonText = "开始更新";
                     isUpdating = false;
                     return;
                 }
@@ -581,7 +606,6 @@ namespace SofarHVMExe.ViewModel
             sw.Stop();
             TimeSpan time = sw.Elapsed;
             AddMsg($"固件下载完成：{time.Hours}:{time.Minutes}:{time.Seconds}.{time.Milliseconds}");
-
 
             //3.校验固件文件接收结果 并进行补包
             ok = false;
@@ -595,22 +619,15 @@ namespace SofarHVMExe.ViewModel
                 if (!StartUpgrade())
                 {
                     AddMsg($"升级失败，请再次尝试！！！☹");
+                    ButtonText = "开始更新";
                     isUpdating = false;
                     return;
                 }
             }
 
+            isUpdating = false;
+            ButtonText = "开始更新";
             AddMsg($"已完成本轮升级操作☺ ☺ ☺");
-
-            isUpdating = false;
-        }
-        private void StopDownload(object o)
-        {
-            if (!CheckConnect())
-                return;
-
-            stopUpdate = true;
-            isUpdating = false;
         }
         private void ClearMsg(object o)
         {
@@ -746,7 +763,7 @@ namespace SofarHVMExe.ViewModel
                 upgradeTime[3] = Convert.ToByte(strTime[3]);
                 upgradeTime[4] = Convert.ToByte(strTime[4]);
                 upgradeTime[5] = Convert.ToByte(strTime[5]);
-                write_upgrade_time_request(isTiming, upgradeTime);
+                write_upgrade_time_request(true, upgradeTime);
                 Thread.Sleep(150);
 
                 ///在1000ms内如果收到正确应答则ok
@@ -792,16 +809,19 @@ namespace SofarHVMExe.ViewModel
             byte[] send = new byte[8];
             send[0] = Convert.ToByte(realBlockNum & 0xff); //文件数据块总数realBlockNum->validBlockNum有效传输大小，PCS待修改
             send[1] = Convert.ToByte(realBlockNum >> 8);
-            //send[2] = Convert.ToByte(blockSize & 0xff);    //数据块大小
-            //send[3] = Convert.ToByte(blockSize >> 8);
-            send[2] = Convert.ToByte(validBlockNum & 0xff);  //有效数据块数目
-            send[3] = Convert.ToByte(validBlockNum >> 8);
+            send[2] = Convert.ToByte(blockSize & 0xff);    //数据块大小
+            send[3] = Convert.ToByte(blockSize >> 8);
 
             if (FirmwareIndex == 1 || FirmwareIndex == 2)
             {
                 send[4] = Convert.ToByte(chipRole);
                 send[5] = ChipNumber[1];
                 send[6] = ChipNumber[0];
+            }
+            else
+            {
+                send[0] = Convert.ToByte(validBlockNum & 0xff);  //有效数据块数目
+                send[1] = Convert.ToByte(validBlockNum >> 8);
             }
 
             if (openDebug)
@@ -841,18 +861,6 @@ namespace SofarHVMExe.ViewModel
                 write_start_package(blockIndex, id, send);
             }
 
-            //调试 丢包
-            //if (lostPackage)
-            //{
-            //    if (blockIndex == 5 ||
-            //        blockIndex == 10 ||
-            //        blockIndex == 58 
-            //        )
-            //    {
-            //        return;
-            //    }
-            //}
-
             byte[] midData = block.Skip(index).ToArray();
             int totalSize = fileData.Length;
             int count = midData.Length / 7;
@@ -864,7 +872,7 @@ namespace SofarHVMExe.ViewModel
                     byte[] send = midData.Skip(i * 7).Take(7).ToArray();
                     write_mid_package(i + 1, id, send);
 
-                    if (stopUpdate)
+                    if (!isUpdating)
                         return;
                 }
             }
@@ -992,8 +1000,8 @@ namespace SofarHVMExe.ViewModel
             if (FirmwareIndex == 1 || FirmwareIndex == 2)
             {
                 send[3] = Convert.ToByte(chipRole);
-                send[4] = ChipNumber[1];//0x30;
-                send[5] = ChipNumber[0];//0x45;
+                send[4] = ChipNumber[1];
+                send[5] = ChipNumber[0];
             }
 
             if (openDebug)
@@ -1077,7 +1085,6 @@ namespace SofarHVMExe.ViewModel
         {
             //清空旧数据
             firmwareModels.Clear();
-            //dgvUpgradeProgress.Rows.Clear();
             //固件模块数量
             int count = binchar[binchar.Length - 2048 + 78];
             byte[] firmwareBytes = binchar.Skip(binchar.Length - 2048 + 137).Take(104 * count).ToArray();
@@ -1221,6 +1228,7 @@ namespace SofarHVMExe.ViewModel
 
             //2、指定时间内收集一台或多台pcs设备结果校验帧
             resultFrameList.Clear();
+
             ///开启接收结果校验
             {
                 lock (this.collectLock)
@@ -1322,43 +1330,30 @@ namespace SofarHVMExe.ViewModel
 
                 //对每一个设备进行循环补包（指定补包次数）
                 bool ok = false;
-                LostPackage package = new LostPackage() { id = 0x1b3521a0, blockIdxList = _multiPackData };
+                LostPackage package = new LostPackage() { id = 0x1B3521A0, blockIdxList = _multiPackData };
                 frameId.ID = package.id;
-                //待调整区域
+
                 int retryCnt = 0;
                 do
                 {
                     if (SendLostPackage(package))
-                    {
                         break;
-                    }
-                    else
-                    {
-                        AddMsg("丢包失败，重新执行补包流程！");
-                        retryCnt++;
-                    }
+
+                    //发送请求，应答提示存在丢包现象
+                    AddMsg("丢包失败，重新执行补包流程！");
+                    retryCnt++;
 
                 } while (retryCnt < MaxPackageNum);
-
-                //if (SendLostPackage2(package))
-                //{
-                //    AddMsg($"设备[{frameId.SrcAddr}]升级成功！！！☺");
-
-                //}
-                //else
-                //{
-                //    AddMsg($"设备[{frameId.SrcAddr}]升级失败！！！☹");
-                //}
 
                 return false;
             }
             else
             {
                 AddMsg($"校验成功");
+
                 resultFrameList.ForEach((frameModel) =>
                 {
-                    byte addr = frameModel.FrameId.SrcAddr;
-                    AddMsg($"设备[{addr}]升级成功！！！☺");
+                    AddMsg($"设备[{frameModel.FrameId.SrcAddr}]升级成功！！！☺");
                 });
 
                 return true;
@@ -1438,7 +1433,6 @@ namespace SofarHVMExe.ViewModel
 
             return false;
         }
-
         private bool SendLostPackage(LostPackage package)//result LostPackage->bool
         {
             bool ok = false;
@@ -1455,9 +1449,7 @@ namespace SofarHVMExe.ViewModel
                 strIndex += index.ToString() + " ";
             }
 
-            //AddMsg($"设备[{dstAddr}]丢失数据块序号: {strIndex}");
-            AddMsg($"丢失数据块序号: {strIndex}");
-            AddMsg("开始进行补包...");
+            AddMsg($"开始进行补包，丢失数据块序号: {strIndex}");
             LogHelper.AddLog($"开始进行补包，丢失数据块序号: {strIndex}");
 
             List<int> blockIdxList = package.blockIdxList;
@@ -1475,8 +1467,6 @@ namespace SofarHVMExe.ViewModel
                 int stop = 10;
             }
 
-            //AddMsg($"设备[{dstAddr}]补包完成！");
-            //LogHelper.AddLog($"设备[{dstAddr}]补包完成！");
             AddMsg("补包完成！");
             LogHelper.AddLog("补包完成！");
 
@@ -1592,9 +1582,6 @@ namespace SofarHVMExe.ViewModel
         /// </summary>
         public void InitCanHelper()
         {
-            //接收处理
-            //ecanHelper.OnReceiveCan1 += RecvProcCan1;
-            //ecanHelper.OnReceiveCan2 += RecvProcCan2;
             ecanHelper.RegisterRecvProcessCan1(RecvProcCan1);
             ecanHelper.RegisterRecvProcessCan2(RecvProcCan2);
         }
@@ -1656,7 +1643,6 @@ namespace SofarHVMExe.ViewModel
             recvFrame.FrameDatas.Clear();
             recvFrame.FrameDatas.Add(frameData);
 
-
             lock (this.collectLock)
             {
                 if (startCollect)
@@ -1671,7 +1657,6 @@ namespace SofarHVMExe.ViewModel
         /// <param name="recvData"></param>
         private void RecvProcCan1(CAN_OBJ recvData)
         {
-            //if (GlobalManager.Instance().CurrentPage == GlobalManager.Page.Download)
             if (isUpdating)
                 RecvFrame(recvData);
         }
@@ -1681,7 +1666,6 @@ namespace SofarHVMExe.ViewModel
         /// <param name="recvData"></param>
         private void RecvProcCan2(CAN_OBJ recvData)
         {
-            //if (GlobalManager.Instance().CurrentPage == GlobalManager.Page.Download)
             if (isUpdating)
                 RecvFrame(recvData);
         }
@@ -1856,7 +1840,7 @@ namespace SofarHVMExe.ViewModel
             }
 
             string strProgress = sb.ToString();
-            strProgress = /*"[" +*/ strProgress + $" {progress}%";
+            strProgress = strProgress + $" {progress}%";
             if (addNewLine)
             {
                 strProgress += "\r\n";

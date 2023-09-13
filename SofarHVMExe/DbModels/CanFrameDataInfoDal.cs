@@ -36,7 +36,7 @@ namespace SofarHVMExe.DbModels
         /// <summary>
         /// 精度
         /// </summary>
-        public decimal? Precision { get; set; }
+        public decimal Precision { get; set; }
 
         /// <summary>
         /// 单位

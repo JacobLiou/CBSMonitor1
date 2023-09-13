@@ -29,8 +29,9 @@ namespace SofarHVMExe.ViewModel
 
 
         private int groupNumber = 0;
-        private FileConfigModel? fileCfgModel = null;
+        //private FileConfigModel? fileCfgModel = null;
         private CmdGrpConfigModel? currentCmdGrpModel = null;
+        private FrameConfigModel ConfigModel = null;
         public Action DataSrcChangeAction;
 
 
@@ -52,7 +53,7 @@ namespace SofarHVMExe.ViewModel
         }
 
         private BindingList<CmdConfigModel> dataSource = null;
-        public BindingList<CmdConfigModel> DataSource 
+        public BindingList<CmdConfigModel> DataSource
         {
             get => dataSource;
             set
@@ -102,13 +103,8 @@ namespace SofarHVMExe.ViewModel
         /// </summary>
         public void UpdateModel()
         {
-            fileCfgModel = JsonConfigHelper.ReadConfigFile();
-            if (fileCfgModel == null)
-                return;
-
-            currentCmdGrpModel = fileCfgModel.CmdModels[groupNumber];
-
-
+            ConfigModel = DataManager.GetFrameConfigModel();
+            currentCmdGrpModel = DataManager.GetFCmdGrpConfigModel(ConfigModel)[groupNumber];
             UpdateSource();
         }
         /// <summary>
@@ -122,7 +118,7 @@ namespace SofarHVMExe.ViewModel
 
             //id列下拉框数据源
             List<FrameItemData> frameList = new List<FrameItemData>();
-            var canFrameModels = fileCfgModel.FrameModel.CanFrameModels;
+            var canFrameModels = ConfigModel.CanFrameModels;
             for (int i = 0; i < canFrameModels.Count; i++)
             {
                 CanFrameModel frame = canFrameModels[i];
@@ -135,7 +131,7 @@ namespace SofarHVMExe.ViewModel
         private void DataSource_ListChanged(object? sender, ListChangedEventArgs e)
         {
             DataSrcChangeAction?.Invoke();
-            Save2File(false);
+            //Save2File(false);
         }
 
         /// <summary>
@@ -143,12 +139,11 @@ namespace SofarHVMExe.ViewModel
         /// </summary>
         public void UpdateFrameModel(int index)
         {
-            if (SelectData == null || index < 0 || fileCfgModel == null )
+            if (SelectData == null || index < 0 || ConfigModel == null)
                 return;
 
             //复制一个新的帧model对象给选择的命令
-            FrameConfigModel frameCfgModel = fileCfgModel.FrameModel;
-            CanFrameModel selectFrameModel = frameCfgModel.CanFrameModels[index];
+            CanFrameModel selectFrameModel = ConfigModel.CanFrameModels[index];
             CanFrameModel newFrameModel = new CanFrameModel(selectFrameModel);
             SelectData.FrameGuid = newFrameModel.Guid;
             SelectData.FrameModel = newFrameModel;
@@ -194,10 +189,26 @@ namespace SofarHVMExe.ViewModel
             cmdConfigModels[index] = before;
             cmdConfigModels[index - 1] = curr;
 
+            var beforeSort = before.Sort;
+            var currSort = curr.Sort;
+
+            // 更新 CanFrameModels 修改行
+            if (DataManager.UpdateCmdConfig(beforeSort, curr.Guid))
+            {
+                curr.Sort = beforeSort;
+            }
+
+            if (DataManager.UpdateCmdConfig(currSort, before.Guid))
+            {
+                before.Sort = currSort;
+            }
+
+            cmdConfigModels = cmdConfigModels.OrderBy(t => t.Sort).ToList();
+
             DataSource = new BindingList<CmdConfigModel>(cmdConfigModels);
-            fileCfgModel.CmdModels[groupNumber].cmdConfigModels = new List<CmdConfigModel>(DataSource);
+            //fileCfgModel.CmdModels[groupNumber].cmdConfigModels = new List<CmdConfigModel>(DataSource);
             UpdateSetValue();
-            Save2File(false);
+            //Save2File(false);
         }
         [RelayCommand]
         private void MoveDown()
@@ -218,10 +229,25 @@ namespace SofarHVMExe.ViewModel
             cmdConfigModels[index] = after;
             cmdConfigModels[index + 1] = curr;
 
+            var afterSort = after.Sort;
+            var currSort = curr.Sort;
+
+            // 更新 CanFrameModels 修改行
+            if (DataManager.UpdateCmdConfig(afterSort, curr.Guid))
+            {
+                curr.Sort = afterSort;
+            }
+
+            if (DataManager.UpdateCmdConfig(currSort, after.Guid))
+            {
+                after.Sort = currSort;
+            }
+
+            cmdConfigModels = cmdConfigModels.OrderBy(t => t.Sort).ToList();
             DataSource = new BindingList<CmdConfigModel>(cmdConfigModels);
-            fileCfgModel.CmdModels[groupNumber].cmdConfigModels = new List<CmdConfigModel>(DataSource);
+            //fileCfgModel.CmdModels[groupNumber].cmdConfigModels = new List<CmdConfigModel>(DataSource);
             UpdateSetValue();
-            Save2File(false);
+            //Save2File(false);
         }
         private void SetData(object o)
         {
@@ -233,8 +259,13 @@ namespace SofarHVMExe.ViewModel
                 MessageBox.Show("未选择ID！", "提示");
                 return;
             }
+            else if (SelectData.FrameModel.Guid == null)
+            {
+                MessageBox.Show("未选择ID！", "提示");
+                return;
+            }
 
-            CANFrameDataEditVm vm = new CANFrameDataEditVm(fileCfgModel, SelectData);
+            CANFrameDataEditVm vm = new CANFrameDataEditVm(null, SelectData);
             CANFrameDataEditWnd wnd = new CANFrameDataEditWnd();
             byte continueFlg = SelectData.FrameModel.FrameId.ContinuousFlag;
             vm.isContinue = continueFlg == 0 ? false : true;
@@ -244,7 +275,7 @@ namespace SofarHVMExe.ViewModel
         }
         private void SaveData(object o)
         {
-            fileCfgModel.CmdModels[groupNumber].cmdConfigModels = new List<CmdConfigModel>(DataSource);
+            currentCmdGrpModel.cmdConfigModels = new List<CmdConfigModel>(DataSource);
             UpdateSetValue();
             Save2File();
         }
@@ -257,14 +288,24 @@ namespace SofarHVMExe.ViewModel
         }
         private void Save2File(bool hint = true)
         {
-            if (JsonConfigHelper.WirteConfigFile(fileCfgModel))
+            if (true)
             {
-                if (hint) MessageBox.Show("保存成功！", "提示");
+                // 保存文件的操作
+                // 1. 更新命令标题
+                DataManager.UpdateCmdGrpConfig(currentCmdGrpModel.Index, currentCmdGrpModel.Name);
+
+                // 2. 更新当前命令组
+                DataManager.UpdateCmdGrpConfig(currentCmdGrpModel);
             }
-            else
-            {
-                if (hint) MessageBox.Show("保存失败！", "提示");
-            }
+
+            //if (JsonConfigHelper.WirteConfigFile(fileCfgModel))
+            //{
+            //    if (hint) MessageBox.Show("保存成功！", "提示");
+            //}
+            //else
+            //{
+            //    if (hint) MessageBox.Show("保存失败！", "提示");
+            //}
         }
     }//class
 
@@ -277,7 +318,7 @@ namespace SofarHVMExe.ViewModel
             Text = text;
         }
 
-        public string Guid { get;set;}  
-        public string Text { get;set;}
+        public string Guid { get; set; }
+        public string Text { get; set; }
     }
 }

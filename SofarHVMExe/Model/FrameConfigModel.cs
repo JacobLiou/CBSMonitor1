@@ -1,6 +1,7 @@
 using CanProtocol.ProtocolModel;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Windows.Controls;
 using System.Windows.Documents;
 
@@ -8,7 +9,7 @@ namespace SofarHVMExe.Model
 {
     public class FrameConfigModel
     {
-        public FrameConfigModel() 
+        public FrameConfigModel()
         {
             SrcIdBitNum = 3;
             SrcAddrBitNum = 8 - 3;
@@ -22,13 +23,13 @@ namespace SofarHVMExe.Model
         public byte SrcIdBitNum { get; set; }
 
         //源设备地址位数
-        public byte SrcAddrBitNum { get ; set; }   
+        public byte SrcAddrBitNum { get; set; }
 
         //目标设备ID位数
         public byte TargetIdBitNum { get; set; }
 
         //目标设备地址位数
-        public byte TargetAddrBitNum { get; set; } 
+        public byte TargetAddrBitNum { get; set; }
 
         public List<CanFrameModel> CanFrameModels { get; set; }
 
@@ -62,6 +63,11 @@ namespace SofarHVMExe.Model
             {
                 return model.Guid == guid;
             });
+        }
+
+        public void ReSortCanFrameModels()
+        {
+            CanFrameModels = CanFrameModels.OrderBy(t => t.Sort).ToList();
         }
     }//class
 

@@ -22,7 +22,7 @@ namespace SofarHVMExe.ViewModel
         }
 
 
-        private FileConfigModel? fileCfgModel = null;
+        //private FileConfigModel? fileCfgModel = null;
         private List<McuConfigModel> mcuModels = null;
 
         public McuConfigModel Model0
@@ -163,16 +163,13 @@ namespace SofarHVMExe.ViewModel
         /// </summary>
         public void UpdateModel()
         {
-            fileCfgModel = JsonConfigHelper.ReadConfigFile();
-            if (fileCfgModel == null)
-                return;
-
-            mcuModels = fileCfgModel.McuModels;
+            mcuModels = DataManager.GetMcuConfigModel();
         }
 
         private void Save(object o)
         {
-            if (JsonConfigHelper.WirteConfigFile(fileCfgModel))
+            if (DataManager.UpdateMonitorConfigModel(mcuModels))
+            //if (JsonConfigHelper.WirteConfigFile(fileCfgModel))
             {
                 MessageBox.Show("保存成功！", "提示");
             }

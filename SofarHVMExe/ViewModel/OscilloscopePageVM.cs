@@ -478,10 +478,10 @@ namespace SofarHVMExe.ViewModel
                 });
             }
 
-            if (JsonConfigHelper.WirteConfigFile(fileCfgModel))
-            {
+            //if (JsonConfigHelper.WirteConfigFile(fileCfgModel))
+            //{
 
-            }
+            //}
         }
 
         public void UpdateModel()

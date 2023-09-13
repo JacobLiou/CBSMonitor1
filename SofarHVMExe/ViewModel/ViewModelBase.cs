@@ -17,6 +17,11 @@ namespace SofarHVMExe.ViewModel
     /// </summary>
     public class ViewModelBase : INotifyPropertyChanged
     {
+        /// <summary>
+        /// 当前模型的标题
+        /// </summary>
+        protected string Title = "ViewModelBase";
+
         public event PropertyChangedEventHandler PropertyChanged;
         public void OnPropertyChanged([CallerMemberName] string propName = null)
         {

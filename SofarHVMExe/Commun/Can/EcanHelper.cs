@@ -766,212 +766,212 @@ namespace Communication.Can
             return false;
         }
 
-        private void 调试用自定义接收数据()
-        {
-            while (!CancellationTokenSource1.IsCancellationRequested)
-            {
-                string inputString = "00 00 00 12 00 04 00 00" +
-                "01 00 00 00 00 00 00 00" +
-                "02 00 00 00 00 00 00 00" +
-                "03 00 00 00 00 00 00 00" +
-                "04 00 00 00 00 00 00 00" +
-                "FF 00 00 00 00 F5 D0 00";
-                int groupSize = 23;
-                List<string> groups = Enumerable.Range(0, (int)Math.Ceiling((double)inputString.Length / groupSize))
-                    .Select(i => inputString.Substring(i * groupSize, Math.Min(groupSize, inputString.Length - i * groupSize)))
-                    .ToList();
-                foreach (var hexString in groups)
-                {
-                    string[] hexValues = hexString.Split(' ');
-                    byte[] data = new byte[hexValues.Length];
+        //private void 调试用自定义接收数据()
+        //{
+        //    while (!CancellationTokenSource1.IsCancellationRequested)
+        //    {
+        //        string inputString = "00 00 00 12 00 04 00 00" +
+        //        "01 00 00 00 00 00 00 00" +
+        //        "02 00 00 00 00 00 00 00" +
+        //        "03 00 00 00 00 00 00 00" +
+        //        "04 00 00 00 00 00 00 00" +
+        //        "FF 00 00 00 00 F5 D0 00";
+        //        int groupSize = 23;
+        //        List<string> groups = Enumerable.Range(0, (int)Math.Ceiling((double)inputString.Length / groupSize))
+        //            .Select(i => inputString.Substring(i * groupSize, Math.Min(groupSize, inputString.Length - i * groupSize)))
+        //            .ToList();
+        //        foreach (var hexString in groups)
+        //        {
+        //            string[] hexValues = hexString.Split(' ');
+        //            byte[] data = new byte[hexValues.Length];
 
-                    for (int i = 0; i < hexValues.Length; i++)
-                    {
-                        data[i] = Convert.ToByte(hexValues[i], 16);
-                    }
-                    CAN_OBJ frameinfo = new CAN_OBJ();
-                    frameinfo.ID = 0x19814121;
-                    frameinfo.Data = new byte[8];
-                    frameinfo.SendType = sendType;
-                    frameinfo.ExternFlag = externFlag;
-                    frameinfo.RemoteFlag = remoteFlag;
-                    int length = data == null ? 0 : data.Length;
-                    frameinfo.DataLen = Convert.ToByte(length);
-                    for (int i = 0; i < length; i++)
-                    {
-                        frameinfo.Data[i] = data[i];
-                    }
-                    CAN_OBJ coMsg = frameinfo;
-                    coMsg.Data = coMsg.Data.Take(coMsg.DataLen).ToArray();
-                    //将消息加入到接收线程中
-                    for (int i = 0; i < RecvDataQueuesCan1.Count; i++)
-                    {
-                        RecvDataQueuesCan1[i].Enqueue(coMsg);
-                    }
-                    Thread.Sleep(100);
-                }
-            }
-        }
+        //            for (int i = 0; i < hexValues.Length; i++)
+        //            {
+        //                data[i] = Convert.ToByte(hexValues[i], 16);
+        //            }
+        //            CAN_OBJ frameinfo = new CAN_OBJ();
+        //            frameinfo.ID = 0x19814121;
+        //            frameinfo.Data = new byte[8];
+        //            frameinfo.SendType = sendType;
+        //            frameinfo.ExternFlag = externFlag;
+        //            frameinfo.RemoteFlag = remoteFlag;
+        //            int length = data == null ? 0 : data.Length;
+        //            frameinfo.DataLen = Convert.ToByte(length);
+        //            for (int i = 0; i < length; i++)
+        //            {
+        //                frameinfo.Data[i] = data[i];
+        //            }
+        //            CAN_OBJ coMsg = frameinfo;
+        //            coMsg.Data = coMsg.Data.Take(coMsg.DataLen).ToArray();
+        //            //将消息加入到接收线程中
+        //            for (int i = 0; i < RecvDataQueuesCan1.Count; i++)
+        //            {
+        //                RecvDataQueuesCan1[i].Enqueue(coMsg);
+        //            }
+        //            Thread.Sleep(100);
+        //        }
+        //    }
+        //}
 
-        private void 调试用日志文件作为接收数据()
-        {
-            string fileContent = "18:49:55.584   \t0x197F4121     8     00 00 03 00 01 00 00 00";
-            System.Windows.Application.Current.Dispatcher.Invoke(() =>
-            {
-                OpenFileDialog dlg = new OpenFileDialog();
-                dlg.Title = "选择日志文件";
-                dlg.Filter = "(*.txt)|*.txt";
-                dlg.Multiselect = false;
-                dlg.RestoreDirectory = true;
-                if (dlg.ShowDialog() != DialogResult.OK)
-                    return;
-                fileContent = File.ReadAllText(dlg.FileName);
-            });
-            string[] canFrameStrs = fileContent.Split("\r\n", StringSplitOptions.RemoveEmptyEntries);
-            List<CAN_OBJ> cAN_OBJs = new List<CAN_OBJ>();
-            List<int> interval = new List<int>();
-            foreach (var canFrameStr in canFrameStrs)
-            {
-                var canFrameInfo = canFrameStr.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                string[] hexValues = canFrameInfo.Skip(3).Take(8).ToArray();
-                byte[] data = new byte[hexValues.Length];
+        //private void 调试用日志文件作为接收数据()
+        //{
+        //    string fileContent = "18:49:55.584   \t0x197F4121     8     00 00 03 00 01 00 00 00";
+        //    System.Windows.Application.Current.Dispatcher.Invoke(() =>
+        //    {
+        //        OpenFileDialog dlg = new OpenFileDialog();
+        //        dlg.Title = "选择日志文件";
+        //        dlg.Filter = "(*.txt)|*.txt";
+        //        dlg.Multiselect = false;
+        //        dlg.RestoreDirectory = true;
+        //        if (dlg.ShowDialog() != DialogResult.OK)
+        //            return;
+        //        fileContent = File.ReadAllText(dlg.FileName);
+        //    });
+        //    string[] canFrameStrs = fileContent.Split("\r\n", StringSplitOptions.RemoveEmptyEntries);
+        //    List<CAN_OBJ> cAN_OBJs = new List<CAN_OBJ>();
+        //    List<int> interval = new List<int>();
+        //    foreach (var canFrameStr in canFrameStrs)
+        //    {
+        //        var canFrameInfo = canFrameStr.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        //        string[] hexValues = canFrameInfo.Skip(3).Take(8).ToArray();
+        //        byte[] data = new byte[hexValues.Length];
 
-                for (int i = 0; i < hexValues.Length; i++)
-                {
-                    data[i] = Convert.ToByte(hexValues[i], 16);
-                }
-                CAN_OBJ frameinfo = new CAN_OBJ();
-                frameinfo.ID = Convert.ToUInt32(canFrameInfo[1].Trim('\t'), 16);
-                frameinfo.Data = new byte[8];
-                frameinfo.SendType = sendType;
-                frameinfo.ExternFlag = externFlag;
-                frameinfo.RemoteFlag = remoteFlag;
-                int length = data == null ? 0 : data.Length;
-                frameinfo.DataLen = Convert.ToByte(length);
-                for (int i = 0; i < length; i++)
-                {
-                    frameinfo.Data[i] = data[i];
-                }
-                CAN_OBJ coMsg = frameinfo;
-                coMsg.Data = coMsg.Data.Take(coMsg.DataLen).ToArray();
-                cAN_OBJs.Add(coMsg);
+        //        for (int i = 0; i < hexValues.Length; i++)
+        //        {
+        //            data[i] = Convert.ToByte(hexValues[i], 16);
+        //        }
+        //        CAN_OBJ frameinfo = new CAN_OBJ();
+        //        frameinfo.ID = Convert.ToUInt32(canFrameInfo[1].Trim('\t'), 16);
+        //        frameinfo.Data = new byte[8];
+        //        frameinfo.SendType = sendType;
+        //        frameinfo.ExternFlag = externFlag;
+        //        frameinfo.RemoteFlag = remoteFlag;
+        //        int length = data == null ? 0 : data.Length;
+        //        frameinfo.DataLen = Convert.ToByte(length);
+        //        for (int i = 0; i < length; i++)
+        //        {
+        //            frameinfo.Data[i] = data[i];
+        //        }
+        //        CAN_OBJ coMsg = frameinfo;
+        //        coMsg.Data = coMsg.Data.Take(coMsg.DataLen).ToArray();
+        //        cAN_OBJs.Add(coMsg);
 
-                if (canFrameStrs.ToList().IndexOf(canFrameStr) - 1 >= 0)
-                    interval.Add((DateTime.Parse(canFrameInfo[0]) - DateTime.Parse(canFrameStrs[canFrameStrs.ToList().IndexOf(canFrameStr) - 1].Split(' ', StringSplitOptions.RemoveEmptyEntries)[0])).Milliseconds);
-                else
-                    interval.Add(100);
-            }
+        //        if (canFrameStrs.ToList().IndexOf(canFrameStr) - 1 >= 0)
+        //            interval.Add((DateTime.Parse(canFrameInfo[0]) - DateTime.Parse(canFrameStrs[canFrameStrs.ToList().IndexOf(canFrameStr) - 1].Split(' ', StringSplitOptions.RemoveEmptyEntries)[0])).Milliseconds);
+        //        else
+        //            interval.Add(100);
+        //    }
 
-            while (!CancellationTokenSource1.IsCancellationRequested)
-            {
-                for (int j = 0; j < cAN_OBJs.Count; j++)
-                {
-                    for (int i = 0; i < RecvDataQueuesCan1.Count; i++)
-                    {
-                        RecvDataQueuesCan1[i].Enqueue(cAN_OBJs[j]);
-                    }
-                    Thread.Sleep(interval[j]);
-                }
-            }
-        }
+        //    while (!CancellationTokenSource1.IsCancellationRequested)
+        //    {
+        //        for (int j = 0; j < cAN_OBJs.Count; j++)
+        //        {
+        //            for (int i = 0; i < RecvDataQueuesCan1.Count; i++)
+        //            {
+        //                RecvDataQueuesCan1[i].Enqueue(cAN_OBJs[j]);
+        //            }
+        //            Thread.Sleep(interval[j]);
+        //        }
+        //    }
+        //}
 
-        private void 调试用读取配置作为接收数据()
-        {
-            while (!CancellationTokenSource1.IsCancellationRequested)
-            {
-                var frameModels = JsonConfigHelper.ReadConfigFile().FrameModel.CanFrameModels;
-                //List<CanFrameModel> frameList = frameModels;
-                List<CanFrameModel> frameList = new List<CanFrameModel>(frameModels);
-                foreach (CanFrameModel frame in frameList)
-                {
-                    if (frame.AutoTx)
-                    {
-                        byte addr = DeviceManager.Instance().GetSelectDev();
-                        if (addr != 0)
-                        {
-                            if (frame.FrameId.FC != 0x39) //组播（功能码）不走地址设置
-                            {
-                                frame.FrameId.DstAddr = addr;
-                            }
-                        }
+        //private void 调试用读取配置作为接收数据()
+        //{
+        //    while (!CancellationTokenSource1.IsCancellationRequested)
+        //    {
+        //        var frameModels = JsonConfigHelper.ReadConfigFile().FrameModel.CanFrameModels;
+        //        //List<CanFrameModel> frameList = frameModels;
+        //        List<CanFrameModel> frameList = new List<CanFrameModel>(frameModels);
+        //        foreach (CanFrameModel frame in frameList)
+        //        {
+        //            if (frame.AutoTx)
+        //            {
+        //                byte addr = DeviceManager.Instance().GetSelectDev();
+        //                if (addr != 0)
+        //                {
+        //                    if (frame.FrameId.FC != 0x39) //组播（功能码）不走地址设置
+        //                    {
+        //                        frame.FrameId.DstAddr = addr;
+        //                    }
+        //                }
 
-                        if (frame.FrameDatas.Count > 0)
-                        {
-                            uint id = frame.Id;
-                            CanFrameData frameData = frame.FrameDatas[0];
-                            if (frame.FrameId.ContinuousFlag == 0)
-                            {
-                                //非连续
-                                //Task.Run(() =>
-                                //{
-                                ProtocolHelper.AnalyseFrameModel(frame);
-                                byte[] data = frameData.Data;
-                                if (data != null && data.Length > 8)
-                                {
-                                    throw new System.Exception("ERROR:数组越界！");
-                                }
+        //                if (frame.FrameDatas.Count > 0)
+        //                {
+        //                    uint id = frame.Id;
+        //                    CanFrameData frameData = frame.FrameDatas[0];
+        //                    if (frame.FrameId.ContinuousFlag == 0)
+        //                    {
+        //                        //非连续
+        //                        //Task.Run(() =>
+        //                        //{
+        //                        ProtocolHelper.AnalyseFrameModel(frame);
+        //                        byte[] data = frameData.Data;
+        //                        if (data != null && data.Length > 8)
+        //                        {
+        //                            throw new System.Exception("ERROR:数组越界！");
+        //                        }
 
-                                CAN_OBJ frameinfo = new CAN_OBJ();
-                                frameinfo.ID = id;
-                                frameinfo.Data = new byte[8];
-                                frameinfo.SendType = sendType;
-                                frameinfo.ExternFlag = externFlag;
-                                frameinfo.RemoteFlag = remoteFlag;
-                                int length = data == null ? 0 : data.Length;
-                                frameinfo.DataLen = Convert.ToByte(length);
-                                for (int i = 0; i < length; i++)
-                                {
-                                    frameinfo.Data[i] = data[i];
-                                }
+        //                        CAN_OBJ frameinfo = new CAN_OBJ();
+        //                        frameinfo.ID = id;
+        //                        frameinfo.Data = new byte[8];
+        //                        frameinfo.SendType = sendType;
+        //                        frameinfo.ExternFlag = externFlag;
+        //                        frameinfo.RemoteFlag = remoteFlag;
+        //                        int length = data == null ? 0 : data.Length;
+        //                        frameinfo.DataLen = Convert.ToByte(length);
+        //                        for (int i = 0; i < length; i++)
+        //                        {
+        //                            frameinfo.Data[i] = data[i];
+        //                        }
 
-                                CAN_OBJ coMsg = frameinfo;
-                                coMsg.Data = coMsg.Data.Take(coMsg.DataLen).ToArray();
-                                //将消息加入到接收线程中
-                                for (int i = 0; i < RecvDataQueuesCan1.Count; i++)
-                                {
-                                    RecvDataQueuesCan1[i].Enqueue(coMsg);
-                                }
-                            }
-                            else
-                            {
-                                List<CanFrameData> frameDataList = ProtocolHelper.AnalyseMultiPackage(frameData);
-                                foreach (CanFrameData fd in frameDataList)
-                                {
-                                    byte[] data = fd.Data;
-                                    if (data != null && data.Length > 8)
-                                    {
-                                        throw new System.Exception("ERROR:数组越界！");
-                                    }
+        //                        CAN_OBJ coMsg = frameinfo;
+        //                        coMsg.Data = coMsg.Data.Take(coMsg.DataLen).ToArray();
+        //                        //将消息加入到接收线程中
+        //                        for (int i = 0; i < RecvDataQueuesCan1.Count; i++)
+        //                        {
+        //                            RecvDataQueuesCan1[i].Enqueue(coMsg);
+        //                        }
+        //                    }
+        //                    else
+        //                    {
+        //                        List<CanFrameData> frameDataList = ProtocolHelper.AnalyseMultiPackage(frameData);
+        //                        foreach (CanFrameData fd in frameDataList)
+        //                        {
+        //                            byte[] data = fd.Data;
+        //                            if (data != null && data.Length > 8)
+        //                            {
+        //                                throw new System.Exception("ERROR:数组越界！");
+        //                            }
 
-                                    CAN_OBJ frameinfo = new CAN_OBJ();
-                                    frameinfo.ID = id;
-                                    frameinfo.Data = new byte[8];
-                                    frameinfo.SendType = sendType;
-                                    frameinfo.ExternFlag = externFlag;
-                                    frameinfo.RemoteFlag = remoteFlag;
-                                    int length = data == null ? 0 : data.Length;
-                                    frameinfo.DataLen = Convert.ToByte(length);
-                                    for (int i = 0; i < length; i++)
-                                    {
-                                        frameinfo.Data[i] = data[i];
-                                    }
+        //                            CAN_OBJ frameinfo = new CAN_OBJ();
+        //                            frameinfo.ID = id;
+        //                            frameinfo.Data = new byte[8];
+        //                            frameinfo.SendType = sendType;
+        //                            frameinfo.ExternFlag = externFlag;
+        //                            frameinfo.RemoteFlag = remoteFlag;
+        //                            int length = data == null ? 0 : data.Length;
+        //                            frameinfo.DataLen = Convert.ToByte(length);
+        //                            for (int i = 0; i < length; i++)
+        //                            {
+        //                                frameinfo.Data[i] = data[i];
+        //                            }
 
-                                    CAN_OBJ coMsg = frameinfo;
-                                    coMsg.Data = coMsg.Data.Take(coMsg.DataLen).ToArray();
-                                    //将消息加入到接收线程中
-                                    for (int i = 0; i < RecvDataQueuesCan1.Count; i++)
-                                    {
-                                        RecvDataQueuesCan1[i].Enqueue(coMsg);
-                                    }
-                                    Thread.Sleep(100);
-                                }
-                            }
-                        }
-                        Thread.Sleep(100);
-                    }
-                }
-            }
-        }
+        //                            CAN_OBJ coMsg = frameinfo;
+        //                            coMsg.Data = coMsg.Data.Take(coMsg.DataLen).ToArray();
+        //                            //将消息加入到接收线程中
+        //                            for (int i = 0; i < RecvDataQueuesCan1.Count; i++)
+        //                            {
+        //                                RecvDataQueuesCan1[i].Enqueue(coMsg);
+        //                            }
+        //                            Thread.Sleep(100);
+        //                        }
+        //                    }
+        //                }
+        //                Thread.Sleep(100);
+        //            }
+        //        }
+        //    }
+        //}
 
 
         #endregion

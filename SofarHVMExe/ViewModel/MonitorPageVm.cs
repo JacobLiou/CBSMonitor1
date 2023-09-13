@@ -383,7 +383,8 @@ namespace SofarHVMExe.ViewModel
             CmdGrpConfigModel cmdGrpConfigModel = fileCfgModel.CmdModels[selectCmdGrpModel.Index];
             cmdGrpConfigModel.cmdConfigModels = CmdDataSource.ToList();
 
-            if (JsonConfigHelper.WirteConfigFile(fileCfgModel))
+            if(DataManager.UpdateCmdGrpConfig(fileCfgModel.CmdModels[selectCmdGrpModel.Index]))
+            //if (JsonConfigHelper.WirteConfigFile(fileCfgModel))
             {
                 MessageBox.Show("保存成功！", "提示");
             }
@@ -531,14 +532,16 @@ namespace SofarHVMExe.ViewModel
         private void SaveData()
         {
             fileCfgModel.CmdModels[selectCmdGrpModel.Index].cmdConfigModels = CmdDataSource.ToList();
-            if (JsonConfigHelper.WirteConfigFile(fileCfgModel))
-            {
-                //MessageBox.Show("保存成功！", "提示");
-            }
-            else
-            {
-                //MessageBox.Show("保存失败！", "提示");
-            }
+            DataManager.UpdateCmdGrpConfig(fileCfgModel.CmdModels[selectCmdGrpModel.Index]);
+
+            //if (JsonConfigHelper.WirteConfigFile(fileCfgModel))
+            //{
+            //    //MessageBox.Show("保存成功！", "提示");
+            //}
+            //else
+            //{
+            //    //MessageBox.Show("保存失败！", "提示");
+            //}
         }
 
         #region CAN操作

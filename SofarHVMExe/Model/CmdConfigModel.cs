@@ -14,6 +14,7 @@ namespace SofarHVMExe.Model
     /// </summary>
     public class CmdGrpConfigModel
     {
+        public CmdGrpConfigModel() { }
         public CmdGrpConfigModel(string name, int index, bool broadcast = false)
         {
             Name = name;
@@ -74,6 +75,8 @@ namespace SofarHVMExe.Model
         }
 
         private CanFrameModel? frameModel = new CanFrameModel();
+        private string guid;
+
         public CanFrameModel? FrameModel
         {
             get => frameModel;
@@ -81,6 +84,30 @@ namespace SofarHVMExe.Model
             {
                 frameModel = value;
                 OnPropertyChanged();
+            }
+        }
+
+        /// <summary>
+        /// 排序
+        /// </summary>
+        public int Sort { get; set; }
+
+        /// <summary>
+        /// guid 唯一识别
+        /// </summary>
+        public string Guid
+        {
+            get
+            {
+                if (guid == string.Empty)
+                {
+                    guid = System.Guid.NewGuid().ToString();
+                }
+                return guid;
+            }
+            set
+            {
+                guid = value;
             }
         }
 

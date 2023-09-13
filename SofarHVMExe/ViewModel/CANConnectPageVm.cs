@@ -412,7 +412,7 @@ namespace SofarHVMExe.ViewModel
         }
         public void UpdateModel()
         {
-            fileCfgModel = JsonConfigHelper.ReadConfigFile();
+            fileCfgModel = GetFileConfigModel();
             if (fileCfgModel != null && fileCfgModel.PrjModel != null)
             {
                 ecanHelper.DevIndex = fileCfgModel.PrjModel.DeviceInx;
@@ -422,33 +422,45 @@ namespace SofarHVMExe.ViewModel
         }
         private void SaveDevIndex(uint index)
         {
-            fileCfgModel = JsonConfigHelper.ReadConfigFile();
-            if (fileCfgModel != null && fileCfgModel.PrjModel != null)
-            {
-                fileCfgModel.PrjModel.DeviceInx = index;
-                SaveData();
-            }
+            //fileCfgModel = GetFileConfigModel();
+            //if (fileCfgModel != null && fileCfgModel.PrjModel != null)
+            //{
+            //    fileCfgModel.PrjModel.DeviceInx = index;
+            //    SaveData();
+            //}
+
+            DataManager.UpdatePrjConfigModel_DeviceInx(index);
         }
         private void SaveBaudrate1(int index)
         {
-            fileCfgModel = JsonConfigHelper.ReadConfigFile();
-            if (fileCfgModel != null && fileCfgModel.PrjModel != null)
-            {
-                string strBaud = BaudrateList[index].Replace("K", "");
-                fileCfgModel.PrjModel.Baudrate1 = int.Parse(strBaud);
-                SaveData();
-            }
+            //fileCfgModel = GetFileConfigModel();
+            //if (fileCfgModel != null && fileCfgModel.PrjModel != null)
+            //{
+            //    string strBaud = BaudrateList[index].Replace("K", "");
+            //    fileCfgModel.PrjModel.Baudrate1 = int.Parse(strBaud);
+            //    SaveData();
+            //}
+
+            DataManager.UpdatePrjConfigModel_Baudrate1(index);
         }
         private void SaveBaudrate2(int index)
         {
-            fileCfgModel = JsonConfigHelper.ReadConfigFile();
-            if (fileCfgModel != null && fileCfgModel.PrjModel != null)
-            {
-                string strBaud = BaudrateList[index].Replace("K", "");
-                fileCfgModel.PrjModel.Baudrate2 = int.Parse(strBaud);
-                SaveData();
-            }
+            //fileCfgModel = GetFileConfigModel();
+            //if (fileCfgModel != null && fileCfgModel.PrjModel != null)
+            //{
+            //    string strBaud = BaudrateList[index].Replace("K", "");
+            //    fileCfgModel.PrjModel.Baudrate2 = int.Parse(strBaud);
+            //    SaveData();
+            //}
+
+            DataManager.UpdatePrjConfigModel_Baudrate1(index);
         }
+
+        private FileConfigModel GetFileConfigModel()
+        {
+            return JsonConfigHelper.ReadConfigFile();
+        }
+
         private async void OpenDevice(object o)
         {
             if (ecanHelper == null)
@@ -728,7 +740,7 @@ namespace SofarHVMExe.ViewModel
         }
         private void SaveData()
         {
-            JsonConfigHelper.WirteConfigFile(fileCfgModel);
+            //JsonConfigHelper.WirteConfigFile(fileCfgModel);
             /*if (JsonConfigHelper.WirteConfigFile(fileCfgModel))
             {
                 //MessageBox.Show("保存成功！", "提示");

@@ -1,5 +1,6 @@
 ﻿using CanProtocol.ProtocolModel;
 using SofarHVMExe.Model;
+using SofarHVMExe.Util;
 using SofarHVMExe.Utilities;
 using SofarHVMExe.ViewModel;
 using System;
@@ -11,6 +12,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 
 namespace SofarHVMExe.ViewModel
@@ -69,15 +71,15 @@ namespace SofarHVMExe.ViewModel
             get => tmpModel.AutoTx;
             set { tmpModel.AutoTx = value; OnPropertyChanged(); }
         }
-        public string Priority 
-        { 
-            get=> tmpModel.FrameId.Priority.ToString(); 
-            set 
+        public string Priority
+        {
+            get => tmpModel.FrameId.Priority.ToString();
+            set
             {
                 if (Priority == value)
                     return;
 
-                tmpModel.FrameId.Priority = byte.Parse(value); 
+                tmpModel.FrameId.Priority = byte.Parse(value);
                 OnPropertyChanged();
                 OnPropertyChanged("ID");
             }
@@ -85,12 +87,12 @@ namespace SofarHVMExe.ViewModel
         public int FrameType
         {
             get => tmpModel.FrameId.FrameType;
-            set 
+            set
             {
                 if (FrameType == value)
                     return;
 
-                tmpModel.FrameId.FrameType = (byte)value; 
+                tmpModel.FrameId.FrameType = (byte)value;
                 OnPropertyChanged();
                 OnPropertyChanged("ID");
             }
@@ -98,12 +100,12 @@ namespace SofarHVMExe.ViewModel
         public string FunctionCode
         {
             get => tmpModel.FrameId.FC.ToString();
-            set 
+            set
             {
                 if (FunctionCode == value)
                     return;
 
-                tmpModel.FrameId.FC = byte.Parse(value); 
+                tmpModel.FrameId.FC = byte.Parse(value);
                 OnPropertyChanged();
                 OnPropertyChanged("ID");
             }
@@ -111,34 +113,34 @@ namespace SofarHVMExe.ViewModel
         public string ContinueFlg
         {
             get => tmpModel.FrameId.ContinuousFlag.ToString();
-            set 
+            set
             {
                 if (ContinueFlg == value)
                     return;
 
-                tmpModel.FrameId.ContinuousFlag = byte.Parse(value); 
+                tmpModel.FrameId.ContinuousFlag = byte.Parse(value);
                 OnPropertyChanged();
                 OnPropertyChanged("ID");
             }
         }
         public string SrcDevId
         {
-            get => tmpModel.FrameId.SrcType.ToString(); 
-            set 
-            { 
+            get => tmpModel.FrameId.SrcType.ToString();
+            set
+            {
                 if (SrcDevId == value)
                     return;
 
-                tmpModel.FrameId.SrcType = byte.Parse(value); 
+                tmpModel.FrameId.SrcType = byte.Parse(value);
                 OnPropertyChanged();
                 OnPropertyChanged("ID");
             }
         }
-        
+
         public string SrcDevAddr
         {
             get => tmpModel.FrameId.SrcAddr.ToString();
-            set 
+            set
             {
                 if (SrcDevAddr == value)
                     return;
@@ -156,12 +158,12 @@ namespace SofarHVMExe.ViewModel
         public string TargetDevId
         {
             get => tmpModel.FrameId.DstType.ToString();
-            set 
+            set
             {
                 if (TargetDevId == value)
                     return;
 
-                tmpModel.FrameId.DstType = byte.Parse(value); 
+                tmpModel.FrameId.DstType = byte.Parse(value);
                 OnPropertyChanged();
                 OnPropertyChanged("ID");
             }
@@ -450,7 +452,7 @@ namespace SofarHVMExe.ViewModel
                         //点表地址相同
                         if (IsSameAddr(model.FrameDatas[0].DataInfos[0].Value, addr))
                             return true;
-                       
+
                         return false;
                     }
                     return false;
@@ -571,7 +573,8 @@ namespace SofarHVMExe.ViewModel
             UpdateEventConfig();
 
             //保存到文件
-            if (JsonConfigHelper.WirteConfigFile(fileCfgModel))
+            //if (JsonConfigHelper.WirteConfigFile(fileCfgModel))
+            if (UpdateCmdConfigDal())
             {
                 //更新帧配置界面数据表显示
                 updateAction?.Invoke();
@@ -582,6 +585,21 @@ namespace SofarHVMExe.ViewModel
                 MessageBox.Show("保存失败！", "提示");
             }
         }
+
+        public bool UpdateCmdConfigDal()
+        {
+            if (isNewAdd)
+            {
+                DataManager.InsertCanFrameDataModels(CurrentModel);
+            }
+            else
+            {
+                DataManager.UpdateCanFrameDataModels(CurrentModel);
+            }
+
+            return true;
+        }
+
         #endregion
 
 
@@ -604,9 +622,9 @@ namespace SofarHVMExe.ViewModel
             strAddr1 = strAddr1.Replace("0x", "").Replace("0X", "");
             strAddr2 = strAddr2.Replace("0x", "").Replace("0X", "");
 
-            long  addr1, addr2; 
-            long.TryParse(strAddr1, NumberStyles.HexNumber, CultureInfo.InvariantCulture,out addr1);
-            long.TryParse(strAddr2, NumberStyles.HexNumber, CultureInfo.InvariantCulture,out addr2);
+            long addr1, addr2;
+            long.TryParse(strAddr1, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out addr1);
+            long.TryParse(strAddr2, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out addr2);
 
             return (addr1 == addr2);
         }
@@ -675,7 +693,7 @@ namespace SofarHVMExe.ViewModel
         private void UpdateCmdConfig()
         {
             string guid = CurrentModel.Guid;
-            var  cmdGrpModels = fileCfgModel.CmdModels;
+            var cmdGrpModels = fileCfgModel.CmdModels;
             foreach (var cmdGrpModel in cmdGrpModels)
             {
                 var configModels = cmdGrpModel.cmdConfigModels;
@@ -761,7 +779,7 @@ namespace SofarHVMExe.ViewModel
             frameDatas.Add(multyInfos[0]); //包序号0
             frameDatas.Add(multyInfos[1]); //起始地址
             frameDatas.Add(multyInfos[2]); //个数
-            
+
 
             return frameDataList;
         }//func

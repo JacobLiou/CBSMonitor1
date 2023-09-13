@@ -1,7 +1,9 @@
 ﻿using CanProtocol.ProtocolModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using NPOI.SS.Formula.Functions;
 using SofarHVMExe.Model;
+using SofarHVMExe.Util;
 using SofarHVMExe.Utilities;
 using SofarHVMExe.View;
 using SofarHVMExe.ViewModel;
@@ -12,9 +14,11 @@ using System.ComponentModel;
 using System.Globalization;
 using System.Linq;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Markup;
+using static SofarHVMExe.ViewModel.CANFrameDataConfigVm;
 
 namespace SofarHVMExe.ViewModel
 {
@@ -38,14 +42,14 @@ namespace SofarHVMExe.ViewModel
         /// <summary>
         /// 源设备id位数
         /// </summary>
-        public string SrcIdBitNum 
+        public string SrcIdBitNum
         {
             get => frameCfgModel.SrcIdBitNum.ToString();
-            set 
-            { 
+            set
+            {
                 frameCfgModel.SrcIdBitNum = byte.Parse(value);
                 frameCfgModel.SrcAddrBitNum = (byte)(8 - (int)frameCfgModel.SrcIdBitNum);
-                OnPropertyChanged(); 
+                OnPropertyChanged();
             }
         }
         /// <summary>
@@ -54,11 +58,11 @@ namespace SofarHVMExe.ViewModel
         public string TargetIdBitNum
         {
             get => frameCfgModel.TargetIdBitNum.ToString();
-            set 
-            { 
+            set
+            {
                 frameCfgModel.TargetIdBitNum = byte.Parse(value);
                 frameCfgModel.TargetAddrBitNum = (byte)(8 - (int)frameCfgModel.TargetIdBitNum);
-                OnPropertyChanged(); 
+                OnPropertyChanged();
             }
         }
         public CanFrameModel SelectModel { get; set; }
@@ -127,7 +131,9 @@ namespace SofarHVMExe.ViewModel
         private void DataSource_ListChanged(object? sender, ListChangedEventArgs e)
         {
             DataSrcChangeAction?.Invoke();
-            SaveData();
+            //SaveData();
+
+            DataManager.ReSortCanFrame(dataSource.ToList());
         }
 
         public void RegisterUpdate(Action method)
@@ -211,7 +217,10 @@ namespace SofarHVMExe.ViewModel
             DataSource = new BindingList<CanFrameModel>(beforeList);
             DataSource.ListChanged += DataSource_ListChanged;
 
-            SaveData();
+            //SaveData();
+            newFrame.Sort = SelectModel.Sort + 1;
+            newFrame.Name += "(复制)";
+            InsertCanFrame(newFrame);
         }
 
         /// <summary>
@@ -226,11 +235,9 @@ namespace SofarHVMExe.ViewModel
                 return;
             }
 
+            DataManager.DeleteCanFrame(SelectModel.Guid);
             DataSource.Remove(SelectModel);
-            //frameCfgModel = fileCfgModel.FrameModel;
-            //frameCfgModel.CanFrameModels.Remove(SelectModel);
-            //DataSource = new ObservableCollection<CanFrameModel>(frameCfgModel.CanFrameModels);
-            SaveData();
+            //SaveData();
         }
 
         /// <summary>
@@ -238,16 +245,8 @@ namespace SofarHVMExe.ViewModel
         /// </summary>
         private void SaveData()
         {
-            frameCfgModel.CanFrameModels = DataSource.ToList();
-            JsonConfigHelper.WirteConfigFile(fileCfgModel);
-            /*if (JsonConfigHelper.WirteConfigFile(fileCfgModel))
-            {
-                //MessageBox.Show("保存成功！", "提示");
-            }
-            else
-            {
-                //MessageBox.Show("保存失败！", "提示");
-            }*/
+            //frameCfgModel.CanFrameModels = DataSource.ToList();
+            //JsonConfigHelper.WirteConfigFile(fileCfgModel);
         }
 
         private void MoveUp(object o)
@@ -265,13 +264,26 @@ namespace SofarHVMExe.ViewModel
 
             CanFrameModel curr = canFrameModels[index];
             CanFrameModel before = canFrameModels[index - 1];
-            canFrameModels[index] = before;
-            canFrameModels[index - 1] = curr;
 
+            var beforeSort = before.Sort;
+            var currSort = curr.Sort;
+
+            // 更新 CanFrameModels 修改行
+            if (DataManager.UpdateCanFrame(beforeSort, curr.Guid))
+            {
+                curr.Sort = beforeSort;
+            }
+
+            if (DataManager.UpdateCanFrame(currSort, before.Guid))
+            {
+                before.Sort = currSort;
+            }
+
+            canFrameModels = canFrameModels.OrderBy(t => t.Sort).ToList();
             DataSource = new BindingList<CanFrameModel>(canFrameModels);
             DataSource.ListChanged += DataSource_ListChanged;
             frameCfgModel.CanFrameModels = DataSource.ToList();
-            SaveData();
+            //SaveData();
         }
 
         [RelayCommand]
@@ -290,13 +302,71 @@ namespace SofarHVMExe.ViewModel
 
             CanFrameModel curr = canFrameModels[index];
             CanFrameModel after = canFrameModels[index + 1];
-            canFrameModels[index] = after;
-            canFrameModels[index + 1] = curr;
+            var afterSort = after.Sort;
+            var currSort = curr.Sort;
+
+            // 更新 CanFrameModels 修改行
+            if (DataManager.UpdateCanFrame(afterSort, curr.Guid))
+            {
+                curr.Sort = afterSort;
+            }
+
+            if (DataManager.UpdateCanFrame(currSort, after.Guid))
+            {
+                after.Sort = currSort;
+            }
+
+            canFrameModels = canFrameModels.OrderBy(t => t.Sort).ToList();
 
             DataSource = new BindingList<CanFrameModel>(canFrameModels);
             DataSource.ListChanged += DataSource_ListChanged;
             frameCfgModel.CanFrameModels = DataSource.ToList();
-            SaveData();
+            //SaveData();
+        }
+
+
+
+        /// <summary>
+        /// 更新行信息
+        /// </summary>
+        /// <param name="currSort">当前更新的行索引</param>
+        /// <param name="afterSort">更新后的行索引</param>
+        private void InsertCanFrame(CanFrameModel newFrame)
+        {
+            Dictionary<string, string> keys = DataManager.ProperyConvert(newFrame);
+            keys.Add("CanID", newFrame.Id.ToString());
+
+            keys.Remove(nameof(newFrame.FrameId));
+            keys.Remove(nameof(newFrame.Id));
+            var keys1 = DataManager.ProperyConvert(newFrame.FrameId);
+            keys["Sort"] = "0";
+            keys = keys.Concat(keys1).ToDictionary(postParK => postParK.Key, PostParV => PostParV.Value);
+
+            if (DataManager.InsertCanFrameModels("CanFrame", keys))
+            {
+                foreach (var frame in newFrame.FrameDatas)
+                {
+                    var dataGuid = Guid.NewGuid().ToString();
+                    keys = DataManager.ProperyConvert(frame);
+                    keys.Add("CanGuid", newFrame.Guid);
+                    keys.Add("Guid", dataGuid);
+                    keys.Remove(nameof(frame.DataInfos));
+                    SqliteHelper.ExecuteInsert("CanFrameData", keys);
+
+                    foreach (var info in frame.DataInfos)
+                    {
+                        keys = DataManager.ProperyConvert(info);
+                        keys.Add("DataGuid", dataGuid);
+                        SqliteHelper.ExecuteInsert("CanFrameDataInfo", keys);
+                    }
+                }
+
+                DataManager.ReSortCanFrame(dataSource.ToList());
+            }
+            else
+            {
+                MessageBox.Show("更新失败");
+            }
         }
 
         #endregion

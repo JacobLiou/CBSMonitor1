@@ -16,5 +16,15 @@ namespace SofarHVMExe.DbModels
         public string FrameGuid { get; set; }   //Can帧的唯一id标识
 
         public string SetValue { get; set; }
+
+        /// <summary>
+        /// 排序
+        /// </summary>
+        public int Sort { get; set; }
+
+        /// <summary>
+        /// guid 唯一识别
+        /// </summary>
+        public string Guid { get; set; }
     }
 }

@@ -19,7 +19,8 @@ namespace SofarHVMExe.ViewModel
             SaveCommand = new SimpleCommand(SaveData);
         }
 
-        private FileConfigModel? fileCfgModel = null;
+        private FrameConfigModel frameModel = null;
+        //private FileConfigModel? fileCfgModel = null;
         private MonitorConfigModel? monCfgModel1 = null;
         private MonitorConfigModel? monCfgModel2 = null;
 
@@ -33,7 +34,7 @@ namespace SofarHVMExe.ViewModel
             set
             {
                 if (value < 0) return;
-                List<CanFrameModel> frameModels = fileCfgModel.FrameModel.CanFrameModels;
+                List<CanFrameModel> frameModels = frameModel.CanFrameModels;
                 CanFrameModel model = frameModels[value];
                 monCfgModel1.CanText = $"0x{model.Id.ToString("X")}({model.Name})";
                 UpdateMemberList();
@@ -49,7 +50,7 @@ namespace SofarHVMExe.ViewModel
             set
             {
                 if (value < 0) return;
-                List<CanFrameModel> frameModels = fileCfgModel.FrameModel.CanFrameModels;
+                List<CanFrameModel> frameModels = frameModel.CanFrameModels;
                 CanFrameModel model = frameModels[value];
                 monCfgModel2.CanText = $"0x{model.Id.ToString("X")}({model.Name})";
                 UpdateMemberList();
@@ -59,11 +60,11 @@ namespace SofarHVMExe.ViewModel
         public int MemberIndex1
         {
             get => GetMemberIndex(monCfgModel1.MemberText, memberList1);
-            set 
+            set
             {
                 if (value < 0) return;
                 monCfgModel1.MemberText = memberList1[value];
-                OnPropertyChanged(); 
+                OnPropertyChanged();
             }
         }
         public int MemberIndex2
@@ -136,7 +137,7 @@ namespace SofarHVMExe.ViewModel
             set
             {
                 memberList1 = value;
-                OnPropertyChanged();    
+                OnPropertyChanged();
             }
         }
 
@@ -173,14 +174,12 @@ namespace SofarHVMExe.ViewModel
         /// </summary>
         public void UpdateModel()
         {
-            fileCfgModel = JsonConfigHelper.ReadConfigFile();
-            if (fileCfgModel == null)
-                return;
-
-            if (fileCfgModel.MonModels != null && fileCfgModel.MonModels.Count == 2)
+            frameModel = DataManager.GetFrameConfigModel();
+            var monCfgModels = DataManager.GetMonitorConfigModel();
+            if (monCfgModels != null && monCfgModels.Count == 2)
             {
-                monCfgModel1 = fileCfgModel.MonModels[0];
-                monCfgModel2 = fileCfgModel.MonModels[1];
+                monCfgModel1 = monCfgModels[0];
+                monCfgModel2 = monCfgModels[1];
             }
             else
             {
@@ -197,11 +196,8 @@ namespace SofarHVMExe.ViewModel
         /// </summary>
         private void UpdateCanIdList()
         {
-            if (fileCfgModel == null)
-                return;
-
             List<string> list = new List<string>();
-            List<CanFrameModel> frameModels = fileCfgModel.FrameModel.CanFrameModels;
+            List<CanFrameModel> frameModels = frameModel.CanFrameModels;
             foreach (CanFrameModel model in frameModels)
             {
                 string idInfo = $"0x{model.Id.ToString("X")}({model.Name})";
@@ -236,13 +232,10 @@ namespace SofarHVMExe.ViewModel
         /// </summary>
         private void UpdateMemberList()
         {
-            if (fileCfgModel == null)
-                return;
-
             MemberList1.Clear();
             MemberList2.Clear();
 
-            List<CanFrameModel> frameModels = fileCfgModel.FrameModel.CanFrameModels;
+            List<CanFrameModel> frameModels = frameModel.CanFrameModels;
             List<string> list1 = new List<string>();
             List<string> list2 = new List<string>();
 
@@ -278,7 +271,7 @@ namespace SofarHVMExe.ViewModel
         /// <returns></returns>
         private int GetIdIndex(string canText)
         {
-            List<CanFrameModel> frameModels = fileCfgModel.FrameModel.CanFrameModels;
+            List<CanFrameModel> frameModels = frameModel.CanFrameModels;
             int index = frameModels.FindIndex(frameModel =>
             {
                 string text = $"0x{frameModel.Id.ToString("X")}({frameModel.Name})";
@@ -306,11 +299,15 @@ namespace SofarHVMExe.ViewModel
 
         private void SaveData(object o)
         {
-            fileCfgModel?.MonModels.Clear();
-            fileCfgModel?.MonModels.Add(monCfgModel1);
-            fileCfgModel?.MonModels.Add(monCfgModel2);
+            //fileCfgModel?.MonModels.Clear();
+            //fileCfgModel?.MonModels.Add(monCfgModel1);
+            //fileCfgModel?.MonModels.Add(monCfgModel2);
 
-            if (JsonConfigHelper.WirteConfigFile(fileCfgModel))
+            List<MonitorConfigModel> monitorConfigs = new List<MonitorConfigModel>();
+            monitorConfigs.Add(monCfgModel1);
+            monitorConfigs.Add(monCfgModel2);
+
+            if (DataManager.UpdateMonitorConfigModel(monitorConfigs))
             {
                 MessageBox.Show("保存成功！", "提示");
             }

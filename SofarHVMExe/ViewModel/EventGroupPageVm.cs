@@ -22,7 +22,8 @@ namespace SofarHVMExe.ViewModel
         }
 
         #region 字段
-        private FileConfigModel? fileCfgModel = null;
+        //private FileConfigModel? fileCfgModel = null;
+        private FrameConfigModel frameCfgModel = null;
         private EventGroupModel? currEventGrpModel = null;
         //private EventGroupModel? tempEventGrpModel = null;//临时事件组
         #endregion
@@ -57,7 +58,7 @@ namespace SofarHVMExe.ViewModel
                 canIdIndex = value;
                 if (canIdIndex != -1)
                 {
-                    List<CanFrameModel> frameModels = fileCfgModel.FrameModel.CanFrameModels;
+                    List<CanFrameModel> frameModels = frameCfgModel.CanFrameModels;
                     currEventGrpModel.FrameGuid = frameModels[canIdIndex].Guid;
                 }
                 else
@@ -176,61 +177,12 @@ namespace SofarHVMExe.ViewModel
         /// <summary>
         /// 更新model数据
         /// </summary>
-        public void UpdateModel()
-        {
-            fileCfgModel = JsonConfigHelper.ReadConfigFile();
-            if (fileCfgModel == null)
-                return;
-
-            List<EventGroupModel> eventModels = fileCfgModel.EventModels;
-            var findModel = eventModels.Find((model) => model.Group == groupNumber);
-            if (findModel != null)
-            {
-                currEventGrpModel = findModel;
-            }
-            else
-            {
-                currEventGrpModel = new EventGroupModel(groupNumber);
-                eventModels.Add(currEventGrpModel);
-            }
-
-            //初始化32条事件
-            if (currEventGrpModel.InfoModels.Count == 0)
-            {
-                currEventGrpModel.Init();
-            }
-
-            //初始化现有事件组的源数据
-            EventModels.Clear();
-
-            for (int i = 0; i < eventModels.Count; i++)
-            {
-                if (!fileCfgModel.EventModels[i].Enable) continue;
-
-                ComboBoxItemModel<EventGroupModel> model = new ComboBoxItemModel<EventGroupModel> { Description = $"事件组{fileCfgModel.EventModels[i].Group}", SelectedModel = fileCfgModel.EventModels[i] };
-                EventModels.Add(model);
-            }
-            SelectedModel = EventModels[0].SelectedModel;
-
-            EventEnable = currEventGrpModel.Enable;
-            UpdateCanId();
-            MemberIndex = currEventGrpModel.MemberIndex;
-            UpdateSource();
-        }
-
-        /// <summary>
-        /// 更新model数据
-        /// </summary>
         /// <param name="_groupNum">进入-1/导入Number</param>
         public void UpdateModel(int _groupNum = -1)
         {
             try
             {
-                fileCfgModel = JsonConfigHelper.ReadConfigFile();
-                if (fileCfgModel == null)
-                    return;
-
-                List<EventGroupModel> eventModels = fileCfgModel.EventModels;
+                List<EventGroupModel> eventModels = DataManager.GetEventGroupModel();
                 var findModel = eventModels.Find((model) => model.Group == groupNumber);
                 if (findModel != null)
                 {
@@ -261,9 +213,13 @@ namespace SofarHVMExe.ViewModel
                 EventModels.Clear();
                 for (int i = 0; i < eventModels.Count; i++)
                 {
-                    if (!fileCfgModel.EventModels[i].Enable) continue;
+                    if (!eventModels[i].Enable) continue;
 
-                    ComboBoxItemModel<EventGroupModel> model = new ComboBoxItemModel<EventGroupModel> { Description = $"事件组{fileCfgModel.EventModels[i].Group}", SelectedModel = fileCfgModel.EventModels[i] };
+                    ComboBoxItemModel<EventGroupModel> model = new ComboBoxItemModel<EventGroupModel>
+                    {
+                        Description = $"事件组{eventModels[i].Group}",
+                        SelectedModel = eventModels[i]
+                    };
                     EventModels.Add(model);
                 }
 
@@ -283,10 +239,7 @@ namespace SofarHVMExe.ViewModel
         /// <param name="o"></param>
         private void SaveData(object o)
         {
-            if (selectedModel != null)
-            fileCfgModel.EventModels[selectedModel.Group] = currEventGrpModel;
-
-            if (JsonConfigHelper.WirteConfigFile(fileCfgModel))
+            if (DataManager.UpdateEventGroupModel(currEventGrpModel))
             {
                 MessageBox.Show("保存成功！", "提示");
             }
@@ -301,12 +254,10 @@ namespace SofarHVMExe.ViewModel
         /// </summary>
         private void UpdateCanId()
         {
-            if (fileCfgModel == null)
-                return;
-
             //1、更新id下拉集合
             List<string> list = new List<string>();
-            List<CanFrameModel> frameModels = fileCfgModel.FrameModel.CanFrameModels;
+            this.frameCfgModel = DataManager.GetFrameConfigModel();
+            List<CanFrameModel> frameModels = frameCfgModel.CanFrameModels;
             foreach (CanFrameModel model in frameModels)
             {
                 string idInfo = $"0x{model.Id.ToString("X")}({model.Name})";
@@ -316,7 +267,7 @@ namespace SofarHVMExe.ViewModel
             CanIdList = list;
 
             //2、更新选中id
-            int index = fileCfgModel.FrameModel.FindFrameModelIndex(currEventGrpModel.FrameGuid);
+            int index = frameCfgModel.FindFrameModelIndex(currEventGrpModel.FrameGuid);
             CanIdIndex = index;
         }
 
@@ -325,12 +276,9 @@ namespace SofarHVMExe.ViewModel
         /// </summary>
         private void UpdateMemberList()
         {
-            if (fileCfgModel == null)
-                return;
-
             MemberList.Clear();
 
-            List<CanFrameModel> frameModels = fileCfgModel.FrameModel.CanFrameModels;
+            List<CanFrameModel> frameModels = frameCfgModel.CanFrameModels;
             List<string> list = new List<string>();
 
             //更新成员集合
@@ -366,7 +314,7 @@ namespace SofarHVMExe.ViewModel
                 return;
             }
 
-            List<CanFrameModel> frameModels = fileCfgModel.FrameModel.CanFrameModels;
+            List<CanFrameModel> frameModels = frameCfgModel.CanFrameModels;
             CanFrameModel frameModel = frameModels[CanIdIndex];
             CanFrameData frameData = frameModel.FrameDatas[0];
 

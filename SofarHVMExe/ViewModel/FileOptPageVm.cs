@@ -463,11 +463,8 @@ namespace SofarHVMExe.ViewModel
         /// </summary>
         public void InitCanHelper()
         {
-            fileCfgModel = JsonConfigHelper.ReadConfigFile();
-            if (fileCfgModel != null)
-            {
-                frameCfgModel = fileCfgModel.FrameModel;
-            }
+            frameCfgModel = DataManager.GetFrameConfigModel();
+
             //接收处理
             ecanHelper.RegisterRecvProcessCan1(RecvProcCan1);
             ecanHelper.RegisterRecvProcessCan2(RecvProcCan2);

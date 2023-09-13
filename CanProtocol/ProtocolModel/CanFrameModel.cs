@@ -69,6 +69,11 @@ namespace CanProtocol.ProtocolModel
         public string Name { get; set; } //帧名称
         public bool AutoTx { get; set; } //是否自动下发
 
+        /// <summary>
+        /// 排序
+        /// </summary>
+        public int Sort { get; set; }
+
         public CanFrameID FrameId { get; set; } //id详细信息
         public List<CanFrameData> FrameDatas { get; set; } //多包数据集合（非连续时只有一包数据）
 
@@ -102,7 +107,7 @@ namespace CanProtocol.ProtocolModel
                 strAddr = strAddr.Replace("0x", "").Replace("0X", "");
                 return int.Parse(strAddr, NumberStyles.HexNumber, CultureInfo.InvariantCulture);
             }
-            else 
+            else
             {
                 return int.Parse(strAddr);
             }

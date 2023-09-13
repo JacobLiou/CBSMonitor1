@@ -76,10 +76,6 @@ namespace SofarHVMExe.View
                 return;
 
             vm.IsWriting = false;
-            //vm.StartWriteData(mem);
-
-            //KEY重复检查待追加
-            vm.IsRepeat = vm.DataSource.Where(d => d.AddressOrName != string.Empty).GroupBy(d => d.AddressOrName).Where(g => g.Count() > 1).Count() > 0;
         }
 
         private void MapOptPage_OnUnloaded(object sender, RoutedEventArgs e)

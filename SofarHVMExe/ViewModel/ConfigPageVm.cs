@@ -70,7 +70,7 @@ namespace SofarHVMExe.ViewModel
                 if (_isPrjCfgSelected)
                 {
                     pfjCfgPageVm = new ProjectCfgPageVm();
-                    pfjCfgPageVm.UpdateModel();
+                    pfjCfgPageVm.GetPrjCfgModel();
                     CurrentView = pfjCfgPageVm;
                 }
                 OnPropertyChanged();
@@ -172,20 +172,26 @@ namespace SofarHVMExe.ViewModel
 
             //设置model数据
             CfgFilePath = AppCfgHelper.ReadField("配置文件路径");
-            FileConfigModel? newConfigModel = JsonConfigHelper.ReadConfigFile(CfgFilePath);
+
+            FileConfigModel? newConfigModel = JsonConfigHelper.ReadConfigFile();
             if (newConfigModel == null)
             {
                 //如果没有正常从文件加载，则使用一个新的配置来初始化
                 newConfigModel = new FileConfigModel();
                 newConfigModel.InitModels();
 
+                // 初始化数据库数据
+
+                #region 暂时使用
+
                 //保存一个初始化的配置到文件中，以供其他地方使用（否则其他地方ReadConfigFile将为空null）；
                 JsonConfigHelper.SetDefaultCfgPath();
                 CfgFilePath = AppCfgHelper.ReadField("配置文件路径");
-                if (!JsonConfigHelper.WirteConfigFile(newConfigModel))
+                if (!JsonConfigHelper.WirteConfigFile_Data(newConfigModel))
                 {
                     MessageBox.Show("初始化配置到json文件失败！", "提示");
                 }
+                #endregion
             }
 
             //默认选择项目配置，这个必须放在后面
@@ -203,7 +209,7 @@ namespace SofarHVMExe.ViewModel
             {
                 case 0:
                     pfjCfgPageVm = new ProjectCfgPageVm();
-                    pfjCfgPageVm.UpdateModel();
+                    pfjCfgPageVm.GetPrjCfgModel();
                     CurrentView = pfjCfgPageVm;
                     break;
                 case 10:
@@ -250,7 +256,7 @@ namespace SofarHVMExe.ViewModel
             CfgFilePath = dlg.FileName;
             AppCfgHelper.WriteField("配置文件路径", CfgFilePath);
             //读取配置文件内容更新model, 再更新界面显示
-            UpdateConfig();
+            UpdateConfig(true);
             MessageBox.Show("更新配置成功", "提示");
         }
 
@@ -280,8 +286,17 @@ namespace SofarHVMExe.ViewModel
         /// <summary>
         /// 更新所有的配置
         /// </summary>
-        public void UpdateConfig()
+        public void UpdateConfig(bool isRefresh = false)
         {
+            if (isRefresh)
+            {
+                // 卡主线程，禁止操作，后期的话，加等待窗体
+                App.Current.Dispatcher.Invoke(() =>
+                {
+                    JsonConfigHelper.ReadConfigFile_Temp();
+                });
+            }
+
             //这里没有必要更新所有的，更新当前的页面数据即可
             ViewModelBase? vm = CurrentView as ViewModelBase;
             if (vm != null)

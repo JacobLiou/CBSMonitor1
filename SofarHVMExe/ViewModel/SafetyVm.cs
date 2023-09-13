@@ -524,14 +524,14 @@ namespace SofarHVMExe.ViewModel
             UpdateEventConfig();
 
             //保存到文件
-            if (JsonConfigHelper.WirteConfigFile(fileCfgModel))
-            {
-                Debug.WriteLine("保存成功！", "提示");
-            }
-            else
-            {
-                Debug.WriteLine("保存失败！", "提示");
-            }
+            //if (JsonConfigHelper.WirteConfigFile(fileCfgModel))
+            //{
+            //    Debug.WriteLine("保存成功！", "提示");
+            //}
+            //else
+            //{
+            //    Debug.WriteLine("保存失败！", "提示");
+            //}
         }
 
         /// <summary>

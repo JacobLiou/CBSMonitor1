@@ -24,11 +24,18 @@ using OpenFileDialog = System.Windows.Forms.OpenFileDialog;
 using System.IO;
 using System.Threading;
 using CanProtocol;
+using SofarHVMExe.Util;
+using LogInfo = SofarHVMExe.Utilities.LogHelper;
 
 namespace SofarHVMExe.ViewModel
 {
     class ProjectCfgPageVm : ViewModelBase
     {
+        /// <summary>
+        /// 当前模型的标题
+        /// </summary>
+        protected new string Title = "项目配置";
+
         public ProjectCfgPageVm()
         {
             ecanHelper = new EcanHelper();
@@ -37,8 +44,8 @@ namespace SofarHVMExe.ViewModel
 
         #region 字段
         public EcanHelper? ecanHelper = null;
-        private FrameConfigModel? frameCfgModel = null;
-        private FileConfigModel? fileCfgModel = null;
+        //private FileConfigModel? fileCfgModel = null;
+        private FrameConfigModel FrameModel = null;
         private PrjConfigModel? prjCfgModel = null;
         private List<byte> fileData = null; //安规文档参数数据
         private CanFrameModel tmpModel = null; //当前操作的临时数据
@@ -149,42 +156,42 @@ namespace SofarHVMExe.ViewModel
                 }
             }
         }
-        public int HostHeartbeatIndex
-        {
-            get
-            {
-                string guid = prjCfgModel.HostFrameGuid;
-                return FrameHelper.GetFrameIndex(fileCfgModel, guid);
-            }
-            set
-            {
-                int i = value;
-                if (fileCfgModel != null && fileCfgModel.FrameModel != null &&
-                    fileCfgModel.FrameModel.CanFrameModels.Count != 0)
-                {
-                    prjCfgModel.HostFrameGuid = fileCfgModel.FrameModel.CanFrameModels[i].Guid;
-                    OnPropertyChanged();
-                }
-            }
-        }
-        public int ModuleHeartbeatIndex
-        {
-            get
-            {
-                string guid = prjCfgModel.ModuleFrameGuid;
-                return FrameHelper.GetFrameIndex(fileCfgModel, guid);
-            }
-            set
-            {
-                int i = value;
-                if (fileCfgModel != null && fileCfgModel.FrameModel != null &&
-                    fileCfgModel.FrameModel.CanFrameModels.Count != 0)
-                {
-                    prjCfgModel.ModuleFrameGuid = fileCfgModel.FrameModel.CanFrameModels[i].Guid;
-                    OnPropertyChanged();
-                }
-            }
-        }
+        //public int HostHeartbeatIndex
+        //{
+        //    get
+        //    {
+        //        string guid = prjCfgModel.HostFrameGuid;
+        //        return FrameHelper.GetFrameIndex(fileCfgModel, guid);
+        //    }
+        //    set
+        //    {
+        //        int i = value;
+        //        if (fileCfgModel != null && fileCfgModel.FrameModel != null &&
+        //            fileCfgModel.FrameModel.CanFrameModels.Count != 0)
+        //        {
+        //            prjCfgModel.HostFrameGuid = fileCfgModel.FrameModel.CanFrameModels[i].Guid;
+        //            OnPropertyChanged();
+        //        }
+        //    }
+        //}
+        //public int ModuleHeartbeatIndex
+        //{
+        //    get
+        //    {
+        //        string guid = prjCfgModel.ModuleFrameGuid;
+        //        return FrameHelper.GetFrameIndex(fileCfgModel, guid);
+        //    }
+        //    set
+        //    {
+        //        int i = value;
+        //        if (fileCfgModel != null && fileCfgModel.FrameModel != null &&
+        //            fileCfgModel.FrameModel.CanFrameModels.Count != 0)
+        //        {
+        //            prjCfgModel.ModuleFrameGuid = fileCfgModel.FrameModel.CanFrameModels[i].Guid;
+        //            OnPropertyChanged();
+        //        }
+        //    }
+        //}
         private List<string> canFrameList = new List<string>();
         public List<string> CanFrameList
         {
@@ -427,17 +434,12 @@ namespace SofarHVMExe.ViewModel
             byte[] buffer = new byte[datas.Length - 4];
             Buffer.BlockCopy(datas, 4, buffer, 0, buffer.Length);
 
-            //读取当前配置文件信息
-            fileCfgModel = JsonConfigHelper.ReadConfigFile();
-            if (fileCfgModel == null)
-                return;
-
             //清理安规集合数据
             //SafetyList.Clear();
             SafetyList2.Clear();
 
-            FrameConfigModel FrameModel = fileCfgModel.FrameModel;
-            foreach (var selectModel in FrameModel.CanFrameModels)
+            FrameConfigModel model = DataManager.GetFrameConfigModel();
+            foreach (var selectModel in model.CanFrameModels)
             {
                 if (selectModel.Id == 0x19952141)
                 {
@@ -455,7 +457,7 @@ namespace SofarHVMExe.ViewModel
                     CurrentModel = item.Value;
                     tmpModel = new CanFrameModel(item.Value);
                     //更新model数据
-                    UpdateModel(fileCfgModel);
+                    UpdateModel();
 
                     //编辑数据信息
                     var dataLists = item.Value.FrameDatas[0].DataInfos;
@@ -514,7 +516,7 @@ namespace SofarHVMExe.ViewModel
                     }
                 }
 
-                
+
 
                 MessageBox.Show("安规参数配置已完成更新！", "提示");
             }
@@ -527,26 +529,21 @@ namespace SofarHVMExe.ViewModel
         /// <summary>
         /// 更新model数据
         /// </summary>
-        public void UpdateModel()
+        public void GetPrjCfgModel()
         {
-            fileCfgModel = JsonConfigHelper.ReadConfigFile();
-            if (fileCfgModel == null)
-                return;
-
-            prjCfgModel = fileCfgModel.PrjModel;
+            FrameModel = DataManager.GetFrameConfigModel();
+            prjCfgModel = DataManager.GetPrjConfigModel();
         }
 
         /// <summary>
         /// 更新model数据
         /// </summary>
         /// <param name="fileCfgModel"></param>
-        public void UpdateModel(FileConfigModel model)
+        public void UpdateModel()
         {
-            fileCfgModel = model;
-
             //1、更新ID数据
             ///源设备ID选择集合
-            int bitNum = fileCfgModel.FrameModel.SrcIdBitNum;
+            int bitNum = FrameModel.SrcIdBitNum;
             int count = (int)Math.Pow(2, bitNum);
             List<string> srcIdSource = new List<string>();
             for (int i = 0; i < count; i++)
@@ -560,7 +557,7 @@ namespace SofarHVMExe.ViewModel
             SrcAddrHint = $"0~{(int)Math.Pow(2, bitNum) - 1}";
 
             ///目标设备ID选择集合
-            bitNum = fileCfgModel.FrameModel.TargetIdBitNum;
+            bitNum = FrameModel.TargetIdBitNum;
             count = (int)Math.Pow(2, bitNum);
             List<string> targetIdSource = new List<string>();
             for (int i = 0; i < count; i++)
@@ -626,16 +623,19 @@ namespace SofarHVMExe.ViewModel
             frameData.DataInfos = MultiDataSource;
             _frameDatas.Add(frameData);
 
-            string addr = MultiDataSource[1].Value;
-            FrameConfigModel frameConfigModel = fileCfgModel.FrameModel;
-            List<CanFrameModel> frameModels = frameConfigModel.CanFrameModels;
+            //string addr = MultiDataSource[1].Value;
+            //FrameConfigModel frameConfigModel = fileCfgModel.FrameModel;
+            //List<CanFrameModel> frameModels = frameConfigModel.CanFrameModels;
 
-            //保存数据
-            int index = frameModels.IndexOf(CurrentModel);
-            frameModels[index] = tmpModel;
+            ////保存数据
+            //int index = frameModels.IndexOf(CurrentModel);
+            //frameModels[index] = tmpModel;
             CurrentModel = tmpModel;
+            CurrentModel.AutoTx = true;
 
-            SaveFile();
+            //SaveFile();
+            // 更新当前帧
+            DataManager.UpdateCanFrameDataModels(CurrentModel);
         }
 
         /// <summary>
@@ -648,15 +648,15 @@ namespace SofarHVMExe.ViewModel
             //更新事件配置数据
             UpdateEventConfig();
 
-            //保存到文件
-            if (JsonConfigHelper.WirteConfigFile(fileCfgModel))
-            {
-                Debug.WriteLine("保存成功！", "提示");
-            }
-            else
-            {
-                Debug.WriteLine("保存失败！", "提示");
-            }
+            ////保存到文件
+            //if (JsonConfigHelper.WirteConfigFile(fileCfgModel))
+            //{
+            //    Debug.WriteLine("保存成功！", "提示");
+            //}
+            //else
+            //{
+            //    Debug.WriteLine("保存失败！", "提示");
+            //}
         }
 
         /// <summary>
@@ -664,22 +664,25 @@ namespace SofarHVMExe.ViewModel
         /// </summary>
         private void UpdateCmdConfig()
         {
-            string guid = CurrentModel.Guid;
-            var cmdGrpModels = fileCfgModel.CmdModels;
-            foreach (var cmdGrpModel in cmdGrpModels)
-            {
-                var configModels = cmdGrpModel.cmdConfigModels;
-                CmdConfigModel cmd = configModels.Find((o) =>
-                {
-                    return (o.FrameGuid == guid);
-                });
+            // 保存不需要更新帧数据
 
-                if (cmd != null)
-                {
-                    cmd.FrameModel = new CanFrameModel(CurrentModel);
-                    cmd.FrameDatas2SetValue();
-                }
-            }
+
+            //string guid = CurrentModel.Guid;
+            //var cmdGrpModels = fileCfgModel.CmdModels;
+            //foreach (var cmdGrpModel in cmdGrpModels)
+            //{
+            //    var configModels = cmdGrpModel.cmdConfigModels;
+            //    CmdConfigModel cmd = configModels.Find((o) =>
+            //    {
+            //        return (o.FrameGuid == guid);
+            //    });
+
+            //    if (cmd != null)
+            //    {
+            //        cmd.FrameModel = new CanFrameModel(CurrentModel);
+            //        cmd.FrameDatas2SetValue();
+            //    }
+            //}
         }//func
 
         /// <summary>
@@ -687,15 +690,15 @@ namespace SofarHVMExe.ViewModel
         /// </summary>
         private void UpdateEventConfig()
         {
-            string guid = CurrentModel.Guid;
-            for (int i = 0; i < fileCfgModel.EventModels.Count; i++)
-            {
-                EventGroupModel groupModel = fileCfgModel.EventModels[i];
-                if (groupModel.FrameGuid == guid)
-                {
-                    //...
-                }
-            }
+            //string guid = CurrentModel.Guid;
+            //for (int i = 0; i < fileCfgModel.EventModels.Count; i++)
+            //{
+            //    EventGroupModel groupModel = fileCfgModel.EventModels[i];
+            //    if (groupModel.FrameGuid == guid)
+            //    {
+            //        //...
+            //    }
+            //}
         }//func
 
         /// <summary>
@@ -769,16 +772,17 @@ namespace SofarHVMExe.ViewModel
         /// </summary>
         private void UpdateFrameSource()
         {
-            if (fileCfgModel == null)
-                return;
+            // 无调用 注释
+            //if (fileCfgModel == null)
+            //    return;
 
-            List<string> list = new List<string>();
-            foreach (CanFrameModel frame in fileCfgModel.FrameModel.CanFrameModels)
-            {
-                string id = $"0x{frame.Id.ToString("X")}({frame.Name})";
-                list.Add(id);
-            }
-            CanFrameList = list;
+            //List<string> list = new List<string>();
+            //foreach (CanFrameModel frame in fileCfgModel.FrameModel.CanFrameModels)
+            //{
+            //    string id = $"0x{frame.Id.ToString("X")}({frame.Name})";
+            //    list.Add(id);
+            //}
+            //CanFrameList = list;
         }
 
         private void SetWorkDirectory(object o)
@@ -797,7 +801,8 @@ namespace SofarHVMExe.ViewModel
 
         private void SaveData(object o)
         {
-            if (JsonConfigHelper.WirteConfigFile(fileCfgModel))
+            if (DataManager.UpdatePrjConfigModel(prjCfgModel))
+            //if (JsonConfigHelper.WirteConfigFile(fileCfgModel))
             {
                 MessageBox.Show("保存成功！", "提示");
             }

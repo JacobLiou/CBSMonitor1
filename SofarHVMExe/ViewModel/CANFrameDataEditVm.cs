@@ -22,13 +22,13 @@ namespace SofarHVMExe.ViewModel
 
         public CANFrameDataEditVm(FileConfigModel fileModel, CmdConfigModel selectModel)
         {
-            fileCfgModel = fileModel;
+            //fileCfgModel = fileModel;
             currentCmdCfgModel = selectModel;
 
             Init();
         }
 
-        private FileConfigModel fileCfgModel = null;
+        //private FileConfigModel fileCfgModel = null;
         private CmdConfigModel currentCmdCfgModel = null;
         private Action updateAction;
 
@@ -76,15 +76,14 @@ namespace SofarHVMExe.ViewModel
         {
             SaveCommand = new SimpleCommand(SaveData);
 
-            UpdateModel(fileCfgModel);
+            UpdateModel();
         }
         /// <summary>
         /// 更新model数据
         /// </summary>
         /// <param name="fileCfgModel"></param>
-        public void UpdateModel(FileConfigModel model)
+        public void UpdateModel()
         {
-            fileCfgModel = model;
             UpdateFrameDate();
 
         }//func
@@ -108,8 +107,8 @@ namespace SofarHVMExe.ViewModel
                 else
                 {
                     //连续帧
-                     IsContinue = true;
-                     MultyDataSource = frameData.DataInfos;
+                    IsContinue = true;
+                    MultyDataSource = frameData.DataInfos;
                 }
             }
         }//func 
@@ -127,16 +126,18 @@ namespace SofarHVMExe.ViewModel
             if (_currFrameModel == null)
                 return;
 
+            DataManager.UpdateCanFrameDataModels(_currFrameModel);
+
             //保存到文件
-            if (JsonConfigHelper.WirteConfigFile(fileCfgModel))
-            {
-                updateAction?.Invoke();
-                MessageBox.Show("保存成功！", "提示");
-            }
-            else
-            {
-                MessageBox.Show("保存失败！", "提示");
-            }
+            //if (JsonConfigHelper.WirteConfigFile(fileCfgModel))
+            //{
+            //    updateAction?.Invoke();
+            //    MessageBox.Show("保存成功！", "提示");
+            //}
+            //else
+            //{
+            //    MessageBox.Show("保存失败！", "提示");
+            //}
         }//func
         #endregion
 

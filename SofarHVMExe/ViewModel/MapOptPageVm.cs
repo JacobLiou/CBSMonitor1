@@ -515,11 +515,11 @@ namespace SofarHVMExe.ViewModel
                             LogHelper.WriteLog($"线程取消");
                             break;
                         }
-                        if (selectData != null && IsWriting && selectData.AddressOrName.Equals(item.AddressOrName))
-                        {
-                            LogHelper.WriteLog($"编辑模式取消编辑");
-                            continue;
-                        }
+                        //if (selectData != null && IsWriting && selectData.AddressOrName.Equals(item.AddressOrName))
+                        //{
+                        //    LogHelper.WriteLog($"编辑模式取消编辑");
+                        //    continue;
+                        //}
 
                         //检查是否为开始读取状态
                         if (!startRead)
@@ -570,15 +570,16 @@ namespace SofarHVMExe.ViewModel
                                     timer.Start();
                                     while (true)
                                     {
-                                        //if (!cancelTokenSource.IsCancellationRequested) break;
-                                        //Thread.Sleep(100);
-                                        if (!cancelTokenSource.IsCancellationRequested) break;
+                                        if (cancelTokenSource.IsCancellationRequested) break;
+                                        Thread.Sleep(100);
+                                        if (cancelTokenSource.IsCancellationRequested) break;
 
                                         int result = ReadDataRequestCheck();
                                         if (result == 0)
                                         {
                                             _recvData.ID = 0;
-                                            UpdateDataSource(item.AddressOrName);
+                                            LogHelper.WriteLog($"更新数据状态: {item.AddressOrName},值 {ackValue.ToString()}");
+                                            UpdateDataSource(item.AddressOrName, ackValue.ToString());
                                             break;
                                         }
                                         /*else if (result == 1)
@@ -607,6 +608,7 @@ namespace SofarHVMExe.ViewModel
                             }
                             else
                             {
+                                LogHelper.WriteLog($"更新数据状态: 未找到地址");
                                 UpdateDataSourceTonull(item.AddressOrName, $"变量[{addressOrName}]未找到地址！");
                             }
                         }
@@ -932,7 +934,7 @@ namespace SofarHVMExe.ViewModel
         }
         #endregion
 
-        private void UpdateDataSource(string addressOrName)
+        private void UpdateDataSource(string addressOrName, string addressValue)
         {
             List<MemoryModel> memList = new List<MemoryModel>(DataSource);
             int index = memList.FindIndex((o) =>
@@ -951,7 +953,7 @@ namespace SofarHVMExe.ViewModel
             //将解析数值进行赋值
             System.Windows.Application.Current.Dispatcher.Invoke(() =>
             {
-                mem.Value = ackValue.ToString();
+                mem.Value = addressValue;
             });
 
             //变量名转地址

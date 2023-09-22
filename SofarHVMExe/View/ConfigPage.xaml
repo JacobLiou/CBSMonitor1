@@ -27,13 +27,17 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="auto" />
+                    <ColumnDefinition Width="auto" />
                 </Grid.ColumnDefinitions>
 
                 <TextBox VerticalContentAlignment="Center" Padding="1" Text="{Binding CfgFilePath}" IsReadOnly="True"
                          BorderBrush="White" ToolTip="配置文件路径" ToolTipService.InitialShowDelay="100"/>
-                <Button Grid.Column="1" Content=". . ." Width="25" Height="25" Margin="5 0 0 0" Background="White"
+                <Button Grid.Column="1" Content="导入" Width="50" Height="25" Margin="5 0 0 0" Background="White"
                         BorderBrush="White"
                         Command="{Binding LoadCfgFileCommand}"/>
+                <Button Grid.Column="2" Content="导出" Width="50" Height="25" Margin="5 0 0 0" Background="White"
+                        BorderBrush="White"
+                        Command="{Binding ExportCfgFileCommand}"/>
             </Grid>
 
             <!-- 左侧树控件 -->

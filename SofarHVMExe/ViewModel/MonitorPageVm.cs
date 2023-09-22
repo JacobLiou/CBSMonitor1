@@ -68,6 +68,11 @@ namespace SofarHVMExe.ViewModel
         private List<CurrentEventModel> faultWarningBuffers = new List<CurrentEventModel>();
 
         /// <summary>
+        /// 定时器
+        /// </summary>
+        private System.Threading.Timer timer = null;
+
+        /// <summary>
         /// 排序之后得显示帧信息
         /// </summary>
         private List<SendRecvFrameInfo> sortFrameInfos = new List<SendRecvFrameInfo>();
@@ -187,7 +192,7 @@ namespace SofarHVMExe.ViewModel
             StartWriteFaultLog(); //自动写故障告警信息线程
 
             //StartFaultTask(); //自动清故障显示信息线程
-            System.Threading.Timer timer = new System.Threading.Timer(TimerCallBack, null, 200, 3000);
+            timer = new System.Threading.Timer(TimerCallBack, 0, 200, 2000);
         }
 
         /// <summary>
@@ -362,15 +367,20 @@ namespace SofarHVMExe.ViewModel
         [RelayCommand]
         private void ClearData()
         {
-            FrameInfoDataSrc.Clear();
+            //FrameInfoDataSrc.Clear();
             SpecialFrameInfo.Clear();
+
+            sortFrameInfos.Clear();
+            FrameInfoDataSrc = new ObservableCollection<SendRecvFrameInfo>(sortFrameInfos);
         }
         public void ClearDataByUnSelectDev(Device dev)
         {
             //if (!dev.Selected)
-            {
-                FrameInfoDataSrc.Clear();
-            }
+            //{
+            //    FrameInfoDataSrc.Clear();
+            //}
+            sortFrameInfos.Clear();
+            FrameInfoDataSrc = new ObservableCollection<SendRecvFrameInfo>(sortFrameInfos);
         }
         private void ShowMsgInfo(object o)
         {
@@ -883,7 +893,7 @@ namespace SofarHVMExe.ViewModel
         }
         private void UpdateRecv(SendRecvFrameInfo newFrameInfo)
         {
-            List<SendRecvFrameInfo> frameInfoList = new List<SendRecvFrameInfo>(FrameInfoDataSrc);
+            List<SendRecvFrameInfo> frameInfoList = new List<SendRecvFrameInfo>(sortFrameInfos);
             List<SendRecvFrameInfo> sendList = new List<SendRecvFrameInfo>();
             List<SendRecvFrameInfo> recvList = new List<SendRecvFrameInfo>();
             foreach (var frameInfo in frameInfoList)
@@ -1053,7 +1063,7 @@ namespace SofarHVMExe.ViewModel
         }
         private void UpdateContinueRecv(SendRecvFrameInfo newFrameInfo)
         {
-            List<SendRecvFrameInfo> frameInfoList = new List<SendRecvFrameInfo>(FrameInfoDataSrc);
+            List<SendRecvFrameInfo> frameInfoList = new List<SendRecvFrameInfo>(sortFrameInfos);
             List<SendRecvFrameInfo> sendList = new List<SendRecvFrameInfo>();
             List<SendRecvFrameInfo> recvList = new List<SendRecvFrameInfo>();
             foreach (var frameInfo in frameInfoList)
@@ -1384,14 +1394,20 @@ namespace SofarHVMExe.ViewModel
         /// <param name="obj"></param>
         private void TimerCallBack(object obj)
         {
-            //不是当前界面则不更新显示
-            if (GlobalManager.Instance().CurrentPage != GlobalManager.Page.Monitor)
-                return;
+            try
+            {
+                //不是当前界面则不更新显示
+                if (GlobalManager.Instance().CurrentPage != GlobalManager.Page.Monitor)
+                    return;
 
-            if (!CheckConnect())
-                return;
+                if (!CheckConnect())
+                    return;
 
-            FrameInfoDataSrc = new ObservableCollection<SendRecvFrameInfo>(sortFrameInfos);
+                FrameInfoDataSrc = new ObservableCollection<SendRecvFrameInfo>(sortFrameInfos);
+            }
+            catch (Exception ex)
+            {
+            }
         }
         #endregion
 

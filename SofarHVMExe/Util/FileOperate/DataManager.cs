@@ -238,6 +238,7 @@ namespace SofarHVMExe.Utilities
                 {
                     keys = ProperyConvert(frame);
                     keys.Add("GroupID", item.Group.ToString());
+                    keys[nameof(frame.Type)] = frame.Type.ToString();
                     SqliteHelper.ExecuteInsert("EventInfo", keys);
                 }
             }
@@ -456,6 +457,7 @@ namespace SofarHVMExe.Utilities
                 {
                     var info = new EventInfoModel();
                     var cmd = MapperToModel<EventInfoModel, EventInfoDal>(info, config);
+                    cmd.Type = (EventType)Enum.Parse(typeof(EventType), config.Type);
                     @event.InfoModels.Add(cmd);
                 }
             }

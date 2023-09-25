@@ -386,6 +386,7 @@ namespace Communication.Can
         /// </summary>
         public void RsetEcanMode()
         {
+            return;
             EcanMethod.ResetCAN(devType, devIndex, 0);
         }
         #endregion

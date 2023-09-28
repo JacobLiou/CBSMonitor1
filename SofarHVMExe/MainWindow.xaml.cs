@@ -34,17 +34,14 @@ namespace SofarHVMExe
 
         private void SetVersionTitle(string version)
         {
-            // 判断是否是debug模式
+            // 判断是否是Debug模式
             bool isDebugBuild = false;
             var assembly = Assembly.GetExecutingAssembly();
             var debugAttributes = assembly.GetCustomAttributes(typeof(DebuggableAttribute), false);
-            if (debugAttributes.Length > 0)
+            if (debugAttributes.Length > 0 && debugAttributes[0] is DebuggableAttribute debuggable)
             {
-                if (debugAttributes[0] is DebuggableAttribute debuggable)
-                {
-                    isDebugBuild = (debuggable.DebuggingFlags & DebuggableAttribute.DebuggingModes.Default) ==
+                isDebugBuild = (debuggable.DebuggingFlags & DebuggableAttribute.DebuggingModes.Default) ==
                                    DebuggableAttribute.DebuggingModes.Default;
-                }
             }
 
             if (isDebugBuild)

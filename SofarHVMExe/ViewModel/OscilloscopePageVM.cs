@@ -41,6 +41,8 @@ using NPOI.SS.Formula.Atp;
 using NPOI.Util;
 using SofarHVMExe.Utilities.Global;
 using Microsoft.Win32;
+using System.Linq.Expressions;
+using System.Data;
 
 namespace SofarHVMExe.ViewModel
 {
@@ -1852,11 +1854,15 @@ namespace SofarHVMExe.ViewModel
 
     public partial class FaultWaveRecordVM : ObservableObject
     {
-        private const ushort FaultWaveInfoSize = 8;  // 字长16bits
-        private const ushort FaultWavePackSize = 8 * 12; // 字长16bits，一个数据块接收12列数据
-        private const int FaultWaveNum = 8;   
-        private const double SamplingRate = 1;     // 4050;
-        private const int FaultWaveFileBegin = 200;
+        private const ushort FaultWaveInfoSize = 5;       // 录波信息大小，字长16bits
+        private const int FaultWaveNum = 8;               // 录波波形数量
+        private const ushort FaultWavePackSize = FaultWaveNum * 12;  // 一个数据块接收12列数据，字长16bits
+        
+        private const double SamplingRate = 1;            // 采样频率, 4050Hz;
+        private const int FaultWaveFileBegin = 200;       // 录波数据文件起始编号
+
+        private const int FaultWaveTotalLength = 600;
+        private const int FaultTrigPosition = 400;        // 每个波形600点数据，前400为故障前数据，后200为故障后数据
 
         private string _statusMsg = "";
         public string StatusMsg
@@ -1878,7 +1884,7 @@ namespace SofarHVMExe.ViewModel
         public ConcurrentQueue<CAN_OBJ> RxQueue = new();
 
 
-        public void ShowStatusMsg(string msg, string type = "default", int timeMs = -1)
+        public void ShowStatusMsg(string msg, string type = "default", bool toLog = true, int timeMs = -1)
         {
             Application.Current.Dispatcher.BeginInvoke(async () =>
             {
@@ -1979,7 +1985,6 @@ namespace SofarHVMExe.ViewModel
             FaultWavesInfoList.Add(new FaultWavesInfoVM()
             {
                 Index = 4,
-                TrigIndex = 150,
                 IsSelectedToPlot = false,
                 FaultType = (FaultWavesInfoVM.FaultTypeEnum)5,
                 RecordTime = DateTime.MaxValue.ToString("yyyy/MM/dd-HH:mm:ss"),
@@ -1989,7 +1994,6 @@ namespace SofarHVMExe.ViewModel
             FaultWavesInfoList.Add(new FaultWavesInfoVM()
             {
                 Index = 3,
-                TrigIndex = 50,
                 IsSelectedToPlot = false,
                 FaultType = FaultWavesInfoVM.FaultTypeEnum.GRID_PRD_BUS_VOLT_UNBALANCE_AVG,
                 RecordTime = DateTime.MinValue.ToString("yyyy/MM/dd-HH:mm:ss"),
@@ -2055,7 +2059,7 @@ namespace SofarHVMExe.ViewModel
         private ScottPlot.WpfPlot _plotCtrl = new WpfPlot();
         public ScottPlot.WpfPlot PlotCtrl => _plotCtrl;
 
-        private ScottPlot.Plottable.VLine _trigIndexVLine;
+        private ScottPlot.Plottable.VLine _faultBeginVLine;
         private ScottPlot.Plottable.HLine _currentHLine;
         private ScottPlot.Plottable.HLine _voltageHLine;
 
@@ -2093,10 +2097,12 @@ namespace SofarHVMExe.ViewModel
             _voltageHLine.PositionLabelOppositeAxis = true;
             _voltageHLine.IsVisible = false;
             
-            _trigIndexVLine = PlotCtrl.Plot.AddVerticalLine(x: 0, color: System.Drawing.Color.Red, style:LineStyle.Dash);
-            _trigIndexVLine.PositionLabel = true;
-            _trigIndexVLine.PositionLabelOppositeAxis = true;
-            _trigIndexVLine.PositionFormatter = d => d.ToString("N4");
+            _faultBeginVLine = PlotCtrl.Plot.AddVerticalLine(x: 0, color: System.Drawing.Color.Red, style:LineStyle.Dash);
+            _faultBeginVLine.PositionLabel = true;
+            _faultBeginVLine.PositionLabelOppositeAxis = true;
+            _faultBeginVLine.PositionFormatter = d => d.ToString("N4");
+            _faultBeginVLine.X = FaultTrigPosition / SamplingRate;
+            _faultBeginVLine.IsVisible = false;
 
             PlotCtrl.Render();
         }
@@ -2130,10 +2136,9 @@ namespace SofarHVMExe.ViewModel
                         SelectedFaultWaves[k].WavePlot.Ys = faultWavesData[k].ToArray();
                         SelectedFaultWaves[k].WavePlot.MaxRenderIndex = faultWavesData[k].Count - 1;
                     }
-
-                    _trigIndexVLine.X = FaultWavesInfoList[i].TrigIndex / SamplingRate;
                 }
             }
+            _faultBeginVLine.IsVisible = true;
             PlotCtrl.Plot.AxisAuto();
             PlotCtrl.Refresh();
         }
@@ -2210,21 +2215,27 @@ namespace SofarHVMExe.ViewModel
                         continue;
                     }
 
-                    if (ReadFaultWavesByIndex(dstAddr, fetchIndexList[i], out int faultTypeIndex, out int trigIndex, 
+                    if (ReadFaultWavesByIndex(dstAddr, fetchIndexList[i], out int faultTypeIndex, out int recordIndex, 
                             out string recordTime, out List<List<double>> wavesList))
                     {
                         if (!IsReceiving)
                         {
                             return;
                         }
-                        var curWaveIdx = fetchIndexList[i];
+
+                        if (!RearrangeWaveData(ref wavesList, recordIndex))
+                        {
+                            ShowStatusMsg($"解析第{fetchIndexList[i]}个故障录波失败");
+                            continue;
+                        }
+
+                        int curWaveIdx = fetchIndexList[i];
                         Application.Current.Dispatcher.BeginInvoke(() =>
                         {
                             FaultWavesInfoList.Add(new FaultWavesInfoVM()
                             {
                                 Index = curWaveIdx,
                                 FaultType = (FaultWavesInfoVM.FaultTypeEnum)faultTypeIndex,
-                                TrigIndex = trigIndex,
                                 RecordTime = recordTime,
                                 FaultWavesData = wavesList,
                             });
@@ -2254,11 +2265,11 @@ namespace SofarHVMExe.ViewModel
         }
         
 
-        private bool ReadFaultWavesByIndex(byte dstAddr, int waveIndex, out int faultTypeIndex, out int trigIndex, 
+        private bool ReadFaultWavesByIndex(byte dstAddr, int waveIndex, out int faultTypeIndex, out int recordIndex, 
                                                 out string recordTime, out List<List<double>> wavesList)
         {
             faultTypeIndex = -1;
-            trigIndex = -1;
+            recordIndex = -1;
             recordTime = DateTime.MinValue.ToString("yyyy/MM/dd-HH:mm:ss");
             wavesList = new List<List<double>>();
             for (int i = 0; i < FaultWaveNum; i++)
@@ -2390,37 +2401,19 @@ namespace SofarHVMExe.ViewModel
             }
 
             faultTypeIndex = rxWaveInfoData[1] << 8 | rxWaveInfoData[0];
-            trigIndex = rxWaveInfoData[3] << 8 | rxWaveInfoData[2];
-            var year = 2000 + (rxWaveInfoData[5] << 8 | rxWaveInfoData[4]);
-            var month = rxWaveInfoData[7] << 8 | rxWaveInfoData[6];
-            var day = rxWaveInfoData[9] << 8 | rxWaveInfoData[8];
-            var hour = rxWaveInfoData[11] << 8 | rxWaveInfoData[10];
-            var minute = rxWaveInfoData[13] << 8 | rxWaveInfoData[12];
-            var second = rxWaveInfoData[15] << 8 | rxWaveInfoData[14];
+            recordIndex = rxWaveInfoData[3] << 8 | rxWaveInfoData[2];
+            var year = 2000 + rxWaveInfoData[4];
+            var month = rxWaveInfoData[5];
+            var day = rxWaveInfoData[6];
+            var hour =  rxWaveInfoData[7];
+            var minute =  rxWaveInfoData[8];
+            var second =rxWaveInfoData[9];
             
-            //try
-            //{
-            //    recordTime = new DateTime(
-            //        year: year,
-            //        month: month,
-            //        day: day,
-            //        hour: hour,
-            //        minute: minute,
-            //        second: second
-            //    ).ToString("yyyy/MM/dd-HH:mm:ss");
-                
-            //}
-            //catch (Exception e)
-            //{
-            //    ShowStatusMsg($"读取第{waveIndex}号录波的录波时间不合法");
-            //    return false;
-            //}
-
             recordTime = $"{year:D4}/{month:D2}/{day:D2}-{hour:D2}:{minute:D2}:{second:D2}";
 
             MultiLanguages.Common.LogHelper.WriteLog($"第{waveIndex}号录波的录波信息: " 
                                                      + $"故障类型【{faultTypeIndex}】；"
-                                                     + $"故障起始索引号【{trigIndex}】；"
+                                                     + $"故障起始索引号【{recordIndex}】；"
                                                      + $"录波时间【{recordTime.ToString()}】");
 
 
@@ -2434,7 +2427,7 @@ namespace SofarHVMExe.ViewModel
                 readTotalCount += 1;
             }
 
-            for (int i = 0; i < readTotalCount; i++)
+            for (int i = 0; i < readTotalCount; i++)  // 请求数据块
             {
                 if (!IsReceiving)
                 {
@@ -2451,43 +2444,96 @@ namespace SofarHVMExe.ViewModel
                     0, 0, 0
                 };
 
-                // Send request and get response
-                RxQueue.Clear();
-                if (!OscilloscopePageVM.SendFrameCan1(_ecanHelper, txFaultWaveCanID.ID, txFaultWaveData))
+                sbyte retry = 5;
+                do
                 {
-                    return false;
-                }
+                    retry--;
 
-                MultiLanguages.Common.LogHelper.WriteLog($"已请求第{waveIndex}号录波的录波数据块{readOffset}");
-
-
-                if (!OscilloscopePageVM.ReadFileDataFrames(RxQueue, rxFaultWaveCanID, readOffset, FaultWavePackSize * 2,
-                                                            out var rxWaveData, 30000)
-                    || rxWaveData.Count != FaultWavePackSize * 2)
-                {
-                    return false;
-                }
-
-                
-
-                string dataStr = "";
-                for (int p = 0; p < rxWaveData.Count; p += FaultWaveNum * 2)
-                {
-                    for (int k = 0; k < FaultWaveNum; k++)
+                    // Send request and get response
+                    RxQueue.Clear();
+                    if (!OscilloscopePageVM.SendFrameCan1(_ecanHelper, txFaultWaveCanID.ID, txFaultWaveData))
                     {
-                        short data = (short)(rxWaveData[p + 2 * k + 1] << 8 | rxWaveData[p + 2 * k]);
-                        wavesList[k].Add(data);
-                        dataStr += data.ToString() + " "; 
+                        continue;
                     }
-                    dataStr += "\n";
-                }
 
-                MultiLanguages.Common.LogHelper.WriteLog($"第{waveIndex}号录波的录波数据块{readOffset}解析数据: \n" + dataStr);
-                ShowStatusMsg($"已读取第{waveIndex}号录波的第{readOffset}/{readTotalCount}个录波数据块...");
+                    MultiLanguages.Common.LogHelper.WriteLog($"已请求第{waveIndex}号录波的录波数据块{readOffset}");
+
+
+                    if (!OscilloscopePageVM.ReadFileDataFrames(RxQueue, rxFaultWaveCanID, readOffset,
+                            FaultWavePackSize * 2,
+                            out var rxWaveData, 5000)
+                        || rxWaveData.Count != FaultWavePackSize * 2)
+                    {
+                        continue;
+                    }
+
+                    string dataStr = "";
+                    for (int p = 0; p < rxWaveData.Count; p += FaultWaveNum * 2)
+                    {
+                        for (int k = 0; k < FaultWaveNum; k++)
+                        {
+                            short data = (short)(rxWaveData[p + 2 * k + 1] << 8 | rxWaveData[p + 2 * k]);
+                            wavesList[k].Add(data);
+                            dataStr += data.ToString() + " ";
+                        }
+
+                        dataStr += "\n";
+                    }
+
+                    MultiLanguages.Common.LogHelper.WriteLog($"第{waveIndex}号录波的录波数据块{readOffset}解析数据: \n" + dataStr);
+                    ShowStatusMsg($"已读取第{waveIndex}号录波的第{readOffset}/{readTotalCount}个录波数据块...");
+                    break;
+
+                } while (retry > 0);
+
             }
             
             return true;
         }
+
+
+        /// <summary>
+        /// 在环形数组中整理录波前/后数据
+        /// </summary>
+        /// <param name="wavesDataList"></param>
+        /// <param name="recordIndex"></param>
+        private bool RearrangeWaveData(ref List<List<double>> wavesDataList, int recordIndex)
+        {
+            try
+            {
+                foreach (var wave in wavesDataList)
+                {
+                    var beforeFault = new List<double>(400);
+                    var afterFault = new List<double>(200);
+                    int faultWaveLen = FaultWaveTotalLength - FaultTrigPosition;
+
+                    if (recordIndex + faultWaveLen > FaultWaveTotalLength)
+                    {
+                        afterFault.AddRange(wave.GetRange(recordIndex, FaultWaveTotalLength - recordIndex));
+                        afterFault.AddRange(wave.GetRange(0, recordIndex + faultWaveLen - FaultWaveTotalLength));
+                        beforeFault.AddRange(wave.GetRange(recordIndex + faultWaveLen - FaultWaveTotalLength, FaultTrigPosition));
+                    }
+                    else
+                    {
+                        afterFault.AddRange(wave.GetRange(recordIndex, faultWaveLen));
+                        beforeFault.AddRange(wave.GetRange(recordIndex + faultWaveLen, FaultWaveTotalLength - recordIndex - faultWaveLen));
+                        beforeFault.AddRange(wave.GetRange(0, recordIndex));
+                    }
+
+                    wave.Clear();
+                    wave.AddRange(beforeFault);
+                    wave.AddRange(afterFault);
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                return false;
+            }
+            
+        }
+
 
         [RelayCommand]
         private void StopReadFaultWaves()
@@ -2526,9 +2572,114 @@ namespace SofarHVMExe.ViewModel
                 SelectedFaultWaves[i].WavePlot.Ys = new double[1];
                 SelectedFaultWaves[i].WavePlot.MaxRenderIndex = 0;
             }
-            _trigIndexVLine.X = 0;
             PlotCtrl.Refresh();
         }
+
+        [RelayCommand]
+        private void ImportFaultWaves()
+        {
+            if (FaultWavesInfoList.Any() && 
+                MessageBox.Show("导入故障录波文件将清空当前数据列表，是否继续？", "警告", MessageBoxButton.YesNo) != MessageBoxResult.Yes)
+            {
+                return;
+            }
+
+            FaultWavesInfoList.Clear();
+
+            OpenFileDialog dlg = new OpenFileDialog();
+            dlg.Title = "选择故障录波文件";
+            dlg.Filter = "fw(*.fw)|*.fw";
+            dlg.Multiselect = true;
+            dlg.RestoreDirectory = true;
+            if (dlg.ShowDialog() != true)
+                return;
+
+            Task.Run(() => ParseFaultWavesData(dlg.FileNames));
+        }
+
+        private void ParseFaultWavesData(string[] faultWavesFiles)
+        {
+            var failedFiles = new List<string>();
+
+            for(int n = 0; n < faultWavesFiles.Length; n++)
+            {
+                try
+                {
+                    var fwDataBytes = File.ReadAllBytes(faultWavesFiles[n]);
+
+                    // 录波信息
+                    var fwInfo = fwDataBytes.Take(FaultWaveInfoSize * 2).ToArray();
+                    int faultTypeIndex = fwInfo[1] << 8 | fwInfo[0];
+                    int recordIndex = fwInfo[3] << 8 | fwInfo[2];
+                    int year = 2000 + fwInfo[4];
+                    int month = fwInfo[5];
+                    int day = fwInfo[6];
+                    int hour = fwInfo[7];
+                    int minute = fwInfo[8];
+                    int second = fwInfo[9];
+                    string recordTime = $"{year:D4}/{month:D2}/{day:D2}-{hour:D2}:{minute:D2}:{second:D2}";
+
+
+                    // 录波数据点
+                    fwDataBytes = fwDataBytes.Skip(FaultWaveInfoSize * 2).ToArray();
+
+                    var wavesDataList = new List<List<double>>();
+                    for (int i = 0; i < FaultWaveNum; i++)
+                    {
+                        wavesDataList.Add(new List<double>());
+                    }
+                   
+                    int readTotalCount = fwDataBytes.Length / (FaultWavePackSize * 2);
+                    if (fwDataBytes.Length % FaultWavePackSize > 0)
+                    {
+                        readTotalCount += 1;
+                    }
+
+                    for (int i = 0; i < readTotalCount; i++)
+                    {
+                        var singlePack = fwDataBytes.Skip(i * FaultWavePackSize * 2).Take(FaultWavePackSize * 2).ToArray();
+                        for (int p = 0; p < singlePack.Length; p += FaultWaveNum * 2)
+                        {
+                            for (int k = 0; k < FaultWaveNum; k++)
+                            {
+                                short data = (short)(singlePack[p + 2 * k + 1] << 8 | singlePack[p + 2 * k]);
+                                wavesDataList[k].Add(data);
+                            }
+                        }
+                    }
+
+                    // 数据整理
+                    if (!RearrangeWaveData(ref wavesDataList, recordIndex))
+                    {
+                        failedFiles.Add(failedFiles[n]);
+                        continue;
+                    }
+
+                    // 数据录入
+                    int curWaveIdx = n;
+                    Application.Current.Dispatcher.BeginInvoke(() =>
+                    {
+                        FaultWavesInfoList.Add(new FaultWavesInfoVM()
+                        {
+                            Index = curWaveIdx,
+                            FaultType = (FaultWavesInfoVM.FaultTypeEnum)faultTypeIndex,
+                            RecordTime = recordTime,
+                            FaultWavesData = wavesDataList,
+                        });
+                        PlotCtrl.Refresh();
+                        ShowStatusMsg($"故障录波文件{Path.GetFileName(faultWavesFiles[curWaveIdx])}加载成功", timeMs: 1000);
+                    });
+
+
+
+                }
+                catch (Exception ex)
+                {
+                    failedFiles.Add(failedFiles[n]);
+                }
+            }
+        }
+
 
         #endregion
 
@@ -2553,9 +2704,9 @@ namespace SofarHVMExe.ViewModel
 
         public string RecordTime { get; set; } = "";
 
+        public DateTime RecordDateTime { get; set; }
+
         public FaultTypeEnum FaultType { get; set; }
-        
-        public int TrigIndex { get; set; } = 0;
 
         public List<List<double>> FaultWavesData { get; set; }
 

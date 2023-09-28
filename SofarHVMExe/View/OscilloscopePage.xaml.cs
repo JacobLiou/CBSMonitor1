@@ -61,9 +61,10 @@ namespace SofarHVMExe.View
         }
 
 
-        private void CoffPathText_OnTextChanged(object sender, TextChangedEventArgs e)
+        private void PathText_OnTextChanged(object sender, TextChangedEventArgs e)
         {
-           CoffPathText.ScrollToHorizontalOffset(5000);
+            if (sender is TextBox txtBox)
+                txtBox.ScrollToHorizontalOffset(5000);
         }
     }
 }

@@ -380,6 +380,15 @@ namespace Communication.Can
             {
             }
         }
+
+        /// <summary>
+        /// 复位Can 状态
+        /// </summary>
+        public void RsetEcanMode()
+        {
+            return;
+            EcanMethod.ResetCAN(devType, devIndex, 0);
+        }
         #endregion
 
         #region 发送操作

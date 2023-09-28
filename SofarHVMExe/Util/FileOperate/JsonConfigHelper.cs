@@ -142,6 +142,24 @@ namespace SofarHVMExe.Utilities
             return ret;
         }
 
+        /// <summary>
+        /// 写入model对象到配置文件中
+        /// 覆盖写入
+        /// 文件格式：GBK
+        /// </summary>
+        /// <param name="configModel">配置model</param>
+        /// <returns></returns>
+        public static bool WirteConfigFile(string filePath)
+        {
+            bool ret = false;
+            lock (_lockObj)
+            {
+                ret = WirteConfigFile(FileConfig, filePath);
+            }
+
+            return ret;
+        }
+
 
         /// <summary>
         /// 读取配置文件到model对象

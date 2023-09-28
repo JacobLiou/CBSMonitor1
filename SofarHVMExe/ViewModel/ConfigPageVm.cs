@@ -21,6 +21,7 @@ using System.Windows.Forms;
 using System.Windows.Input;
 using MessageBox = System.Windows.MessageBox;
 using OpenFileDialog = System.Windows.Forms.OpenFileDialog;
+using SaveFileDialog = Microsoft.Win32.SaveFileDialog;
 
 namespace SofarHVMExe.ViewModel
 {
@@ -52,6 +53,11 @@ namespace SofarHVMExe.ViewModel
             get { return _currentView; }
             set { _currentView = value; OnPropertyChanged(); }
         }
+
+        /// <summary>
+        /// 导出文件路径
+        /// </summary>
+        private string exportFilePath = "";
 
         private string cfgFilePath = "";
         public string CfgFilePath
@@ -131,6 +137,7 @@ namespace SofarHVMExe.ViewModel
 
         #region 命令
         public ICommand LoadCfgFileCommand { get; set; }
+        public ICommand ExportCfgFileCommand { get; set; }
         public ICommand SelectItemChangeCmd => new RelayCommand<DeviceTreeModel>(SelectItemChange);
         #endregion
 
@@ -138,6 +145,7 @@ namespace SofarHVMExe.ViewModel
         private void Init()
         {
             LoadCfgFileCommand = new SimpleCommand(LoadCfgFile);
+            ExportCfgFileCommand = new SimpleCommand(ExportCfgFile);
 
             DeviceTreeModels.Clear();
             DeviceTreeModels.Add(new DeviceTreeModel("项目配置", 0, 0));
@@ -254,10 +262,68 @@ namespace SofarHVMExe.ViewModel
                 return;
 
             CfgFilePath = dlg.FileName;
+            var load = new LoadWindow();
+            load.DoWork = LoadConfigInfo;
+            load.Owner = App.Current.MainWindow;
+            load.ShowDialog();
+
+            MessageBox.Show("更新配置成功", "提示");
+        }
+
+        /// <summary>
+        /// 导出配置文件
+        /// </summary>
+        /// <param name="o"></param>
+        private void ExportCfgFile(object o)
+        {
+            //加载配置文件
+            SaveFileDialog sfd = new SaveFileDialog();
+            sfd.Title = "导出配置文件";
+            sfd.Filter = "配置文件(*.json)|*.json";
+            sfd.RestoreDirectory = true;
+            if (sfd.ShowDialog() != true)
+                return;
+
+            exportFilePath = sfd.FileName;
+            var load = new LoadWindow();
+            load.DoWork = ExportConfigInfo;
+            load.Owner = App.Current.MainWindow;
+            load.ShowDialog();
+
+            MessageBox.Show("导出配置成功", "提示");
+        }
+
+        /// <summary>
+        /// 加载配置文件
+        /// </summary>
+        /// <returns></returns>
+        private bool LoadConfigInfo()
+        {
             AppCfgHelper.WriteField("配置文件路径", CfgFilePath);
+
             //读取配置文件内容更新model, 再更新界面显示
             UpdateConfig(true);
-            MessageBox.Show("更新配置成功", "提示");
+
+            // 刷新当前界面，重新获取数据源
+            pfjCfgPageVm = new ProjectCfgPageVm();
+            pfjCfgPageVm.GetPrjCfgModel();
+            CurrentView = pfjCfgPageVm;
+            return true;
+        }
+
+        /// <summary>
+        /// 导出配置文件
+        /// </summary>
+        /// <returns></returns>
+        private bool ExportConfigInfo()
+        {
+            // 加载数据库文件,读取数据库
+            JsonConfigHelper.FileConfig = DataManager.ReadData();
+
+            // 导出配置文件
+            JsonConfigHelper.WirteConfigFile(exportFilePath);
+
+            return true;
         }
 
         /// <summary>
@@ -290,11 +356,7 @@ namespace SofarHVMExe.ViewModel
         {
             if (isRefresh)
             {
-                // 卡主线程，禁止操作，后期的话，加等待窗体
-                App.Current.Dispatcher.Invoke(() =>
-                {
-                    JsonConfigHelper.ReadConfigFile_Temp();
-                });
+                JsonConfigHelper.ReadConfigFile_Temp();
             }
 
             //这里没有必要更新所有的，更新当前的页面数据即可

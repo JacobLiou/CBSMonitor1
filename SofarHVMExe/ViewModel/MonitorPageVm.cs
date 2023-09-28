@@ -66,6 +66,16 @@ namespace SofarHVMExe.ViewModel
         private string recvTime = "";
         //private List<string> faultWarningBuffers = new List<string>(); 
         private List<CurrentEventModel> faultWarningBuffers = new List<CurrentEventModel>();
+
+        /// <summary>
+        /// 定时器
+        /// </summary>
+        private System.Threading.Timer timer = null;
+
+        /// <summary>
+        /// 排序之后得显示帧信息
+        /// </summary>
+        private List<SendRecvFrameInfo> sortFrameInfos = new List<SendRecvFrameInfo>();
         #endregion
 
 
@@ -182,7 +192,9 @@ namespace SofarHVMExe.ViewModel
             StartWriteFaultLog(); //自动写故障告警信息线程
 
             //StartFaultTask(); //自动清故障显示信息线程
+            timer = new System.Threading.Timer(TimerCallBack, 0, 200, 2000);
         }
+
         /// <summary>
         /// 更新model数据
         /// </summary>
@@ -355,15 +367,20 @@ namespace SofarHVMExe.ViewModel
         [RelayCommand]
         private void ClearData()
         {
-            FrameInfoDataSrc.Clear();
+            //FrameInfoDataSrc.Clear();
             SpecialFrameInfo.Clear();
+
+            sortFrameInfos.Clear();
+            FrameInfoDataSrc = new ObservableCollection<SendRecvFrameInfo>(sortFrameInfos);
         }
         public void ClearDataByUnSelectDev(Device dev)
         {
             //if (!dev.Selected)
-            {
-                FrameInfoDataSrc.Clear();
-            }
+            //{
+            //    FrameInfoDataSrc.Clear();
+            //}
+            sortFrameInfos.Clear();
+            FrameInfoDataSrc = new ObservableCollection<SendRecvFrameInfo>(sortFrameInfos);
         }
         private void ShowMsgInfo(object o)
         {
@@ -383,7 +400,7 @@ namespace SofarHVMExe.ViewModel
             CmdGrpConfigModel cmdGrpConfigModel = fileCfgModel.CmdModels[selectCmdGrpModel.Index];
             cmdGrpConfigModel.cmdConfigModels = CmdDataSource.ToList();
 
-            if(DataManager.UpdateCmdGrpConfig(fileCfgModel.CmdModels[selectCmdGrpModel.Index]))
+            if (DataManager.UpdateCmdGrpConfig(fileCfgModel.CmdModels[selectCmdGrpModel.Index]))
             //if (JsonConfigHelper.WirteConfigFile(fileCfgModel))
             {
                 MessageBox.Show("保存成功！", "提示");
@@ -876,7 +893,7 @@ namespace SofarHVMExe.ViewModel
         }
         private void UpdateRecv(SendRecvFrameInfo newFrameInfo)
         {
-            List<SendRecvFrameInfo> frameInfoList = new List<SendRecvFrameInfo>(FrameInfoDataSrc);
+            List<SendRecvFrameInfo> frameInfoList = new List<SendRecvFrameInfo>(sortFrameInfos);
             List<SendRecvFrameInfo> sendList = new List<SendRecvFrameInfo>();
             List<SendRecvFrameInfo> recvList = new List<SendRecvFrameInfo>();
             foreach (var frameInfo in frameInfoList)
@@ -1046,7 +1063,7 @@ namespace SofarHVMExe.ViewModel
         }
         private void UpdateContinueRecv(SendRecvFrameInfo newFrameInfo)
         {
-            List<SendRecvFrameInfo> frameInfoList = new List<SendRecvFrameInfo>(FrameInfoDataSrc);
+            List<SendRecvFrameInfo> frameInfoList = new List<SendRecvFrameInfo>(sortFrameInfos);
             List<SendRecvFrameInfo> sendList = new List<SendRecvFrameInfo>();
             List<SendRecvFrameInfo> recvList = new List<SendRecvFrameInfo>();
             foreach (var frameInfo in frameInfoList)
@@ -1107,7 +1124,7 @@ namespace SofarHVMExe.ViewModel
                 if (GlobalManager.Instance().CurrentPage != GlobalManager.Page.Monitor)
                     return;
 
-                List<SendRecvFrameInfo> sortFrameInfos = frameInfos;
+                sortFrameInfos = frameInfos;
                 if (sortByCfg)
                 {
                     sortFrameInfos = SortByFrameCfg(frameInfos);
@@ -1117,13 +1134,13 @@ namespace SofarHVMExe.ViewModel
                 //Task.Factory.StartNew(() => //这里不能用多线程和BeginInvoke，会导致多帧的接收数据在界面重叠到一行
                 //{
 
-                if (!CheckConnect())
-                    return;
+                //if (!CheckConnect())
+                //    return;
 
-                System.Windows.Application.Current?.Dispatcher.Invoke(() =>
-                {
-                    FrameInfoDataSrc = new ObservableCollection<SendRecvFrameInfo>(sortFrameInfos);
-                });
+                //System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+                //{
+                //    FrameInfoDataSrc = new ObservableCollection<SendRecvFrameInfo>(sortFrameInfos);
+                //});
                 //});
 
             }
@@ -1371,7 +1388,27 @@ namespace SofarHVMExe.ViewModel
             });
         }
 
+        /// <summary>
+        /// 定时器 刷新界面
+        /// </summary>
+        /// <param name="obj"></param>
+        private void TimerCallBack(object obj)
+        {
+            try
+            {
+                //不是当前界面则不更新显示
+                if (GlobalManager.Instance().CurrentPage != GlobalManager.Page.Monitor)
+                    return;
 
+                if (!CheckConnect())
+                    return;
+
+                FrameInfoDataSrc = new ObservableCollection<SendRecvFrameInfo>(sortFrameInfos);
+            }
+            catch (Exception ex)
+            {
+            }
+        }
         #endregion
 
     }//class

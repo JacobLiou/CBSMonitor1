@@ -47,11 +47,13 @@
     <Compile Remove="ViewModel\DownloadPageVm-4-19.cs" />
     <Compile Remove="ViewModel\DownloadPageVm_4-10.cs" />
     <Compile Remove="ViewModel\DownloadPageVm_node.cs" />
+    <Compile Remove="View\WinLoading.cs" />
   </ItemGroup>
 
   <ItemGroup>
     <None Remove="3rdParty\ECAN\ECanVci.h" />
     <None Remove="App.config" />
+    <None Remove="Resource\loading.png" />
     <None Remove="Resource\logo.ico" />
   </ItemGroup>
 
@@ -89,6 +91,7 @@
 
   <ItemGroup>
     <Resource Include="Resource\date.png" />
+    <Resource Include="Resource\loading.png" />
     <Resource Include="Resource\logo.ico">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </Resource>

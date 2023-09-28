@@ -24,6 +24,7 @@ using MessageBox = System.Windows.MessageBox;
 using SofarHVMExe.SubPubEvent;
 using log4net.Util;
 using System.Reflection.Metadata;
+using System.Text.Json.Serialization;
 
 namespace SofarHVMExe.ViewModel
 {
@@ -277,6 +278,8 @@ namespace SofarHVMExe.ViewModel
             {
                 CanErrInfo = value;
             });
+
+            CommManager.Instance().GetCanHelper().RsetEcanMode();
         }
         private void UpdataUILock(bool locked)
         {
@@ -291,10 +294,16 @@ namespace SofarHVMExe.ViewModel
             List<string> list = new List<string>();
             list.Add("无");
             list.AddRange(devs);
-            System.Windows.Application.Current?.Dispatcher.BeginInvoke(() =>
+
+            // 对比两个集合是否一致
+
+            if (!string.Join('-', ConnectDevs.ToList()).Equals(string.Join('-', list)))
             {
-                ConnectDevs = list;
-            });
+                System.Windows.Application.Current?.Dispatcher.BeginInvoke(() =>
+                {
+                    ConnectDevs = list;
+                });
+            }
         }
         private void UpdateSelectDev(StatusBarOption option, string value)
         {

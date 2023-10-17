@@ -259,7 +259,7 @@ namespace SofarHVMExe.ViewModel
         }
         private void StartSend(object o)
         {
-            if (!CheckConnect())
+            if (!CheckConnect(true))
                 return;
 
             if (cmdDataSource == null)
@@ -577,7 +577,7 @@ namespace SofarHVMExe.ViewModel
         /// 检查Can连接
         /// </summary>
         /// <returns></returns>
-        private bool CheckConnect(bool hint = true)
+        private bool CheckConnect(bool hint = false)
         {
             if (!ecanHelper.IsConnected)
             {

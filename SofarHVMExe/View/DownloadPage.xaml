@@ -56,7 +56,7 @@
                                 <TextBlock Text="数据块个数" VerticalAlignment="Center" />
                                 <TextBox Text="{Binding BlockNum}" VerticalContentAlignment="Center" Width="40" Height="25" Margin="5 0 0 0" IsReadOnly="True" />
                                 <TextBlock Text="数据块大小" VerticalAlignment="Center" Margin="10 0 0 0" />
-                                <TextBox Text="{Binding BlockSize}" VerticalContentAlignment="Center" Width="40" Height="25" Margin="5 0 0 0" IsReadOnly="True" />
+                                <TextBox Text="{Binding BlockSize}" VerticalContentAlignment="Center" Width="40" Height="25" Margin="5 0 0 0"/>
                                 <TextBlock Text="间隔时间(ms)" VerticalAlignment="Center" Margin="10 0 0 0" />
                                 <TextBox Text="{Binding SendInterval}" VerticalContentAlignment="Center" Width="40" Height="25" Margin="5 0 0 0"/>
                                 <TextBlock Text="最大补包次数" VerticalAlignment="Center" Margin="10 0 0 0" Visibility="Collapsed" />
@@ -77,17 +77,22 @@
                         <DockPanel Margin="0 15 0 0">
                             <TextBlock Text="选择固件" VerticalAlignment="Center" />
                             <ComboBox Margin="10 0 0 0" Width="80" Height="25" VerticalContentAlignment="Center" HorizontalAlignment="Left"
-                                ItemsSource="{Binding FirmwareList}"
                                 SelectedIndex="{Binding FirmwareIndex}">
+                                <ComboBoxItem>PCS-M</ComboBoxItem>
+                                <ComboBoxItem>PCS-S</ComboBoxItem>
+                                <ComboBoxItem>BCU</ComboBoxItem>
+                                <ComboBoxItem>BMU</ComboBoxItem>
                             </ComboBox>
                             <StackPanel Orientation="Horizontal" Visibility="{Binding IsTiming}" >
                                 <TextBlock  Margin="10 0 0 0" Text="文件类型"  VerticalAlignment="Center" />
                                 <ComboBox Margin="10 0 0 0" Width="80" Height="25" VerticalContentAlignment="Center" HorizontalAlignment="Left"
                                 SelectedIndex="{Binding FileNumber}">
                                     <ComboBoxItem>APP</ComboBoxItem>
-                                    <ComboBoxItem>CORE</ComboBoxItem>
                                     <ComboBoxItem>SOFAR</ComboBoxItem>
                                 </ComboBox>
+                                <TextBlock Text="51-间隔时间(ms)" VerticalAlignment="Center" Margin="10 0 0 0" />
+                                <TextBox Text="{Binding TempInterval}" VerticalContentAlignment="Center" Width="40" Height="25" Margin="5 0 0 0"/>
+
                                 <TextBlock Text="升级类型" VerticalAlignment="Center" Margin="10 0 0 0" Visibility="Collapsed"/>
                                 <ComboBox VerticalContentAlignment="Center" Width="80" Height="27" Margin="10 0 0 0" Visibility="Collapsed">
                                     <ComboBoxItem>定时升级</ComboBoxItem>

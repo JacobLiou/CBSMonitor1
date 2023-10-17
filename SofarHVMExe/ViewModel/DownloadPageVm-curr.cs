@@ -30,6 +30,7 @@ using MessageBox = System.Windows.MessageBox;
 using SofarHVMExe.Util.TI;
 using System.Windows;
 using NPOI.OpenXmlFormats.Spreadsheet;
+using NPOI.OpenXmlFormats;
 
 namespace SofarHVMExe.ViewModel
 {
@@ -132,9 +133,13 @@ namespace SofarHVMExe.ViewModel
             { 0x91, "PFC" },
         };
         static AutoResetEvent eventResetEvent = new AutoResetEvent(false);
+        private int upgradeExecuteResult = -1;
+        System.Timers.Timer t1 = new System.Timers.Timer(500); //启动查询状态的定时器
         #endregion
 
         #region 属性
+        public int TempInterval { get; set; } = 100;
+
         private byte targetAddr = 0x0; //目标设备地址，广播0x0，否则为单台升级
         public string TargetAddr
         {
@@ -214,7 +219,7 @@ namespace SofarHVMExe.ViewModel
                 OnPropertyChanged();
             }
         }
-        private int sendInterval = 5; //发送帧间隔，默认5ms
+        private int sendInterval = 3; //发送帧间隔，默认5ms
         public int SendInterval
         {
             get => sendInterval;
@@ -266,8 +271,8 @@ namespace SofarHVMExe.ViewModel
                 }
             }
         }
-        private short chipRole = 0x2D; //芯片角色0x24
-        public short ChipRole
+        private short? chipRole = null; //芯片角色
+        public short? ChipRole
         {
             get => chipRole;
             set
@@ -284,21 +289,18 @@ namespace SofarHVMExe.ViewModel
                 return ASCIIEncoding.Default.GetBytes(chipNumber);
             }
         }
-        private short fileNumber = 0x80;//文件类型编码 0-APP,1-CORE,0x80-SOFAR
+        private short fileNumber = 0x80;//文件类型编码 0-APP,1-CORE(注销),0x80-SOFAR
         public short FileNumber
         {
             get => fileNumber;
             set
             {
-                if (value == 2)
-                    fileNumber = 0x80;
-                else
-                    fileNumber = value;
+                fileNumber = value == 0 ? value : (short)0x80;
 
                 OnPropertyChanged();
             }
         }
-        private Visibility isTiming = Visibility.Collapsed;
+        private Visibility isTiming = Visibility.Visible;
         public Visibility IsTiming
         {
             get => isTiming;
@@ -328,19 +330,21 @@ namespace SofarHVMExe.ViewModel
                 OnPropertyChanged();
             }
         }
-        public List<string> FirmwareList
+        /*public List<string> FirmwareList
         {
             get { return new List<string> { "PCS", "BCU", "BMU" }; }
-        }
-        public int SelectFirmwareIndex { get; set; }    //选择的固件索引
-        private int firmwareIndex = 0;//当前升级的固件下标
+        }*/
+        /// <summary>
+        /// 当前升级的固件下标
+        /// </summary>
+        private int firmwareIndex = 0;
         public int FirmwareIndex
         {
             get => firmwareIndex;
             set
             {
                 firmwareIndex = value;
-                switch (firmwareIndex)
+                /*switch (firmwareIndex)
                 {
                     case 0:
                         IsTiming = Visibility.Hidden;
@@ -357,6 +361,17 @@ namespace SofarHVMExe.ViewModel
                         DeleteFFData = false;
                         ChipRole = 0x2D;
                         break;
+                }*/
+
+                if (firmwareIndex <= 1)
+                {
+                    IsTiming = Visibility.Visible;
+                    DeleteFFData = true;
+                }
+                else
+                {
+                    IsTiming = Visibility.Hidden;
+                    DeleteFFData = false;
                 }
 
                 OnPropertyChanged();
@@ -364,7 +379,13 @@ namespace SofarHVMExe.ViewModel
         }
         public DstAndSrcType[] dstAndSrcTypes
         {
-            get { return typeKey[FirmwareIndex].ToArray(); }
+            //get { return typeKey[FirmwareIndex].ToArray(); }
+            get
+            {
+                int index = FirmwareIndex <= 1 ? 0 : FirmwareIndex - 1;
+
+                return typeKey[index].ToArray();
+            }
         }
         private Dictionary<int, List<DstAndSrcType>> typeKey = new Dictionary<int, List<DstAndSrcType>>()
         {
@@ -473,6 +494,33 @@ namespace SofarHVMExe.ViewModel
                 {
                     firmwareCrc = CRCHelper.ComputeCrc32(fileData, fileLength);
                     this.AnalysisData(fileData);
+
+                    //检查固件文件包
+                    {
+                        bool isChiprole = true;
+                        for (int i = 0; i < firmwareModels.Count; i++)
+                        {
+                            byte _chipRole = firmwareModels[i].FirmwareChipRole;
+                            if (i == 0)
+                            {
+                                ChipRole = _chipRole;
+                            }
+                            else
+                            {
+                                if (ChipRole != _chipRole)
+                                {
+                                    isChiprole = false;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (!isChiprole)
+                        {
+                            MessageBox.Show("选择的升级固件类型与导入文件不匹配！", "导入失败");
+                            return;
+                        }
+                    }
                 }
 
                 //文件数据块总数：等于文件大小/数据块的大小 或者 文件大小/数据块的大小+1
@@ -510,7 +558,7 @@ namespace SofarHVMExe.ViewModel
                         return;
                     }
 
-                    bool isChiprole = true;
+                    /*bool isChiprole = true;
                     foreach (var item in firmwareModels)
                     {
                         if (item.FirmwareChipRole != ChipRole)
@@ -524,7 +572,7 @@ namespace SofarHVMExe.ViewModel
                     {
                         MessageBox.Show("选择的升级固件类型与导入文件不匹配！", "提示");
                         return;
-                    }
+                    }*/
 
                     if (!isBroadcast)
                         targetAddr = DeviceManager.Instance().GetSelectDev();
@@ -609,25 +657,46 @@ namespace SofarHVMExe.ViewModel
 
             //3.校验固件文件接收结果 并进行补包
             ok = false;
-            Thread.Sleep(20);
-            file_recieve_ok_check();
-
-            //4.启动升级请求帧
-            if (FirmwareIndex == 1 || FirmwareIndex == 2)
+            if (file_recieve_ok_check())
             {
-                AddMsg("");
-                if (!StartUpgrade())
+                //4.启动升级请求帧
+                if (FirmwareIndex > 1)
                 {
-                    AddMsg($"升级失败，请再次尝试！！！☹");
-                    ButtonText = "开始更新";
+                    AddMsg("");
+                    if (!StartUpgrade())
+                    {
+                        AddMsg($"升级失败，请再次尝试！！！☹");
+                        ButtonText = "开始更新";
+                        isUpdating = false;
+                        return;
+                    }
+
+                    //判断是否需要继续查询
+                    if (upgradeExecuteResult == 3)
+                    {
+                        if (QueryUpgrade() && upgradeExecuteResult == 0)
+                        {
+                            t1.Stop();
+                            isUpdating = false;
+                            ButtonText = "开始更新";
+                            AddMsg($"已完成本轮升级操作☺ ☺ ☺");
+                        }
+                    }
+                }
+                else
+                {
                     isUpdating = false;
-                    return;
+                    ButtonText = "开始更新";
+                    AddMsg($"已完成本轮升级操作☺ ☺ ☺");
                 }
             }
-
-            isUpdating = false;
-            ButtonText = "开始更新";
-            AddMsg($"已完成本轮升级操作☺ ☺ ☺");
+            else
+            {
+                AddMsg($"升级失败，请再次尝试！！！☹");
+                ButtonText = "开始更新";
+                isUpdating = false;
+                return;
+            }
         }
         private void ClearMsg(object o)
         {
@@ -666,8 +735,8 @@ namespace SofarHVMExe.ViewModel
         public bool ShakeHands()
         {
             bool ok = false;
-            AddMsg("发起升级请求");
-            for (int i = 0; i < 3; i++)
+            AddMsg($"{DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff")}  发起升级请求");
+            for (int i = 0; i < MaxPackageNum; i++)
             {
                 AddMsg($"请求第{i + 1}次");
                 write_firmware_request();
@@ -713,12 +782,40 @@ namespace SofarHVMExe.ViewModel
 
             bool ok = false;
             MaxPackageNum = 5;
-            AddMsg("发起启动升级固件请求");
-            for (int i = 0; i < 3; i++)
+            AddMsg($"{DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff")}  发起启动升级固件请求");
+            write_upgrade_execute_request();
+
+            ///在1000ms内如果收到正确应答则ok
+            Stopwatch timer = new Stopwatch();
+            timer.Start();
+            while (true)
             {
-                AddMsg($"请求第{i + 1}次");
-                write_upgrade_execute_request();
-                Thread.Sleep(150);
+                if (write_upgrade_execute_request_check())
+                {
+                    AddMsg($"请求成功{upgradeExecuteResult}");
+                    ok = true;
+                    break;
+                }
+
+                if (timer.ElapsedMilliseconds > 1000)
+                {
+                    timer.Stop();
+                    break;
+                }
+            }
+
+            return ok;
+        }
+        public bool QueryUpgrade()
+        {
+            bool ok = false;
+            MaxPackageNum = 5;
+            upgradeExecuteResult = -1;
+            AddMsg($"{DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff")}  发起查询升级固件请求");
+            for (int i = 0; i < 90; i++)
+            {
+                write_upgrade_execute_request(0x01);
+                Thread.Sleep(1000);
 
                 ///在1000ms内如果收到正确应答则ok
                 Stopwatch timer = new Stopwatch();
@@ -727,8 +824,12 @@ namespace SofarHVMExe.ViewModel
                 {
                     if (write_upgrade_execute_request_check())
                     {
-                        AddMsg($"请求成功");
-                        ok = true;
+                        if (upgradeExecuteResult == 0)
+                        {
+                            AddMsg($"请求成功");
+                            ok = true;
+                        }
+
                         break;
                     }
 
@@ -741,8 +842,6 @@ namespace SofarHVMExe.ViewModel
 
                 if (ok)
                     break;
-                else
-                    AddMsg($"请求失败");
             }//for
 
             return ok;
@@ -793,6 +892,74 @@ namespace SofarHVMExe.ViewModel
 
             return ok;
         }
+        private bool CheckSdsp(byte dstAddr, int blockSize)
+        {
+            for (int i = 0; i < 3; i++)
+            {
+                //一块数据发完后延时200ms再发功能码51的问询
+                Thread.Sleep(TempInterval);
+
+                //发起数据块接收确认数据帧请求
+                write_firmware_block_request(dstAddr, blockSize);
+
+                ///在1000ms内如果收到正确应答则ok
+                Stopwatch timer = new Stopwatch();
+                timer.Start();
+                while (true)
+                {
+                    try
+                    {
+                        if (write_firmware_block_response())
+                        {
+                            return true;
+                        }
+                        else
+                        {
+                            Thread.Sleep(TempInterval);
+                            write_firmware_block_request(dstAddr, blockSize);//发起数据块接收确认数据帧请求
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        AddMsg($"请求错误" + ex.Message);
+                    }
+
+                    if (timer.ElapsedMilliseconds > 1000)
+                    {
+                        timer.Stop();
+                        break;
+                    }
+                }
+            }
+
+            return false;
+        }
+        private void write_firmware_block_request(byte dstAddr, int blockSize)
+        {
+            CanFrameID cid = new CanFrameID();
+            cid.Priority = 7;
+            cid.FrameType = 2;
+            cid.ContinuousFlag = 0;
+            cid.FC = 51;
+            cid.DstType = Convert.ToByte(dstAndSrcTypes[0]);
+            cid.DstAddr = targetAddr;
+            cid.SrcType = Convert.ToByte(dstAndSrcTypes[1]);
+            cid.SrcAddr = 1;
+            uint id = cid.ID;
+
+            byte[] send = new byte[8];
+            send[0] = 0x00;
+            send[1] = 0x00;
+            send[2] = Convert.ToByte(blockSize & 0xff);    //数据块大小
+            send[3] = Convert.ToByte(blockSize >> 8);
+            if (openDebug)
+            {
+                AddDebugInfo("");
+                AddDebugInfo($"发送请求帧，{DateTime.Now.ToString("HH:mm:ss.fff")} : {id.ToString("X")} {BitConverter.ToString(send)}");
+            }
+            SendFrame(id, send);
+            LogHelper.AddLog($"[发送]请求帧，0x{id.ToString("X")} {BitConverter.ToString(send)}");
+        }
         public void write_firmware_request()
         {
             CanFrameID cid = new CanFrameID();
@@ -807,21 +974,39 @@ namespace SofarHVMExe.ViewModel
             uint id = cid.ID;
 
             byte[] send = new byte[8];
-            send[0] = Convert.ToByte(realBlockNum & 0xff); //文件数据块总数realBlockNum->validBlockNum有效传输大小，PCS待修改
+            send[0] = Convert.ToByte(realBlockNum & 0xff); //文件数据块总数realBlockNum->validBlockNum有效传输大小
             send[1] = Convert.ToByte(realBlockNum >> 8);
             send[2] = Convert.ToByte(blockSize & 0xff);    //数据块大小
             send[3] = Convert.ToByte(blockSize >> 8);
 
-            if (FirmwareIndex == 1 || FirmwareIndex == 2)
+            Byte[] chipNumbers;
+            switch (FirmwareIndex)
             {
-                send[4] = Convert.ToByte(chipRole);
-                send[5] = ChipNumber[1];
-                send[6] = ChipNumber[0];
-            }
-            else
-            {
-                send[0] = Convert.ToByte(validBlockNum & 0xff);  //有效数据块数目
-                send[1] = Convert.ToByte(validBlockNum >> 8);
+                case 0:
+                    chipNumbers = ASCIIEncoding.Default.GetBytes("T7");
+
+                    send[0] = Convert.ToByte(validBlockNum & 0xff);  //有效数据块数目
+                    send[1] = Convert.ToByte(validBlockNum >> 8);
+                    send[4] = 0x22;
+                    send[5] = chipNumbers[1];
+                    send[6] = chipNumbers[0];
+                    send[7] = Convert.ToByte(FileNumber);
+                    break;
+                case 1:
+                    chipNumbers = ASCIIEncoding.Default.GetBytes("T1");
+
+                    send[0] = Convert.ToByte(validBlockNum & 0xff);  //有效数据块数目
+                    send[1] = Convert.ToByte(validBlockNum >> 8);
+                    send[4] = 0x23;
+                    send[5] = chipNumbers[1];
+                    send[6] = chipNumbers[0];
+                    send[7] = Convert.ToByte(FileNumber);
+                    break;
+                default:
+                    send[4] = Convert.ToByte(chipRole);
+                    send[5] = ChipNumber[1];
+                    send[6] = ChipNumber[0];
+                    break;
             }
 
             if (openDebug)
@@ -901,6 +1086,28 @@ namespace SofarHVMExe.ViewModel
                     write_end_package(id, send, block);
                 }
             }
+
+            //副DSP，新增“升级数据块接收结果查询帧”
+            {
+                if (FirmwareIndex == 1)
+                {
+                    bool isSuccess = CheckSdsp(targetAddr, blockIndex);
+
+                    if (openDebug)
+                    {
+                        if (isSuccess)
+                        {
+                            AddDebugInfo($"请求应答帧，{DateTime.Now.ToString("HH:mm:ss.fff")} : 数据块接收确认数据帧，请求成功");
+                        }
+                        else
+                        {
+
+                            AddDebugInfo($"请求应答帧，{DateTime.Now.ToString("HH:mm:ss.fff")} : 数据块接收确认数据帧，请求失败");
+                        }
+                    }
+                }
+            }
+
         }
         private void write_start_package(int blockIndex, uint id, byte[] data)
         {
@@ -997,7 +1204,7 @@ namespace SofarHVMExe.ViewModel
             send[0] = 0xAA;
             send[1] = (byte)(fileDataCrc & 0xff);
             send[2] = (byte)(fileDataCrc >> 8);
-            if (FirmwareIndex == 1 || FirmwareIndex == 2)
+            if (FirmwareIndex > 1)
             {
                 send[3] = Convert.ToByte(chipRole);
                 send[4] = ChipNumber[1];
@@ -1151,6 +1358,44 @@ namespace SofarHVMExe.ViewModel
             }
         }
         #region 接收校验
+        private bool write_firmware_block_response()
+        {
+            CanFrameModel frame = new CanFrameModel(recvFrame);
+            CanFrameID frameId = frame.FrameId;
+            uint id = frame.Id;
+
+            if (id == 0x01000000)  //过滤默认id
+                return false;
+
+            try
+            {
+                CanFrameData frameDate = frame.FrameDatas[0];
+                byte[] data = frameDate.Data;
+
+                if (frameId.FC != 51)
+                    return false;
+
+                if (data.Length == 0)
+                {
+                    LogHelper.AddLog($"[接收]请求应答帧，0x{id:X)} 数据为空！)");
+                    return false;
+                }
+
+                LogHelper.AddLog($"[接收]请求应答帧，0x{id.ToString("X")} {BitConverter.ToString(data)}");
+
+                byte resultDesc = data[0];
+                if (resultDesc == 0)
+                {
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                int stop = 10;
+            }
+
+            return false;
+        }
         private bool write_firmware_request_check()
         {
             CanFrameModel frame = new CanFrameModel(recvFrame);
@@ -1165,10 +1410,12 @@ namespace SofarHVMExe.ViewModel
                 CanFrameData frameDate = frame.FrameDatas[0];
                 byte[] data = frameDate.Data;
 
-                LogHelper.AddLog($"[接收]请求应答帧，0x{id:X)} {BitConverter.ToString(data)}");
+                //LogHelper.AddLog($"[接收]请求应答帧，0x{id:X)} {BitConverter.ToString(data)}");
 
                 if (frameId.FC != 50)
                     return false;
+
+                LogHelper.AddLog($"[接收]请求应答帧，0x{id:X)} {BitConverter.ToString(data)}");
 
                 if (data.Length == 0)
                 {
@@ -1220,144 +1467,157 @@ namespace SofarHVMExe.ViewModel
         }
         private bool file_recieve_ok_check()
         {
-            string errMsg = "";
-            AddMsg($"校验固件接收结果");
-
-            //1、发送接收结果请求
-            write_firmware_result_request(targetAddr);
-
-            //2、指定时间内收集一台或多台pcs设备结果校验帧
-            resultFrameList.Clear();
-
-            ///开启接收结果校验
+            for (int k = 0; k < MaxPackageNum; k++)
             {
-                lock (this.collectLock)
-                {
-                    startCollect = true;
-                }
+                string errMsg = "";
+                AddMsg($"校验固件接收结果");
 
-                Thread.Sleep(2000);
+                //2、指定时间内收集一台或多台pcs设备结果校验帧
+                resultFrameList.Clear();
 
-                lock (this.collectLock)
-                {
-                    startCollect = false;
-                }
-            }
+                //1、发送接收结果请求
+                Thread.Sleep(200);
+                write_firmware_result_request(targetAddr);
 
-            //3、解析结果校验帧 是否有丢包
-            bool hasLostPackage = false;
-            List<LostPackage> lostPackageList = new List<LostPackage>();
-            {
-                foreach (CanFrameModel frame in resultFrameList)
+                ///开启接收结果校验
                 {
-                    uint id = frame.Id;
-                    byte[] datas = frame.FrameDatas[0].Data;
-                    if (AnalyseLostPackage(id, datas, lostPackageList))
+                    lock (this.collectLock)
                     {
-                        hasLostPackage = true;
+                        startCollect = true;
                     }
-                }
-            }
 
-            //4、有设备丢包 进行补包
-            _multiPackData.Clear();
-            if (hasLostPackage)
-            {
-                AddMsg("检测到有丢包！");
-                LogHelper.AddLog("检测到有丢包！");
+                    Thread.Sleep(2000);
 
-                CanFrameID frameId = new CanFrameID();
-                int num = lostPackageList.Count;
-                //整合丢失数据包
-                for (int i = 0; i < lostPackageList.Count; i++)
-                {
-                    for (int j = 0; j < lostPackageList[i].blockIdxList.Count; j++)
+                    lock (this.collectLock)
                     {
-                        int _num = lostPackageList[i].blockIdxList[j];
-                        if (_multiPackData.Exists(x => x == _num) == false)
-                            _multiPackData.Add(_num);
+                        startCollect = false;
                     }
                 }
 
-                /*for (int i = 0; i < num; i++)
+                if (resultFrameList.Count == 0)
                 {
-                    //对每一个设备进行循环补包（指定补包次数）
-                    bool ok = false;
-                    LostPackage package = lostPackageList[i];
-                    for (int j = 0; j < maxPackageNum; j++)
+                    AddMsg($"校验固件接收结果失败，重新查询");
+                    continue;
+                }
+
+                //3、解析结果校验帧 是否有丢包
+                bool hasLostPackage = false;
+                List<LostPackage> lostPackageList = new List<LostPackage>();
+                {
+                    foreach (CanFrameModel frame in resultFrameList)
                     {
-                        frameId.ID = package.id;
-                        LostPackage resultPackage = SendLostPackage(package);
-                        if (resultPackage != null)
+                        uint id = frame.Id;
+                        byte[] datas = frame.FrameDatas[0].Data;
+                        if (AnalyseLostPackage(id, datas, lostPackageList))
                         {
-                            if (resultPackage.resultType == 0)
+                            hasLostPackage = true;
+                        }
+                    }
+                }
+
+                //4、有设备丢包 进行补包
+                _multiPackData.Clear();
+                if (hasLostPackage)
+                {
+                    AddMsg("检测到有丢包！");
+                    LogHelper.AddLog("检测到有丢包！");
+
+                    CanFrameID frameId = new CanFrameID();
+                    int num = lostPackageList.Count;
+                    //整合丢失数据包
+                    for (int i = 0; i < lostPackageList.Count; i++)
+                    {
+                        for (int j = 0; j < lostPackageList[i].blockIdxList.Count; j++)
+                        {
+                            int _num = lostPackageList[i].blockIdxList[j];
+                            if (_multiPackData.Exists(x => x == _num) == false)
+                                _multiPackData.Add(_num);
+                        }
+                    }
+
+                    /*for (int i = 0; i < num; i++)
+                    {
+                        //对每一个设备进行循环补包（指定补包次数）
+                        bool ok = false;
+                        LostPackage package = lostPackageList[i];
+                        for (int j = 0; j < maxPackageNum; j++)
+                        {
+                            frameId.ID = package.id;
+                            LostPackage resultPackage = SendLostPackage(package);
+                            if (resultPackage != null)
                             {
-                                ok = true;
-                                AddMsg($"校验成功");
-                                break;
+                                if (resultPackage.resultType == 0)
+                                {
+                                    ok = true;
+                                    AddMsg($"校验成功");
+                                    break;
+                                }
+                                else if (resultPackage.resultType == 1)
+                                {
+                                    //继续补包
+                                    AddMsg($"检测到有丢包！");
+                                    package = resultPackage;
+                                    ok = false;
+                                }
+                                else if (resultPackage.resultType == 2)
+                                {
+                                    AddMsg($"整包校验不通过！");
+                                    ok = false;
+                                    break;
+                                }
+                                else
+                                {
+                                    //不可预期的其他情况，一般不会出现
+                                }
                             }
-                            else if (resultPackage.resultType == 1)
-                            {
-                                //继续补包
-                                AddMsg($"检测到有丢包！");
-                                package = resultPackage;
-                                ok = false;
-                            }
-                            else if (resultPackage.resultType == 2)
-                            {
-                                AddMsg($"整包校验不通过！");
-                                ok = false;
-                                break;
-                            }
-                            else
-                            {
-                                //不可预期的其他情况，一般不会出现
-                            }
+                        }//for
+
+                        //待调整区域
+                        if (ok)
+                        {
+                            AddMsg($"设备[{frameId.SrcAddr}]升级成功！！！☺");
+                        }
+                        else
+                        {
+                            AddMsg($"设备[{frameId.SrcAddr}]升级失败！！！☹");
                         }
                     }//for
+                    */
 
-                    //待调整区域
-                    if (ok)
+                    //对每一个设备进行循环补包（指定补包次数）
+                    bool ok = false;
+                    LostPackage package = new LostPackage() { id = 0x1B3521A0, blockIdxList = _multiPackData };
+                    frameId.ID = package.id;
+
+                    /*int retryCnt = 0;
+                    do
                     {
-                        AddMsg($"设备[{frameId.SrcAddr}]升级成功！！！☺");
-                    }
-                    else
+                        if (SendLostPackage(package))
+                            break;
+
+                        //发送请求，应答提示存在丢包现象
+                        AddMsg("丢包失败，重新执行补包流程！");
+                        retryCnt++;
+
+                    } while (retryCnt < MaxPackageNum);
+
+                    return false;*/
+                    return SendLostPackage(package);
+                }
+                else
+                {
+                    AddMsg($"校验成功");
+
+                    resultFrameList.ForEach((frameModel) =>
                     {
-                        AddMsg($"设备[{frameId.SrcAddr}]升级失败！！！☹");
-                    }
-                }//for
-                */
+                        AddMsg($"设备[{frameModel.FrameId.SrcAddr}]升级成功！！！☺");
+                    });
 
-                //对每一个设备进行循环补包（指定补包次数）
-                bool ok = false;
-                LostPackage package = new LostPackage() { id = 0x1B3521A0, blockIdxList = _multiPackData };
-                frameId.ID = package.id;
-
-                int retryCnt = 0;
-                do
-                {
-                    if (SendLostPackage(package))
-                        break;
-
-                    //发送请求，应答提示存在丢包现象
-                    AddMsg("丢包失败，重新执行补包流程！");
-                    retryCnt++;
-
-                } while (retryCnt < MaxPackageNum);
-
-                return false;
+                    return true;
+                }
             }
-            else
-            {
-                AddMsg($"校验成功");
 
-                resultFrameList.ForEach((frameModel) =>
-                {
-                    AddMsg($"设备[{frameModel.FrameId.SrcAddr}]升级成功！！！☺");
-                });
-
-                return true;
-            }
+            return false;
         }//func
         private bool write_upgrade_time_request_check()
         {
@@ -1384,10 +1644,8 @@ namespace SofarHVMExe.ViewModel
                     return false;
                 }
 
-                byte resultDesc = data[0];
-                if (resultDesc == 0)
+                if (data[0] == 0x0)
                     return true;
-
             }
             catch (Exception ex)
             {
@@ -1422,8 +1680,27 @@ namespace SofarHVMExe.ViewModel
                 }
 
                 byte resultDesc = data[0];
-                if (resultDesc == 0)
-                    return true;
+                switch (resultDesc)
+                {
+                    case 0:
+                    case 3:
+                        upgradeExecuteResult = resultDesc;
+
+                        /*if (resultDesc == 0x03)
+                        {
+                            t1 = new System.Timers.Timer(100);
+                            t1.Elapsed += T1_Elapsed;
+                            t1.Enabled = true;
+                            t1.Start();
+                        }*/
+                        return true;
+                        break;
+                    default:
+                        LogHelper.AddLog($"非正常状态值：{resultDesc}");
+                        break;
+                }
+                //if (resultDesc == 0)
+                //    return true;
 
             }
             catch (Exception ex)
@@ -1441,6 +1718,12 @@ namespace SofarHVMExe.ViewModel
             uint packageId = package.id;
             frameId.ID = packageId;
             byte dstAddr = frameId.SrcAddr;
+
+            //0.检查
+            if (package.blockIdxList.Count == 0)
+            {
+                return true;
+            }
 
             //1、有设备丢包 进行补包
             string strIndex = "";
@@ -1611,6 +1894,12 @@ namespace SofarHVMExe.ViewModel
         /// <param name="frame"></param>
         private void SendFrame(uint id, byte[] datas)
         {
+            if (!isUpdating)
+            {
+                LogHelper.AddLog("未启动升级，发送无效");
+                return;
+            }
+
             if (ecanHelper.IsCan1Start)
             {
                 ecanHelper.SendCan1(id, datas);
@@ -1801,6 +2090,11 @@ namespace SofarHVMExe.ViewModel
             debugInfoSb.Append(info);
         }
         #endregion
+
+        private void T1_Elapsed(object? sender, System.Timers.ElapsedEventArgs e)
+        {
+            write_upgrade_execute_request(0x1);
+        }
     }//class
 
     /// <summary>

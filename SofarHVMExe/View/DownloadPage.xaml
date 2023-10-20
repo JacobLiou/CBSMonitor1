@@ -10,7 +10,9 @@
              xmlns:vm ="clr-namespace:SofarHVMExe.ViewModel"
              d:DataContext="{d:DesignInstance vm:DownloadPageVm}"
              d:DesignHeight="450" d:DesignWidth="800">
-
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+    </UserControl.Resources>
     <Border>
         <Grid >
             <Border Background="{DynamicResource sectionBackgroundColor}" Margin="0 0 0 0">
@@ -106,9 +108,9 @@
                         <StackPanel Margin="0 15 0 0" Orientation="Horizontal">
                             <TextBlock Text="文件路径" VerticalAlignment="Center" />
                             <TextBox Text="{Binding FirmwareFilePath, UpdateSourceTrigger=PropertyChanged}" IsReadOnly="True" 
-                                     VerticalContentAlignment="Center" MinWidth="500" Height="28" Margin="10 0 0 0"/>
+                                     VerticalContentAlignment="Center" MinWidth="500"  MaxWidth="600" Height="28" Margin="10 0 0 0"/>
                             <Button Content="导入" Command="{Binding ImportCommand}" Margin="10 0 0 0"/>
-                            <Button Content="{Binding ButtonText}" Command="{Binding StartDownloadCommand}" Margin="10 0 0 0"/>
+                            <Button Content="{Binding ButtonText}" Visibility="{Binding ButtonTextVisible , Converter={StaticResource BooleanToVisibilityConverter}}" Command="{Binding StartDownloadCommand}" Margin="10 0 0 0"/>
                             <Button Content="清除" Command="{Binding ClearMsgCommand}" Margin="10 0 0 0" />
                         </StackPanel>
                     </StackPanel>

@@ -31,6 +31,7 @@ using SofarHVMExe.Util.TI;
 using System.Windows;
 using NPOI.OpenXmlFormats.Spreadsheet;
 using NPOI.OpenXmlFormats;
+using Org.BouncyCastle.Ocsp;
 
 namespace SofarHVMExe.ViewModel
 {
@@ -320,6 +321,18 @@ namespace SofarHVMExe.ViewModel
                 OnPropertyChanged();
             }
         }
+
+
+        private bool buttonTextVisible = true;
+        public bool ButtonTextVisible
+        {
+            get => buttonTextVisible;
+            set
+            {
+                buttonTextVisible = value;
+                OnPropertyChanged();
+            }
+        }
         private string myDateTime;  //升级时间
         public string MyDateTime
         {
@@ -403,6 +416,11 @@ namespace SofarHVMExe.ViewModel
                 OnPropertyChanged();
             }
         }
+
+        /// <summary>
+        /// 当前升级对象集合
+        /// </summary>
+        public Dictionary<int, bool> UpDeviceDic = new Dictionary<int, bool>();
         #endregion
 
         #region 命令
@@ -547,6 +565,15 @@ namespace SofarHVMExe.ViewModel
             {
                 isUpdating = false;
                 ButtonText = "开始更新";
+                // 设置界面按钮 10s 内不能点击
+                {
+                    ButtonTextVisible = false;
+                    Task.Run(() =>
+                    {
+                        Thread.Sleep(1000 * 10);
+                        ButtonTextVisible = true;
+                    });
+                }
             }
             else
             {
@@ -579,6 +606,18 @@ namespace SofarHVMExe.ViewModel
 
                     isUpdating = true;
                     ButtonText = "停止更新";
+
+                    // 设置界面按钮 10s 内不能点击
+                    // 设置界面按钮 10s 内不能点击
+                    {
+                        ButtonTextVisible = false;
+                        Task.Run(() =>
+                        {
+                            Thread.Sleep(1000 * 10);
+                            ButtonTextVisible = true;
+                        });
+                    }
+
                     debugInfoSb.Clear();
                     CollectFileData();
 
@@ -598,8 +637,18 @@ namespace SofarHVMExe.ViewModel
             AddMsg("", false);
             AddMsg($"{DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff")}  开始进行程序升级✈");
 
+            this.UpDeviceDic.Clear(); //清除升级对象
+            foreach (var item in DeviceManager.Instance().Devices)
+            {
+                if (item.Connected)
+                {
+                    // 当前已经连接的对象
+                    this.UpDeviceDic.Add(Convert.ToInt32(item.address), false);
+                }
+            }
+
             //1、请求进行固件升级--握手
-            if (!ShakeHands())
+            if (!ShakeHandsV2())
             {
                 AddMsg($"升级失败，请再次尝试！！！☹");
                 ButtonText = "开始更新";
@@ -774,6 +823,44 @@ namespace SofarHVMExe.ViewModel
                     AddMsg($"请求失败");
             }//for
 
+            return ok;
+        }
+
+        /// <summary>
+        /// 握手操作
+        /// </summary>
+        /// <returns></returns>
+        public bool ShakeHandsV2()
+        {
+            bool ok = false;
+            AddMsg($"{DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff")}  发起升级请求");
+
+            int objCount = UpDeviceDic.Count;
+
+            // 遍历当前所有的请求对象
+            for (int i = 0; i < MaxPackageNum; i++)
+            {
+                this.IsRecieveList = true;
+                this.CanRecieveList.Clear();
+
+                AddMsg($"请求第{i + 1}次");
+                write_firmware_request();
+                Thread.Sleep(2000);
+
+                ///在 2s 内如果收到正确应答则ok
+                write_firmware_request_check_ShakeHandsV2();
+
+                ok = UpDeviceDic.Values.All(t => t);
+
+                if (ok)
+                {
+                    AddMsg($"请求成功");
+                    return ok;
+                }
+                this.IsRecieveList = false;
+            }//for
+
+            AddMsg($"请求失败");
             return ok;
         }
         public bool StartUpgrade()
@@ -1377,7 +1464,7 @@ namespace SofarHVMExe.ViewModel
 
                 if (data.Length == 0)
                 {
-                    LogHelper.AddLog($"[接收]请求应答帧，0x{id:X)} 数据为空！)");
+                    LogHelper.AddLog($"[接收]请求应答帧，0x{id.ToString("X")} 数据为空！)");
                     return false;
                 }
 
@@ -1415,11 +1502,11 @@ namespace SofarHVMExe.ViewModel
                 if (frameId.FC != 50)
                     return false;
 
-                LogHelper.AddLog($"[接收]请求应答帧，0x{id:X)} {BitConverter.ToString(data)}");
+                LogHelper.AddLog($"[接收]请求应答帧，0x{id.ToString("X")} {BitConverter.ToString(data)}");
 
                 if (data.Length == 0)
                 {
-                    LogHelper.AddLog($"[接收]请求应答帧，0x{id:X)} 数据为空！)");
+                    LogHelper.AddLog($"[接收]请求应答帧，0x{id.ToString("X")} 数据为空！)");
                     return false;
                 }
 
@@ -1431,6 +1518,69 @@ namespace SofarHVMExe.ViewModel
             catch (Exception ex)
             {
                 int stop = 10;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns></returns>
+        private bool write_firmware_request_check_ShakeHandsV2()
+        {
+            // 遍历所有的 Can 帧
+            foreach (var recvData in this.CanRecieveList)
+            {
+                uint id = recvData.ID;
+                string strId = id.ToString("X");
+                if (strId.Contains("197F") || id == 0x01000000)  //过滤dsp的app心跳
+                    continue;
+
+                CanFrameID frameID = new CanFrameID();
+                frameID.ID = id;
+
+                if (frameID.FrameType != 3 || !(frameID.FC >= 50 && frameID.FC <= 55))  //过滤非升级帧的数据
+                    continue;
+
+                try
+                {
+                    CanFrameData frameData = new CanFrameData();
+                    for (int i = 0; i < recvData.DataLen; i++)
+                    {
+                        frameData.Data[i] = recvData.Data[i];
+                    }
+                    byte[] data = frameData.Data;
+
+                    //LogHelper.AddLog($"[接收]请求应答帧，0x{id:X)} {BitConverter.ToString(data)}");
+
+                    if (frameID.FC != 50)
+                        return false;
+
+                    LogHelper.AddLog($"[接收]请求应答帧，0x{id.ToString("X")} {BitConverter.ToString(data)}");
+
+                    if (data.Length == 0)
+                    {
+                        LogHelper.AddLog($"[接收]请求应答帧，0x{id.ToString("X")} 数据为空！)");
+                        return false;
+                    }
+
+                    byte resultDesc = data[0];
+                    if (resultDesc == 0) // 0 表示成功 
+                    {
+                        var device = Convert.ToInt16(frameID.SrcAddr);// 当前握手设备
+                        if (this.UpDeviceDic.ContainsKey(device))
+                        {
+                            this.UpDeviceDic[device] = true;
+                            continue;
+                        }
+                    }
+
+                }
+                catch (Exception ex)
+                {
+                    int stop = 10;
+                }
             }
 
             return false;
@@ -1858,6 +2008,9 @@ namespace SofarHVMExe.ViewModel
         }
         #endregion
 
+        public bool IsRecieveList = false;
+
+        public List<CAN_OBJ> CanRecieveList = new List<CAN_OBJ>();
 
         #region CAN操作
         /// <summary>
@@ -1938,6 +2091,11 @@ namespace SofarHVMExe.ViewModel
                 {
                     write_firmware_result_collect();
                 }
+            }
+
+            if (IsRecieveList)
+            {
+                CanRecieveList.Add(recvData);
             }
         }
         /// <summary>

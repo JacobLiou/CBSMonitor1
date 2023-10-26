@@ -32,6 +32,7 @@ using System.Windows;
 using NPOI.OpenXmlFormats.Spreadsheet;
 using NPOI.OpenXmlFormats;
 using Org.BouncyCastle.Ocsp;
+using NPOI.SS.Formula.Eval;
 
 namespace SofarHVMExe.ViewModel
 {
@@ -433,7 +434,7 @@ namespace SofarHVMExe.ViewModel
 
         #endregion
 
-        #region 成员方法
+       
         private void Init()
         {
             ImportCommand = new SimpleCommand(ImportFile);
@@ -556,6 +557,7 @@ namespace SofarHVMExe.ViewModel
                 MessageBox.Show($"文件路径：{FirmwareFilePath}", "导入成功", MessageBoxButton.OK, MessageBoxImage.Information);
             }
         }
+        
         private void StartDownload(object o)
         {
             if (!CheckConnect())
@@ -601,6 +603,22 @@ namespace SofarHVMExe.ViewModel
                         return;
                     }*/
 
+
+                    this.UpDeviceDic.Clear(); //清除升级对象
+                    foreach (var item in DeviceManager.Instance().Devices)
+                    {
+                        if (item.Connected)
+                        {
+                            // 当前已经连接的对象
+                            this.UpDeviceDic.Add(Convert.ToInt32(item.address), false);
+                        }
+                    }
+                    if (this.UpDeviceDic.Count == 0)
+                    {
+                        AddMsg("升级失败，无在线设备。");
+                        return;
+                    }
+
                     if (!isBroadcast)
                         targetAddr = DeviceManager.Instance().GetSelectDev();
 
@@ -631,21 +649,14 @@ namespace SofarHVMExe.ViewModel
                 });
             }
         }
+
         private void Update()
         {
             bool ok = false;
             AddMsg("", false);
             AddMsg($"{DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff")}  开始进行程序升级✈");
 
-            this.UpDeviceDic.Clear(); //清除升级对象
-            foreach (var item in DeviceManager.Instance().Devices)
-            {
-                if (item.Connected)
-                {
-                    // 当前已经连接的对象
-                    this.UpDeviceDic.Add(Convert.ToInt32(item.address), false);
-                }
-            }
+            
 
             //1、请求进行固件升级--握手
             if (!ShakeHandsV2())
@@ -669,6 +680,7 @@ namespace SofarHVMExe.ViewModel
             AddDebugInfo("");
 
             int downloadNum = 0;
+            int sdspFailedCnt = 0;
             for (int i = 0; i < blockNum; i++)
             {
                 byte[] dataArr = fileDataList[i];
@@ -688,7 +700,16 @@ namespace SofarHVMExe.ViewModel
                 {
                     blockData.Clear(); //一个数据块
                     blockData.AddRange(dataArr);
-                    write_firmware_block(targetAddr, i, blockData.ToArray(), SendInterval, true);
+
+                    if(sdspFailedCnt > 10)
+                    {
+                        AddMsg($"升级失败，超过10次未收到副DSP传包确认☹");
+                        ButtonText = "开始更新";
+                        isUpdating = false;
+                        return;
+                    }
+                    
+                    write_firmware_block(targetAddr, i, blockData.ToArray(), SendInterval, ref sdspFailedCnt, true);
                     Thread.Sleep(20);
                 }
 
@@ -839,12 +860,13 @@ namespace SofarHVMExe.ViewModel
 
             // 遍历当前所有的请求对象
             for (int i = 0; i < MaxPackageNum; i++)
-            {
-                this.IsRecieveList = true;
-                this.CanRecieveList.Clear();
-
+            {  
                 AddMsg($"请求第{i + 1}次");
                 write_firmware_request();
+                
+                this.CanRecieveList.Clear();
+                this.IsRecieveList = true;
+
                 Thread.Sleep(2000);
 
                 ///在 2s 内如果收到正确应答则ok
@@ -861,6 +883,7 @@ namespace SofarHVMExe.ViewModel
             }//for
 
             AddMsg($"请求失败");
+            
             return ok;
         }
         public bool StartUpgrade()
@@ -1104,7 +1127,7 @@ namespace SofarHVMExe.ViewModel
             SendFrame(id, send);
             LogHelper.AddLog($"[发送]请求帧，0x{id.ToString("X")} {BitConverter.ToString(send)}");
         }
-        public void write_firmware_block(byte dstAddr, int blockIndex, byte[] block, int time, bool lostPackage = false)
+        public void write_firmware_block(byte dstAddr, int blockIndex, byte[] block, int time, ref int sdspFailedCnt, bool lostPackage = false)
         {
             if (block.Length == 0)
                 return;
@@ -1179,6 +1202,10 @@ namespace SofarHVMExe.ViewModel
                 if (FirmwareIndex == 1)
                 {
                     bool isSuccess = CheckSdsp(targetAddr, blockIndex);
+                    if(!isSuccess)
+                    {
+                        sdspFailedCnt++;
+                    }
 
                     if (openDebug)
                     {
@@ -1617,8 +1644,14 @@ namespace SofarHVMExe.ViewModel
         }
         private bool file_recieve_ok_check()
         {
-            for (int k = 0; k < MaxPackageNum; k++)
+            for (int k = 0; k < MaxPackageNum ; k++)
             {
+                if (!isUpdating)
+                {
+                    AddMsg($"已停止更新。");
+                    return false;
+                }
+
                 string errMsg = "";
                 AddMsg($"校验固件接收结果");
 
@@ -1891,7 +1924,8 @@ namespace SofarHVMExe.ViewModel
             {
                 foreach (int blockIndex in blockIdxList)
                 {
-                    write_firmware_block(dstAddr, blockIndex, fileDataList[blockIndex], SendInterval);
+                    int sdspFailedCnt = 0;
+                    write_firmware_block(dstAddr, blockIndex, fileDataList[blockIndex], SendInterval, ref sdspFailedCnt);
                     Thread.Sleep(10);
                 }
             }
@@ -2247,7 +2281,7 @@ namespace SofarHVMExe.ViewModel
 
             debugInfoSb.Append(info);
         }
-        #endregion
+     
 
         private void T1_Elapsed(object? sender, System.Timers.ElapsedEventArgs e)
         {

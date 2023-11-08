@@ -424,7 +424,7 @@ namespace SofarHVMExe.ViewModel
         public Dictionary<int, bool> UpDeviceDic = new Dictionary<int, bool>();
         #endregion
 
-        #region 命令
+     
         public ICommand ImportCommand { get; set; }             //导入
         public ICommand StartDownloadCommand { get; set; }      //开始升级
         public ICommand ClearMsgCommand { get; set; }           //清除信息
@@ -432,7 +432,6 @@ namespace SofarHVMExe.ViewModel
         public ICommand DeleteFFDataCommand { get; set; }      //显示调试信息对话框
         public ICommand TimeChangeCmd { get; set; }             //时间触发命令
 
-        #endregion
 
        
         private void Init()
@@ -661,7 +660,7 @@ namespace SofarHVMExe.ViewModel
             //1、请求进行固件升级--握手
             if (!ShakeHandsV2())
             {
-                AddMsg($"升级失败，请再次尝试！！！☹");
+                
                 ButtonText = "开始更新";
                 isUpdating = false;
                 return;
@@ -727,7 +726,7 @@ namespace SofarHVMExe.ViewModel
 
             //3.校验固件文件接收结果 并进行补包
             ok = false;
-            if (file_recieve_ok_check())
+            if (file_receive_ok_check())
             {
                 //4.启动升级请求帧
                 if (FirmwareIndex > 1)
@@ -853,38 +852,61 @@ namespace SofarHVMExe.ViewModel
         /// <returns></returns>
         public bool ShakeHandsV2()
         {
-            bool ok = false;
             AddMsg($"{DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff")}  发起升级请求");
 
-            int objCount = UpDeviceDic.Count;
+            
 
             // 遍历当前所有的请求对象
             for (int i = 0; i < MaxPackageNum; i++)
-            {  
+            {
+                if (!isUpdating)
+                {
+                    AddMsg("已暂停升级");
+                    return false;
+                }
+
                 AddMsg($"请求第{i + 1}次");
                 write_firmware_request();
                 
-                this.CanRecieveList.Clear();
-                this.IsRecieveList = true;
+                this.CanReceiveList.Clear();
+                this.IsReceiveList = true;
 
                 Thread.Sleep(2000);
 
                 ///在 2s 内如果收到正确应答则ok
                 write_firmware_request_check_ShakeHandsV2();
-
-                ok = UpDeviceDic.Values.All(t => t);
-
-                if (ok)
+                
+                if (UpDeviceDic.Values.All(t => t))
                 {
-                    AddMsg($"请求成功");
-                    return ok;
+                    break;
                 }
-                this.IsRecieveList = false;
+                this.IsReceiveList = false;
             }//for
 
-            AddMsg($"请求失败");
+            if (UpDeviceDic.Values.All(t => !t))
+            {
+                AddMsg($"请求升级失败，请再次尝试！！！☹");
+                return false;
+            }
+
+
+            string successDevs= "";
+            string failureDevs = "";
+            foreach (var dev in UpDeviceDic)
+            {
+                if (dev.Value)
+                    successDevs += $"{dev.Key}, ";
+                
+                else
+                    failureDevs += $"{dev.Key}, "; 
+                    
+            }
             
-            return ok;
+            AddMsg($"第{successDevs.Substring(0, successDevs.Length - 2)}请求成功；" +
+                   $"第{failureDevs.Substring(0, failureDevs.Length - 2)}请求失败。" +
+                   $"即将对请求成功的设备进行升级。");
+
+            return true;
         }
         public bool StartUpgrade()
         {
@@ -895,9 +917,15 @@ namespace SofarHVMExe.ViewModel
             AddMsg($"{DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff")}  发起启动升级固件请求");
             write_upgrade_execute_request();
 
-            ///在1000ms内如果收到正确应答则ok
-            Stopwatch timer = new Stopwatch();
-            timer.Start();
+            
+
+            foreach (var dev in UpDeviceDic)
+            {
+                UpDeviceDic[dev.Key] = false;
+            }
+
+            // 在Xms内如果收到正确应答则ok
+            var sw = Stopwatch.StartNew();
             while (true)
             {
                 if (write_upgrade_execute_request_check())
@@ -907,9 +935,9 @@ namespace SofarHVMExe.ViewModel
                     break;
                 }
 
-                if (timer.ElapsedMilliseconds > 1000)
+                if (sw.ElapsedMilliseconds > 4000)
                 {
-                    timer.Stop();
+                    sw.Stop();
                     break;
                 }
             }
@@ -1557,7 +1585,7 @@ namespace SofarHVMExe.ViewModel
         private bool write_firmware_request_check_ShakeHandsV2()
         {
             // 遍历所有的 Can 帧
-            foreach (var recvData in this.CanRecieveList)
+            foreach (var recvData in this.CanReceiveList)
             {
                 uint id = recvData.ID;
                 string strId = id.ToString("X");
@@ -1642,7 +1670,7 @@ namespace SofarHVMExe.ViewModel
             }
             LogHelper.AddLog($"[接收]固件接收结果应答帧，0x{id.ToString("X")} {BitConverter.ToString(frame.FrameDatas[0].Data)}");
         }
-        private bool file_recieve_ok_check()
+        private bool file_receive_ok_check()
         {
             for (int k = 0; k < MaxPackageNum ; k++)
             {
@@ -1848,8 +1876,8 @@ namespace SofarHVMExe.ViewModel
 
             try
             {
-                CanFrameData frameDate = frame.FrameDatas[0];
-                byte[] data = frameDate.Data;
+                CanFrameData frameData = frame.FrameDatas[0];
+                byte[] data = frameData.Data;
 
                 LogHelper.AddLog($"[接收]请求应答帧，0x{id.ToString("X")} {BitConverter.ToString(data)}");
 
@@ -1861,6 +1889,8 @@ namespace SofarHVMExe.ViewModel
                     LogHelper.AddLog($"[接收]请求应答帧，0x{id.ToString("X")} 数据为空！)");
                     return false;
                 }
+
+                
 
                 byte resultDesc = data[0];
                 switch (resultDesc)
@@ -1938,7 +1968,7 @@ namespace SofarHVMExe.ViewModel
             LogHelper.AddLog("补包完成！");
 
             //2、发送接收结果请求
-            return file_recieve_ok_check();
+            return file_receive_ok_check();
 
             /*//2、发送接收结果请求
             AddMsg($"校验固件接收结果");
@@ -2042,9 +2072,9 @@ namespace SofarHVMExe.ViewModel
         }
         #endregion
 
-        public bool IsRecieveList = false;
+        public bool IsReceiveList = false;
 
-        public List<CAN_OBJ> CanRecieveList = new List<CAN_OBJ>();
+        public List<CAN_OBJ> CanReceiveList = new List<CAN_OBJ>();
 
         #region CAN操作
         /// <summary>
@@ -2127,9 +2157,9 @@ namespace SofarHVMExe.ViewModel
                 }
             }
 
-            if (IsRecieveList)
+            if (IsReceiveList)
             {
-                CanRecieveList.Add(recvData);
+                CanReceiveList.Add(recvData);
             }
         }
         /// <summary>

@@ -2648,15 +2648,17 @@ namespace SofarHVMExe.ViewModel
                         }
                     }
 
+                    int curWaveIdx = n;
+
                     // 数据整理
                     if (!RearrangeWaveData(ref wavesDataList, recordIndex))
                     {
-                        failedFiles.Add(failedFiles[n]);
+                        failedFiles.Add(faultWavesFiles[n]);
+                        
                         continue;
                     }
 
                     // 数据录入
-                    int curWaveIdx = n;
                     Application.Current.Dispatcher.BeginInvoke(() =>
                     {
                         FaultWavesInfoList.Add(new FaultWavesInfoVM()
@@ -2675,9 +2677,27 @@ namespace SofarHVMExe.ViewModel
                 }
                 catch (Exception ex)
                 {
-                    failedFiles.Add(failedFiles[n]);
+                    failedFiles.Add(faultWavesFiles[n]);
+                    
                 }
             }
+
+            if (failedFiles.Count > 0)
+            {
+                string failureMsg = "以下文件导入失败:\n";
+
+                foreach (var filename in failedFiles)
+                {
+                    failureMsg += $"\t{Path.GetFileName(filename)}\n";
+                }
+
+                Application.Current.Dispatcher.BeginInvoke(() =>
+                {
+                    MessageBox.Show(failureMsg, "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                });
+            }
+
+            
         }
 
 

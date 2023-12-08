@@ -62,8 +62,8 @@
                 <StackPanel Orientation="Horizontal" Margin="5">
                     <Button Content="连接设备"  Command="{Binding OpenDeviceCommand}" CommandParameter="{Binding RelativeSource={RelativeSource Self}}" Width="70" Height="30"/>
                     <Button Content="断开设备"  Command="{Binding CloseDeviceCommand}" CommandParameter="{Binding RelativeSource={RelativeSource Self}}" Margin="10 0 0 0" Width="70" Height="30"/>
-                    <CheckBox Content="打开通道1" IsChecked="{Binding IsChannel1Opened}" VerticalAlignment="Center" VerticalContentAlignment="Center" Margin="10 0 0 0" />
-                    <CheckBox Content="打开通道2" IsChecked="{Binding IsChannel2Opened}" VerticalAlignment="Center" VerticalContentAlignment="Center" Margin="10 0 0 0" />
+                    <RadioButton Content="打开通道1" IsChecked="{Binding IsChannel1Opened}" VerticalAlignment="Center" VerticalContentAlignment="Center" Margin="10 0 0 0"/>
+                    <RadioButton Content="打开通道2" IsChecked="{Binding IsChannel2Opened}" VerticalAlignment="Center" VerticalContentAlignment="Center" Margin="10 0 0 0"/>
                 </StackPanel>
             </GroupBox>
 

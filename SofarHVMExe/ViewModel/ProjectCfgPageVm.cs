@@ -1,6 +1,4 @@
-﻿using SofarHVMDAL;
-using SofarHVMExe.Utilities;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Printing;
@@ -11,45 +9,44 @@ using System.Windows.Input;
 using Microsoft.Win32;
 using System.Windows.Forms;
 using System.Windows.Navigation;
-using Communication.Can;
 using FontAwesome.Sharp;
-using SofarHVMExe.Model;
-using CanProtocol.ProtocolModel;
-using SofarHVMExe.ViewModel;
 using NPOI.POIFS.NIO;
 using System.Diagnostics;
-using static SofarHVMExe.ViewModel.CANFrameDataConfigVm;
 using System.Collections.ObjectModel;
-using OpenFileDialog = System.Windows.Forms.OpenFileDialog;
 using System.IO;
 using System.Threading;
+using Communication.Can;
 using CanProtocol;
+using CanProtocol.ProtocolModel;
 using SofarHVMExe.Util;
+using SofarHVMExe.Model;
+using SofarHVMExe.ViewModel;
+using SofarHVMExe.Utilities;
 using LogInfo = SofarHVMExe.Utilities.LogHelper;
+using OpenFileDialog = System.Windows.Forms.OpenFileDialog;
 
 namespace SofarHVMExe.ViewModel
 {
-    class ProjectCfgPageVm : ViewModelBase
+    public class ProjectCfgPageVm : ViewModelBase
     {
-        /// <summary>
-        /// 当前模型的标题
-        /// </summary>
-        protected new string Title = "项目配置";
-
         public ProjectCfgPageVm()
         {
-            ecanHelper = new EcanHelper();
+            Init();
+        }
+        public ProjectCfgPageVm(EcanHelper? helper)
+        {
+            ecanHelper = helper;
             Init();
         }
 
         #region 字段
-        public EcanHelper? ecanHelper = null;
-        //private FileConfigModel? fileCfgModel = null;
+        protected new string Title = "项目配置";            //当前模型的标题
+        private static EcanHelper? ecanHelper = null;
         private FrameConfigModel FrameModel = null;
         private PrjConfigModel? prjCfgModel = null;
-        private List<byte> fileData = null; //安规文档参数数据
-        private CanFrameModel tmpModel = null; //当前操作的临时数据
-        public CanFrameModel CurrentModel = null; //当前数据（只有保存时，使用上面临时数据覆盖此数据）
+        private List<byte> fileData = null;                 //安规文档参数数据
+        private CanFrameModel tmpModel = null;              //当前操作的临时数据
+        public CanFrameModel CurrentModel = null;           //当前数据（只有保存时，使用上面临时数据覆盖此数据）
         #endregion
 
         #region 属性
@@ -156,42 +153,6 @@ namespace SofarHVMExe.ViewModel
                 }
             }
         }
-        //public int HostHeartbeatIndex
-        //{
-        //    get
-        //    {
-        //        string guid = prjCfgModel.HostFrameGuid;
-        //        return FrameHelper.GetFrameIndex(fileCfgModel, guid);
-        //    }
-        //    set
-        //    {
-        //        int i = value;
-        //        if (fileCfgModel != null && fileCfgModel.FrameModel != null &&
-        //            fileCfgModel.FrameModel.CanFrameModels.Count != 0)
-        //        {
-        //            prjCfgModel.HostFrameGuid = fileCfgModel.FrameModel.CanFrameModels[i].Guid;
-        //            OnPropertyChanged();
-        //        }
-        //    }
-        //}
-        //public int ModuleHeartbeatIndex
-        //{
-        //    get
-        //    {
-        //        string guid = prjCfgModel.ModuleFrameGuid;
-        //        return FrameHelper.GetFrameIndex(fileCfgModel, guid);
-        //    }
-        //    set
-        //    {
-        //        int i = value;
-        //        if (fileCfgModel != null && fileCfgModel.FrameModel != null &&
-        //            fileCfgModel.FrameModel.CanFrameModels.Count != 0)
-        //        {
-        //            prjCfgModel.ModuleFrameGuid = fileCfgModel.FrameModel.CanFrameModels[i].Guid;
-        //            OnPropertyChanged();
-        //        }
-        //    }
-        //}
         private List<string> canFrameList = new List<string>();
         public List<string> CanFrameList
         {
@@ -212,18 +173,12 @@ namespace SofarHVMExe.ViewModel
                 OnPropertyChanged();
             }
         }
-        private Dictionary<int, CanFrameModel> safetyList2 = new Dictionary<int, CanFrameModel>();
-        private Dictionary<int, CanFrameModel> SafetyList2
+        private Dictionary<int, CanFrameModel> safetyList = new Dictionary<int, CanFrameModel>();
+        private Dictionary<int, CanFrameModel> SafetyList
         {
-            get => safetyList2;
-            set { safetyList2 = value; OnPropertyChanged(); }
+            get => safetyList;
+            set { safetyList = value; OnPropertyChanged(); }
         }
-        //private List<CanFrameModel> safetyList = new List<CanFrameModel>();
-        //private List<CanFrameModel> SafetyList
-        //{
-        //    get => safetyList;
-        //    set { safetyList = value; OnPropertyChanged(); }
-        //}
         public string Name
         {
             get => tmpModel.Name;
@@ -346,33 +301,6 @@ namespace SofarHVMExe.ViewModel
                 }
             }
         }
-        /*//用于显示的ID（蓝色）
-        public string ID
-        {
-            get => "0x" + tmpModel.FrameId.ID.ToString("X8");
-            set
-            {
-                if (ID == value)
-                    return;
-
-                string id = value;
-                id = id.Replace("0x", "").Replace("0X", "");
-                uint v;
-                if (uint.TryParse(id, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out v))
-                {
-                    tmpModel.FrameId.ID = v;
-                }
-
-                OnPropertyChanged("Priority");
-                OnPropertyChanged("FrameType");
-                OnPropertyChanged("FunctionCode");
-                OnPropertyChanged("ContinueFlg");
-                OnPropertyChanged("SrcDevId");
-                OnPropertyChanged("SrcDevAddr");
-                OnPropertyChanged("TargetDevId");
-                OnPropertyChanged("TargetDevAddr");
-            }
-        }*/
 
         //源设备地址范围提示
         public string srcAddrHint = "";
@@ -400,20 +328,33 @@ namespace SofarHVMExe.ViewModel
 
         #endregion
 
-
-        public ICommand SetWorkDirectoryCommand { get; set; }
+        #region 命令
         public ICommand SaveCommand { get; set; }
         public ICommand ImportCommand { get; set; }
+        public ICommand SetWorkDirectoryCommand { get; set; }
 
         private void Init()
         {
-            SetWorkDirectoryCommand = new SimpleCommand(SetWorkDirectory);
             SaveCommand = new SimpleCommand(SaveData);
             ImportCommand = new SimpleCommand(ImportFile);
+            SetWorkDirectoryCommand = new SimpleCommand(SetWorkDirectory);
         }
 
+        #endregion
 
         #region 成员方法
+        private void SaveData(object o)
+        {
+            if (DataManager.UpdatePrjConfigModel(prjCfgModel))
+            {
+                MessageBox.Show("保存成功！", "提示");
+            }
+            else
+            {
+                MessageBox.Show("保存失败！", "提示");
+            }
+        }
+
         private void ImportFile(object o)
         {
             OpenFileDialog dlg = new OpenFileDialog();
@@ -431,28 +372,28 @@ namespace SofarHVMExe.ViewModel
                 return;
 
             byte[] datas = fileData.ToArray();
-            byte[] buffer = new byte[datas.Length - 4];
-            Buffer.BlockCopy(datas, 4, buffer, 0, buffer.Length);
+            byte[] buffer = new byte[datas.Length];
+            Buffer.BlockCopy(datas, 4, buffer, 0, buffer.Length - 4);
+            Buffer.BlockCopy(datas, 0, buffer, buffer.Length - 4, 4);
 
             //清理安规集合数据
-            //SafetyList.Clear();
-            SafetyList2.Clear();
+            SafetyList.Clear();
 
             FrameConfigModel model = DataManager.GetFrameConfigModel();
             foreach (var selectModel in model.CanFrameModels)
             {
-                if (selectModel.Id == 0x19952141)
+                if (selectModel.Id == 0x19952141 || selectModel.Id == 0x19A12141)
                 {
                     var number = selectModel.FrameDatas[0].DataInfos[1].Value;
                     int groupNumber;
                     int.TryParse(number, out groupNumber);
-                    SafetyList2.Add(groupNumber, selectModel);
+                    SafetyList.Add(groupNumber, selectModel);
                 }
             }
 
             try
             {
-                foreach (var item in SafetyList2)
+                foreach (var item in SafetyList)
                 {
                     CurrentModel = item.Value;
                     tmpModel = new CanFrameModel(item.Value);
@@ -461,28 +402,36 @@ namespace SofarHVMExe.ViewModel
 
                     //编辑数据信息
                     var dataLists = item.Value.FrameDatas[0].DataInfos;
-                    int index = item.Key / 256;
+                    int index = item.Key / 256 * 128;
+
                     for (int j = 3; j < MultiDataSource.Count - 1; j++)
                     {
                         CanFrameDataInfo info = dataLists[j];
-                        index = ((j - 3) * 2);
+
                         int realVal = -1;
                         switch (info.Type)
                         {
+                            case "U8":
+                                realVal = buffer[index] & 0xff;
+                                index += 1;
+                                break;
                             case "U16":
                                 int byteU1 = buffer[index] << 8;
                                 int byteU2 = buffer[index + 1] & 0xff;
                                 realVal = byteU1 + byteU2;
+                                index += 2;
                                 break;
                             case "I16":
                                 string byteI1 = buffer[index++].ToString("X2");
                                 string byteI2 = buffer[index++].ToString("X2");
                                 realVal = Convert.ToInt16(byteI1 + byteI2, 16);
+                                index += 2;
                                 break;
                             default:
                                 int byte1 = buffer[index] << 8;
                                 int byte2 = buffer[index + 1] & 0xff;
                                 realVal = byte1 + byte2;
+                                index += 2;
                                 break;
                         }
 
@@ -516,8 +465,6 @@ namespace SofarHVMExe.ViewModel
                     }
                 }
 
-
-
                 MessageBox.Show("安规参数配置已完成更新！", "提示");
             }
             catch (Exception ex)
@@ -526,23 +473,28 @@ namespace SofarHVMExe.ViewModel
             }
         }
 
-        /// <summary>
-        /// 更新model数据
-        /// </summary>
+        private void SetWorkDirectory(object o)
+        {
+            FolderBrowserDialog dlg = new FolderBrowserDialog();
+            dlg.Description = "选择工作目录";
+            dlg.UseDescriptionForTitle = true;
+            dlg.ShowNewFolderButton = true;
+            dlg.SelectedPath = WorkPath;
+            DialogResult result = dlg.ShowDialog();
+            if (result == DialogResult.Cancel)
+                return;
+
+            WorkPath = dlg.SelectedPath.Trim();
+        }
+
         public void GetPrjCfgModel()
         {
             FrameModel = DataManager.GetFrameConfigModel();
             prjCfgModel = DataManager.GetPrjConfigModel();
         }
-
-        /// <summary>
-        /// 更新model数据
-        /// </summary>
-        /// <param name="fileCfgModel"></param>
         public void UpdateModel()
         {
             //1、更新ID数据
-            ///源设备ID选择集合
             int bitNum = FrameModel.SrcIdBitNum;
             int count = (int)Math.Pow(2, bitNum);
             List<string> srcIdSource = new List<string>();
@@ -580,15 +532,11 @@ namespace SofarHVMExe.ViewModel
 
             //2、更新数据
             UpdateFrameDate();
-
-        }//func
+        }
         private void UpdateFrameDate()
         {
             //初始化默认数据
-            {
-                //InitSingleData();
-                InitMultyData();
-            }
+            InitMultyData();
 
             CanFrameID frameId = tmpModel.FrameId;
             List<CanFrameData> _frameDatas = tmpModel.FrameDatas;
@@ -602,7 +550,7 @@ namespace SofarHVMExe.ViewModel
                     MultiDataSource = frameData.DataInfos;
                 }
             }
-        }//func 
+        }
         private void InitSingleData()
         {
             CanFrameData frameData = new CanFrameData();
@@ -623,90 +571,9 @@ namespace SofarHVMExe.ViewModel
             frameData.DataInfos = MultiDataSource;
             _frameDatas.Add(frameData);
 
-            //string addr = MultiDataSource[1].Value;
-            //FrameConfigModel frameConfigModel = fileCfgModel.FrameModel;
-            //List<CanFrameModel> frameModels = frameConfigModel.CanFrameModels;
-
-            ////保存数据
-            //int index = frameModels.IndexOf(CurrentModel);
-            //frameModels[index] = tmpModel;
-            CurrentModel = tmpModel;
-            CurrentModel.AutoTx = true;
-
-            //SaveFile();
             // 更新当前帧
-            DataManager.UpdateCanFrameDataModels(CurrentModel);
+            DataManager.UpdateCanFrameDataModels(tmpModel);
         }
-
-        /// <summary>
-        /// 保存到文件
-        /// </summary>
-        private void SaveFile()
-        {
-            //更新命令配置数据
-            UpdateCmdConfig();
-            //更新事件配置数据
-            UpdateEventConfig();
-
-            ////保存到文件
-            //if (JsonConfigHelper.WirteConfigFile(fileCfgModel))
-            //{
-            //    Debug.WriteLine("保存成功！", "提示");
-            //}
-            //else
-            //{
-            //    Debug.WriteLine("保存失败！", "提示");
-            //}
-        }
-
-        /// <summary>
-        /// 更新命令配置
-        /// </summary>
-        private void UpdateCmdConfig()
-        {
-            // 保存不需要更新帧数据
-
-
-            //string guid = CurrentModel.Guid;
-            //var cmdGrpModels = fileCfgModel.CmdModels;
-            //foreach (var cmdGrpModel in cmdGrpModels)
-            //{
-            //    var configModels = cmdGrpModel.cmdConfigModels;
-            //    CmdConfigModel cmd = configModels.Find((o) =>
-            //    {
-            //        return (o.FrameGuid == guid);
-            //    });
-
-            //    if (cmd != null)
-            //    {
-            //        cmd.FrameModel = new CanFrameModel(CurrentModel);
-            //        cmd.FrameDatas2SetValue();
-            //    }
-            //}
-        }//func
-
-        /// <summary>
-        /// 更新事件配置
-        /// </summary>
-        private void UpdateEventConfig()
-        {
-            //string guid = CurrentModel.Guid;
-            //for (int i = 0; i < fileCfgModel.EventModels.Count; i++)
-            //{
-            //    EventGroupModel groupModel = fileCfgModel.EventModels[i];
-            //    if (groupModel.FrameGuid == guid)
-            //    {
-            //        //...
-            //    }
-            //}
-        }//func
-
-        /// <summary>
-        /// 检查安规文件
-        /// </summary>
-        /// <param name="path"></param>
-        /// <param name="buffer"></param>
-        /// <returns></returns>
         private int CheckSatefyFile(string path, out List<byte> buffer)
         {
             //验证文件（是否为空，格式是否正常，CRC校验是否通过等）
@@ -756,7 +623,6 @@ namespace SofarHVMExe.ViewModel
             byte[] dataCRC = buffer.ToArray();
             if (dataCRC.Length != 1156) return 3;
 
-            //CRCHelper helper = new CRCHelper();
             ushort crcVal = CRCHelper.ComputeCrc16(dataCRC.ToArray(), 1156);
             int encodecrc = CRCHelper.Encode(crcVal);
 
@@ -764,52 +630,6 @@ namespace SofarHVMExe.ViewModel
             if (!lines[10].Equals(rightstr)) return 4;
 
             return 0;
-        }//func
-
-        /// <summary>
-        /// 更新CAN帧显示数据源
-        /// 心跳下拉框id集合
-        /// </summary>
-        private void UpdateFrameSource()
-        {
-            // 无调用 注释
-            //if (fileCfgModel == null)
-            //    return;
-
-            //List<string> list = new List<string>();
-            //foreach (CanFrameModel frame in fileCfgModel.FrameModel.CanFrameModels)
-            //{
-            //    string id = $"0x{frame.Id.ToString("X")}({frame.Name})";
-            //    list.Add(id);
-            //}
-            //CanFrameList = list;
-        }
-
-        private void SetWorkDirectory(object o)
-        {
-            FolderBrowserDialog dlg = new FolderBrowserDialog();
-            dlg.Description = "选择工作目录";
-            dlg.UseDescriptionForTitle = true;
-            dlg.ShowNewFolderButton = true;
-            dlg.SelectedPath = WorkPath;
-            DialogResult result = dlg.ShowDialog();
-            if (result == DialogResult.Cancel)
-                return;
-
-            WorkPath = dlg.SelectedPath.Trim();
-        }
-
-        private void SaveData(object o)
-        {
-            if (DataManager.UpdatePrjConfigModel(prjCfgModel))
-            //if (JsonConfigHelper.WirteConfigFile(fileCfgModel))
-            {
-                MessageBox.Show("保存成功！", "提示");
-            }
-            else
-            {
-                MessageBox.Show("保存失败！", "提示");
-            }
         }
         #endregion
 
@@ -850,11 +670,11 @@ namespace SofarHVMExe.ViewModel
                 foreach (CanFrameData fd in frameDataList)
                 {
                     SendSingleFrame(id, fd.Data, fd);
-                    Thread.Sleep(5 * 10);
-                    Debug.WriteLine($"[发送]下载起始帧[1]，0x{id.ToString("X")} {BitConverter.ToString(fd.Data)}");
+                    Thread.Sleep(50);
+                    MultiLanguages.Common.LogHelper.WriteLog($"[发送]下载起始帧[1]，0x{id.ToString("X")} {BitConverter.ToString(fd.Data)}");
                 }
             }
-        }//func
+        }
         /// <summary>
         /// 发送单帧数据
         /// </summary>
@@ -876,63 +696,9 @@ namespace SofarHVMExe.ViewModel
             {
                 ecanHelper.SendCan2(id, datas);
             }
-
-#if false
-            //2、更新发送/接收信息数据表
-            if (IsShowSend)
-            {
-                SendRecvFrameInfo newFrameInfo = new SendRecvFrameInfo();
-                newFrameInfo.IsSend = true;
-                newFrameInfo.Time = DateTime.Now.ToString("HH:mm:ss.fff"); //时分秒毫秒
-                newFrameInfo.ID = "0x" + id.ToString("X");
-                newFrameInfo.Datas = BitConverter.ToString(datas);
-                if (frameData != null)
-                {
-                    var dataInfos = frameData.DataInfos;
-                    int count = dataInfos.Count;
-                    if (count > 0)
-                    {
-                        newFrameInfo.Info1 = dataInfos[0].Name;
-                        newFrameInfo.Value1 = dataInfos[0].Value;
-                    }
-                    if (count > 1)
-                    {
-                        newFrameInfo.Info2 = dataInfos[1].Name;
-                        newFrameInfo.Value2 = dataInfos[1].Value;
-                    }
-                    if (count > 2)
-                    {
-                        newFrameInfo.Info3 = dataInfos[2].Name;
-                        newFrameInfo.Value3 = dataInfos[2].Value;
-                    }
-                    if (count > 3)
-                    {
-                        newFrameInfo.Info4 = dataInfos[3].Name;
-                        newFrameInfo.Value4 = dataInfos[3].Value;
-                    }
-                    if (count > 4)
-                    {
-                        newFrameInfo.Info5 = dataInfos[4].Name;
-                        newFrameInfo.Value5 = dataInfos[4].Value;
-                    }
-                }
-
-                //子线程更新发送/接收信息数据表
-                System.Windows.Application.Current.Dispatcher.BeginInvoke(() =>
-                {
-                    FrameInfoDataSrc.Add(newFrameInfo);
-                });
-            }
-#endif
-            //3、增加到报文信息
-            {
-                //string msg = $"[发送]{DateTime.Now.ToString("HH:mm:ss.fff")}  :  0x{id.ToString("X8")}\t{BitConverter.ToString(datas)}";
-                //DebugTool.Output(msg);
-                //AddDebugInfo(msg);
-            }
-        }//func
+        }
 
         #endregion
 
-    }//class
+    }
 }

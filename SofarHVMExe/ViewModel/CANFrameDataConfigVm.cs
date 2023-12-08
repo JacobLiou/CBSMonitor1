@@ -20,7 +20,7 @@ namespace SofarHVMExe.ViewModel
     /// <summary>
     /// Can帧数据配置ViewModel
     /// </summary>
-    internal class CANFrameDataConfigVm : ViewModelBase
+    public class CANFrameDataConfigVm : ViewModelBase
     {
         /// <summary>
         /// 操作
@@ -418,11 +418,6 @@ namespace SofarHVMExe.ViewModel
                 //连续
                 SaveUncontinue();
             }
-
-            /// <summary>
-            /// 保存
-            /// </summary>
-            /// <param name="o"></param>
         }//func
 
         /// <summary>

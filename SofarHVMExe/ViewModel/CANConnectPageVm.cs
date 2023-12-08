@@ -28,8 +28,6 @@ namespace SofarHVMExe.ViewModel
         public CANConnectPageVm()
         {
             ecanHelper = new EcanHelper();
-            //ecanHelper.OnReceiveCan1 += RecvProcCan1;
-            //ecanHelper.OnReceiveCan2 += RecvProcCan2;
             ecanHelper.RegisterRecvProcessCan1(RecvProcCan1);
             ecanHelper.RegisterRecvProcessCan2(RecvProcCan2);
 
@@ -163,17 +161,6 @@ namespace SofarHVMExe.ViewModel
             }
         }
 
-        //private bool isConnected = false;
-        //public bool IsConnected
-        //{
-        //    get => isConnected;
-        //    set
-        //    {
-        //        isConnected = value;
-        //        OnPropertyChanged();
-        //    }
-        //}
-
         public bool IsConnected
         {
             get => ecanHelper.IsConnected;
@@ -194,6 +181,7 @@ namespace SofarHVMExe.ViewModel
                 {
                     //打开通道
                     OpenChannel1();
+                    CloseChannel2();
                 }
                 else
                 {
@@ -214,6 +202,7 @@ namespace SofarHVMExe.ViewModel
                 {
                     //打开通道
                     OpenChannel2();
+                    CloseChannel1();
                 }
                 else
                 {
@@ -466,11 +455,6 @@ namespace SofarHVMExe.ViewModel
             if (ecanHelper == null)
                 return;
 
-            LogHelper.SubDirectory = "Info";
-            LogHelper.CreateNewLogger();
-            LogHelper.AddLog("**************** 运行日志 ****************");
-            LogHelper.AddLog($"[OpenDevice]-Start");
-
             (o as UIElement).IsEnabled = false;
             GlobalManager.Instance().UpdataUILock(true);
 
@@ -478,29 +462,21 @@ namespace SofarHVMExe.ViewModel
             await task;
             if (task.Result)
             {
-                //IsConnected = true;
-
                 if (isChannel1Opened)
                 {
-                    LogHelper.AddLog($"[OpenDevice]-OpenChannel1");
                     OpenChannel1();
                 }
 
                 if (isChannel2Opened)
                 {
-                    LogHelper.AddLog($"[OpenDevice]-OpenChannel2");
                     OpenChannel2();
                 }
 
-                LogHelper.AddLog($"[OpenDevice]-已连接");
                 GlobalManager.Instance().UpdateStatusBar_ConnectStatus("已连接");
-                //MessageBox.Show("打开设备成功！", "提示");
             }
             else
             {
-                LogHelper.AddLog($"[OpenDevice]-断开");
                 GlobalManager.Instance().UpdateStatusBar_ConnectStatus("断开");
-                //MessageBox.Show("打开设备失败！", "提示");
             }
             (o as UIElement).IsEnabled = true;
             GlobalManager.Instance().UpdataUILock(false);
@@ -510,10 +486,6 @@ namespace SofarHVMExe.ViewModel
             if (ecanHelper == null || !ecanHelper.IsConnected)
                 return;
 
-            LogHelper.SubDirectory = "Info";
-            LogHelper.CreateNewLogger();
-            LogHelper.AddLog("**************** 运行日志 ****************");
-            LogHelper.AddLog($"[CloseDevice]-Start");
             (o as UIElement).IsEnabled = false;
             GlobalManager.Instance().UpdataUILock(true);
             Task<bool> task = Task.Run(() => { return ecanHelper.Close(); });
@@ -522,16 +494,12 @@ namespace SofarHVMExe.ViewModel
             bool result = (completedTask == task) && (await task);
             if (result)
             {
-                LogHelper.AddLog($"[CloseDevice]-CloseChannel");
-                //IsConnected = false;
                 CloseChannel1();
                 CloseChannel2();
 
-                LogHelper.AddLog($"[CloseDevice]-UpdateStatusBar_ConnectStatus");
                 GlobalManager.Instance().UpdateStatusBar_ConnectStatus("断开");
                 GlobalManager.Instance().UpdateStatusBar_SelectDev("无");
                 MessageBox.Show("关闭设备成功！", "提示");
-                LogHelper.AddLog($"[CloseDevice]-关闭设备成功");
             }
             else
             {
@@ -546,20 +514,12 @@ namespace SofarHVMExe.ViewModel
             {
                 ecanHelper.StartRecvCan1();
             }
-            else
-            {
-                //MessageBox.Show("打开通道失败！");
-            }
         }
         private void OpenChannel2()
         {
             if (ecanHelper.StartupCan2())
             {
                 ecanHelper.StartRecvCan2();
-            }
-            else
-            {
-                //MessageBox.Show("打开通道失败！");
             }
         }
         private void CloseChannel1()
@@ -737,18 +697,6 @@ namespace SofarHVMExe.ViewModel
 
             string filePath = dlg.FileName;
             TxtFileHelper.Save2File(RecvDataCan2, filePath);
-        }
-        private void SaveData()
-        {
-            //JsonConfigHelper.WirteConfigFile(fileCfgModel);
-            /*if (JsonConfigHelper.WirteConfigFile(fileCfgModel))
-            {
-                //MessageBox.Show("保存成功！", "提示");
-            }
-            else
-            {
-                //MessageBox.Show("保存失败！", "提示");
-            }*/
         }
         #endregion
 

@@ -58,7 +58,7 @@ namespace SofarHVMExe.Util.TI
                 }
                 else
                 {
-                    tiProcess.Kill();
+                    tiProcess.CloseMainWindow();
                     tcs.SetException(new Exception($"The \"{Path.GetFileName(exePath)}\" process was killed due to timeout."));
                 }
 

@@ -59,9 +59,10 @@ namespace SofarHVMExe
                     App.Current.Shutdown();
                     return;
                 }
-                TaskScheduler.UnobservedTaskException += UnobservedTaskException;
+
+                Current.DispatcherUnhandledException += Current_DispatcherUnhandledException;
                 AppDomain.CurrentDomain.UnhandledException += new UnhandledExceptionEventHandler(CurrentDomain_UnhandledException);
-                DispatcherUnhandledException += App_DispatcherUnhandledException;
+                TaskScheduler.UnobservedTaskException += UnobservedTaskException;
             }
             catch (Exception ex)
             {
@@ -69,27 +70,41 @@ namespace SofarHVMExe
             }
         }
 
-        private void App_DispatcherUnhandledException(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
+        /// <summary>
+        /// UI线程上未捕获的异常
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void Current_DispatcherUnhandledException(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
         {
-            LogHelper.Error(e.Exception.ToString());
-            MessageBox.Show(e.Exception.ToString(), "上位机软件运行异常（请截图反馈后再关闭）");
+            MessageBox.Show("当前应用程序遇到一些问题，出现异常须重启软件。");
+            LogHelper.Error("未捕获到的UI线程异常！", e.Exception);
             e.Handled = true;
         }
 
+        /// <summary>
+        /// 捕获应用程序域中发生的异常
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
         {
-            var exception = e.ExceptionObject as Exception;
-            var terminatingMessage = e.IsTerminating ? " The application is terminating." : string.Empty;
-            var exceptionMessage = exception?.Message ?? "An unmanaged exception occured.";
-            var message = string.Concat(exceptionMessage, terminatingMessage);
-            LogHelper.Error(message);
-            MessageBox.Show(message, "上位机软件运行异常（请截图反馈后再关闭）");
+            //var exception = e.ExceptionObject as Exception;
+            //var terminatingMessage = e.IsTerminating ? " The application is terminating." : string.Empty;
+            //var exceptionMessage = exception?.Message ?? "An unmanaged exception occured.";
+            //var message = string.Concat(exceptionMessage, terminatingMessage);
+            LogHelper.Error("未捕获到的非UI线程异常！" , (System.Exception)e.ExceptionObject);
         }
 
+        /// <summary>
+        /// 当出错的任务的未观察到的异常将要触发异常升级策略时发生，默认情况下，这将终止进程。
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void UnobservedTaskException(object sender, UnobservedTaskExceptionEventArgs e)
         {
-            LogHelper.Error(e.Exception.ToString());
-            MessageBox.Show(e.Exception.ToString(), "上位机软件运行异常（请截图反馈后再关闭）");
+            LogHelper.Error("未捕获到的Task任务异常！" + e.Exception);
+            e.SetObserved();
         }
 
         private static void ShowWindowTop(IntPtr hWnd)

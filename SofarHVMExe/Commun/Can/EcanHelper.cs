@@ -93,12 +93,8 @@ namespace Communication.Can
                 OnPropertyChanged();
             }
         }
-        //public Action<CAN_OBJ> OnReceiveCan1 { get; set; }
-        //public Action<CAN_OBJ> OnReceiveCan2 { get; set; }
         public List<ConcurrentQueue<CAN_OBJ>> RecvDataQueuesCan1 { get; set; } = new List<ConcurrentQueue<CAN_OBJ>>();
         public List<ConcurrentQueue<CAN_OBJ>> RecvDataQueuesCan2 { get; set; } = new List<ConcurrentQueue<CAN_OBJ>>();
-        //public CAN_OBJ RecvDataCan1 { get; set; }
-        //public CAN_OBJ RecvDataCan2 { get; set; }
         public bool IsCan1Start { get; set; }
         public bool IsCan2Start { get; set; }
         public CancellationTokenSource CancellationTokenSource1 { get; set; }
@@ -163,7 +159,6 @@ namespace Communication.Can
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"OpenDevice: {ex.Message}");
                 return false;
             }
 
@@ -364,24 +359,6 @@ namespace Communication.Can
         }
 
         /// <summary>
-        /// 读取错误信息
-        /// </summary>
-        public void ReadErrInfo()
-        {
-            try
-            {
-                //ECANStatus result = EcanMethod.ReadErrInfo(devType, devIndex, 0);
-                //if (result != ECANStatus.STATUS_OK)
-                //{
-                //    throw new System.Exception("打开设备失败！");
-                //}
-            }
-            catch (Exception)
-            {
-            }
-        }
-
-        /// <summary>
         /// 复位Can 状态
         /// </summary>
         public void RsetEcanMode()
@@ -537,11 +514,6 @@ namespace Communication.Can
         {
             isRecvStartCan1 = true;
 
-            //设置新的log文件
-            LogHelper.SubDirectory = "RealtimeData";
-            LogHelper.CreateNewLogger();
-            LogHelper.AddLog("**************** 程序运行日志 ****************");
-
             Task.Run(() =>
             {
                 #region
@@ -575,7 +547,6 @@ namespace Communication.Can
                         }
 
                         frame = $"{time,-15}\t{id,-10}     {len}    {data}\r\n";
-                        //LogHelper.AddLog($"[CAN1Received]-{frame}");
                     }
 
                     if (eCANStatus != ECANStatus.STATUS_OK || errcode != 0)
@@ -723,13 +694,6 @@ namespace Communication.Can
         {
             CAN_OBJ msg = new CAN_OBJ();
             List<CAN_OBJ> result = new List<CAN_OBJ>();
-
-            //uint mLen = 1;
-            //EcanMethod.Receive(devType, devIndex, 0, out msg, mLen, 1500);
-
-            //if (((EcanMethod.Receive(devType, devIndex, 0, out msg, mLen, 1500) == ECANStatus.STATUS_OK) && (mLen > 0)))
-            //{
-            //}
 
             int sCount = 0;
             do

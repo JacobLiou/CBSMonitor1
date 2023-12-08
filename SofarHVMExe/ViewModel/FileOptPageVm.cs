@@ -1,6 +1,5 @@
-﻿using CanProtocol;
-using CanProtocol.ProtocolModel;
-using Communication.Can;
+﻿using Communication.Can;
+using CommunityToolkit.Mvvm.ComponentModel;
 using NPOI.HPSF;
 using NPOI.OpenXml4Net.OPC;
 using NPOI.POIFS.NIO;
@@ -9,13 +8,10 @@ using NPOI.XSSF.Streaming.Values;
 using NPOI.XSSF.UserModel;
 using NPOI.XWPF.UserModel;
 using Org.BouncyCastle.Ocsp;
-using SofarHVMExe.Model;
-using SofarHVMExe.SubPubEvent;
-using SofarHVMExe.Utilities;
-using SofarHVMExe.Utilities.Global;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Data.SqlTypes;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Packaging;
@@ -27,11 +23,17 @@ using System.Text;
 using System.Text.Unicode;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Threading.Tasks.Dataflow;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Shapes;
+using CanProtocol;
+using CanProtocol.ProtocolModel;
+using SofarHVMExe.Model;
+using SofarHVMExe.Utilities;
+using SofarHVMExe.Utilities.Global;
 
 namespace SofarHVMExe.ViewModel
 {
@@ -45,7 +47,6 @@ namespace SofarHVMExe.ViewModel
 
         #region 字段
         public EcanHelper? ecanHelper = null;
-        private FileConfigModel? fileCfgModel = null;
         private FrameConfigModel? frameCfgModel = null;
         private byte targetAddr = 0x0; //目标设备地址，广播0x0，否则为单台升级
         private int fileNo = -1;       //文件编码
@@ -53,20 +54,29 @@ namespace SofarHVMExe.ViewModel
         private int dataLength = -1;   //交互长度
         private string fileType;       //文件类型
 
-        private int dataLengthTemp = 0;//临时使用的非常规交互长度
-        private static bool isPackage = true;//当前包
-        private static string fileName = "";  //文化名称：文件类型+设备类型+设备号+导出日期
+        private static bool isPackage; //当前包
+        private static string fileName = "";  //文件名称：文件类型+设备类型+设备号+导出日期
 
         private StringBuilder logMsg = new StringBuilder();//文件字符串
-        private String BCUStr = "时间,电池簇电压,电池簇SOC,电池簇SOH,电池簇电流,继电器状态,风扇状态,BCU状态,充放电使能,保护信息1,保护信息2,保护信息3,保护信息4,告警信息1,告警信息2,最高单体电压,最高单体电压BMU序号,最高单体电压所在BMU的第几节,最小单体电压,最小单体电压BMU序号,最小单体电压所在BMU第几节,最高单体温度,最高单体温度BMU序号,最高单体温度所在BMU第几节,最小单体温度,最小单体温度BMU序号,最小单体温度所在BMU第几节,最大Pack总压,最小Pack总压,最大Pack总压编号,最小Pack总压编号,簇号,簇内电池包数量,高压绝缘阻抗,保险丝后电压,功率侧电压,负载端电压,辅助电源电压,电池簇的充电电压,电池簇充电电流上限,电池簇放电电流上限,电池簇的放电截止电压,电池包均衡状态,最高功率端子温度,环境温度,累计充电安时,累计放电安时,累计充电瓦时,累计放电瓦时\r\n";
-        private String BMUStr = "时间,PACK电池总电压累,电芯电压,SOC显示值,SOH显示值,SOC计算值,SOH计算值,电池电流,最高单体电压,最低单体电压,最高单体电压序号,最低单体电压序号,最高单体温度,最低单体温度,最高单体温度序号,最低单体温度序号,BMU编号,系统状态,充放电使能,切断请求,关机请求,充电电流上限,放电电流上限,保护1,保护2,告警1,告警2,故障1,故障2,主动均衡状态,均衡母线电压,均衡母线电流,辅助供电电压,满充容量,循环次数,累计放电安时,累计充电安时,累计放电瓦时,累计充电瓦时,环境温度,DCDC温度1,DCDC温度2,均衡温度1,均衡温度2,1-16串均衡状态,单体电压1,单体电压2,单体电压3,单体电压4,单体电压5,单体电压6,单体电压7,单体电压8,单体电压9,单体电压10,单体电压11,单体电压12,单体电压13,单体电压14,单体电压15,单体电压16,单体温度1,单体温度2,单体温度3,单体温度4,单体温度5,单体温度6,单体温度7,单体温度8,单体温度9,单体温度10,单体温度11,单体温度12,单体温度13,单体温度14,单体温度15,单体温度16\r\n";
-        private String FaultRecordStr = "电流,最大电压,最小电压,最大温度,最小温度\r\n";
+        private String BCUStr = "时间,电池簇电压(V),电池簇SOC(%),电池簇SOH(%),电池簇电流(mA),继电器状态,风扇状态,继电器切断请求,BCU状态,充放电使能,保护信息1,保护信息2,保护信息3,保护信息4,告警信息1,告警信息2,最高PACK电压,最低PACK电压,最高PACK电压序号,最低PACK电压序号,簇号,簇内电池包数量,高压绝缘阻抗(V),保险丝后电压(V),功率侧电压(V),负载端电压(V),辅助电源电压(V),电池簇的充电电压(V),电池簇充电电流上限(A),电池簇放电电流上限(A),电池簇的放电截止电压(V),电池包均衡状态,最高功率端子温度(℃),环境温度(℃),累计充电安时(Ah),累计放电安时(Ah),累计充电瓦时(Wh),累计放电瓦时(Wh),BMU编号,电芯电压1,电芯电压2,电芯电压3,电芯电压4,电芯电压5,电芯电压6,电芯电压7,电芯电压8,电芯电压9,电芯电压10,电芯电压11,电芯电压12,电芯电压13,电芯电压14,电芯电压15,电芯电压16,PACK1最大单体电压,PACK2最大单体电压,PACK3最大单体电压,PACK4最大单体电压,PACK5最大单体电压,PACK6最大单体电压,PACK7最大单体电压,PACK8最大单体电压,PACK9最大单体电压,PACK10最大单体电压,PACK1最小单体电压,PACK2最小单体电压,PACK3最小单体电压,PACK4最小单体电压,PACK5最小单体电压,PACK6最小单体电压,PACK7最小单体电压,PACK8最小单体电压,PACK9最小单体电压,PACK10最小单体电压,PACK1平均单体电压,PACK2平均单体电压,PACK3平均单体电压,PACK4平均单体电压,PACK5平均单体电压,PACK6平均单体电压,PACK7平均单体电压,PACK8平均单体电压,PACK9平均单体电压,PACK10平均单体电压,PACK1最大单体温度,PACK2最大单体温度,PACK3最大单体温度,PACK4最大单体温度,PACK5最大单体温度,PACK6最大单体温度,PACK7最大单体温度,PACK8最大单体温度,PACK9最大单体温度,PACK10最大单体温度,PACK1最小单体温度,PACK2最小单体温度,PACK3最小单体温度,PACK4最小单体温度,PACK5最小单体温度,PACK6最小单体温度,PACK7最小单体温度,PACK8最小单体温度,PACK9最小单体温度,PACK10最小单体温度,预留1,预留2\r\n";
+        private String BMUStr = "时间,电池采集电压(mV),电池累计电压(mV),SOC显示值(%),SOH显示值(%),SOC计算值,SOH计算值,电池电流(mA),最高单体电压(mV),最低单体电压(mV),最高单体电压序号,最低单体电压序号,最高单体温度(℃),最低单体温度(℃),最高单体温度序号,最低单体温度序号,BMU编号,系统状态,充放电使能,切断请求,关机请求,充电电流上限(A),放电电流上限(A),保护1,保护2,告警1,告警2,故障1,故障2,主动均衡状态,均衡母线电压(mV),均衡母线电流(mA),辅助供电电压(mV),满充容量(Ah),循环次数,累计放电安时(Ah),累计充电安时(Ah),累计放电瓦时(Wh),累计充电瓦时(Wh),环境温度(℃),DCDC温度1(℃),DCDC温度2(℃),均衡温度1(℃),均衡温度2(℃),1-16串均衡状态,单体电压1(mV),单体电压2(mV),单体电压3(mV),单体电压4(mV),单体电压5(mV),单体电压6(mV),单体电压7(mV),单体电压8(mV),单体电压9(mV),单体电压10(mV),单体电压11(mV),单体电压12(mV),单体电压13(mV),单体电压14(mV),单体电压15(mV),单体电压16(mV),单体温度1(℃),单体温度2(℃),单体温度3(℃),单体温度4(℃),单体温度5(℃),单体温度6(℃),单体温度7(℃),单体温度8(℃),单体温度9(℃),单体温度10(℃),单体温度11(℃),单体温度12(℃),单体温度13(℃),单体温度14(℃),单体温度15(℃),单体温度16(℃),RSV1,RSV2,RSV3,RSV4,RSV5,RSV6,RSV7,RSV8,RSV9,RSV10\r\n";
+        private String FaultRecordStr = "电流(A),最大电压(mV),最小电压(mV),最大温度(℃),最小温度(℃)\r\n";
 
-        private CRCHelper crcHelper = new CRCHelper();
         private CancellationTokenSource cts = new CancellationTokenSource();//取消信号量
         #endregion
 
         #region 属性
+        //sn号
+        private string sn = "";
+        public string SN
+        {
+            get => sn;
+            set
+            {
+                sn = value;
+                OnPropertyChanged();
+            }
+        }
         //当前按钮状态：开始读取/终止读取
         private bool status = false;
         public bool Status
@@ -107,6 +117,25 @@ namespace SofarHVMExe.ViewModel
             set
             {
                 currentObjval = value;
+                if (currentObjval == 1)
+                {
+                    IsTiming = Visibility.Hidden;
+                }
+                else
+                {
+                    IsTiming = Visibility.Visible;
+                }
+                OnPropertyChanged();
+            }
+        }
+        //当前选择BMU编号框
+        private Visibility isTiming = Visibility.Visible;
+        public Visibility IsTiming
+        {
+            get => isTiming;
+            set
+            {
+                isTiming = value;
                 OnPropertyChanged();
             }
         }
@@ -130,6 +159,38 @@ namespace SofarHVMExe.ViewModel
             set
             {
                 bmuId = value;
+                OnPropertyChanged();
+            }
+        }
+        //起始地址
+        private int startLocation = 0;
+        public int StartLocation
+        {
+            get { return startLocation; }
+            set
+            {
+                startLocation = value;
+                OnPropertyChanged();
+            }
+        }
+        //读取条数
+        private int readNumber = 0;
+        public int ReadNumber
+        {
+            get { return readNumber; }
+            set
+            {
+                readNumber = value;
+                OnPropertyChanged();
+            }
+        }
+        public bool readAllData { get; set; } = false;
+        public bool ReadAllData
+        {
+            get => readAllData;
+            set
+            {
+                readAllData = value;
                 OnPropertyChanged();
             }
         }
@@ -162,17 +223,12 @@ namespace SofarHVMExe.ViewModel
         {
             try
             {
-                if (BmuId < 1 || BmuId > 31)
+                if (BmuId < 0 || BmuId > 31)
                     throw new ArgumentOutOfRangeException(nameof(BmuId),
-                           "The valid range is between 1 and 31.");
+                           "The valid range is between 0 and 31.");
 
-                if (o != null)//赋值SelectData
-                {
-                    FileCode model = (FileCode)o;
-                    fileNo = model.ID;
-                    fileType = model.Name;
-                    dataLength = model.DataLength;
-                }
+                if (o == null)
+                    return;
 
                 //BCU选择设备ID
                 targetAddr = DeviceManager.Instance().GetSelectDev();
@@ -187,45 +243,105 @@ namespace SofarHVMExe.ViewModel
                 }
                 else
                 {
-                    if (dataLength != -1)
+                    FileCode model = (FileCode)o;
+                    fileNo = model.ID;
+                    fileType = model.Name;
+                    dataLength = model.DataLength;
+
+                    Task.Run(() =>
                     {
-                        Task.Run(() =>
+                        cts = new CancellationTokenSource();
+                        Status = true;
+
+                        /*if (!GetSn())
                         {
-                            cts = new CancellationTokenSource();
-                            Status = true;
+                            AddMsg($"下发读设备序列号失败！");
+                        }*/
 
-                            if (!StartReadFile())
+                        if (!StartReadFile())
+                        {
+                            AddMsg($"下发读文件指令响应失败！");
+                            return;
+                        }
+
+                        int sendCount = 0, dataLengthTemp = dataLength;
+                        if (fileTotal % dataLength != 0)
+                        {
+                            sendCount = fileTotal / dataLength + 1;
+                            dataLengthTemp = fileTotal % dataLength;
+                        }
+                        else
+                        {
+                            sendCount = fileTotal / dataLength;
+                        }
+
+                        Task.Factory.StartNew(() =>
+                        {
+                            if (!ReadFileData(sendCount, dataLengthTemp))
                             {
-                                AddMsg($"下发读文件指令响应失败！");
-                                return;
+                                AddMsg($"下发读文件数据内容！");
                             }
-
-                            Task.Factory.StartNew(() =>
+                            else
                             {
-                                if (!ReadFileData())
-                                {
-                                    AddMsg($"下发读文件数据内容！");
-                                }
-                                else
-                                {
-                                    AddMsg($"完成读文件数据内容！");
-                                    //if (fileNo == 4)
-                                    //    AddMsg(logMsg.ToString());
-                                }
-                            }, cts.Token);
-                        });
-                    }
+                                AddMsg($"完成读文件数据内容！");
+                            }
+                        }, cts.Token);
+                    });
                 }
             }
             catch (Exception ex)
             {
                 MessageBox.Show("执行错误：" + ex.Message);
             }
-        }//func
+        }
+
+        private bool GetSn()
+        {
+            bool ok = false;
+            AddMsg("发起方下发读序列号指令");
+            isPackage = false;
+            for (int i = 0; i < 3; i++)
+            {
+                SN = "00000000000000000000";//初始化序列号
+
+                write_read_sn();
+                AddMsg($"请求第{i + 1}次");
+                Thread.Sleep(100 * (i + 1));
+
+                ///在1000ms内如果收到正确应答则ok
+                Stopwatch timer = new Stopwatch();
+                timer.Start();
+                while (true)
+                {
+                    try
+                    {
+                        if (isPackage)
+                        {
+                            Debug.WriteLine("SN:" + SN);
+                            ok = true;
+                            break;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                    }
+
+                    if (timer.ElapsedMilliseconds > 1000)
+                    {
+                        timer.Stop();
+                        break;
+                    }
+                }
+
+                if (ok) break;
+            }//for
+            return ok;
+        }
 
         public bool StartReadFile()
         {
             bool ok = false;
+            AddMsg("", false);
             AddMsg("发起方下发读文件指令");
             isPackage = false;
             for (int i = 0; i < 5; i++)
@@ -261,44 +377,30 @@ namespace SofarHVMExe.ViewModel
                 if (ok) break;
             }//for
             return ok;
-        }//func
+        }
 
-        public bool ReadFileData()
+        public bool ReadFileData(int count, int dataLengthTemp)
         {
             bool ok = false;
             AddMsg("", false);
             AddMsg($"{DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff")}  发起方下发读文件数据内容");
 
-            int count;
-            //fileTotal = 85;
-            if (fileTotal % dataLength != 0)
-            {
-                dataLengthTemp = fileTotal % dataLength;
-                count = fileTotal / dataLength + 1;
-            }
-            else
-            {
-                count = fileTotal / dataLength;
-            }
-
-            int sendIndex = 0;
+            int sendIndex = startLocation;
+            int endSeekIndex = StartLocation + ReadNumber;
             while (!cts.IsCancellationRequested)
             {
-                if (sendIndex < count)
+                if ((sendIndex < count && ReadAllData) || (sendIndex < endSeekIndex && !ReadAllData))
                 {
                     ok = false;
                     isPackage = false;
 
                     for (int i = 0; i < 5; i++)
                     {
-                        int datasize = -1;
-                        if (sendIndex == count - 1 && dataLengthTemp != 0)
+                        int datasize = sendIndex == count - 1 ? dataLengthTemp : dataLength;
+                        if (datasize == -1)
                         {
-                            datasize = dataLengthTemp;
-                        }
-                        else
-                        {
-                            datasize = dataLength;
+                            AddMsg($"返回数据长度为空，已终止");
+                            return false;
                         }
                         write_read_file_data(sendIndex * dataLength, datasize, fileNo);
                         AddMsg($"请求次数：{i + 1} 请求偏移地址：{sendIndex * dataLength}，长度为{datasize}");
@@ -313,7 +415,6 @@ namespace SofarHVMExe.ViewModel
                             {
                                 if (isPackage)
                                 {
-                                    //isPackage = true;
                                     sendIndex++;
                                     ok = true;
                                     break;
@@ -336,11 +437,13 @@ namespace SofarHVMExe.ViewModel
                         return false;
                 }
 
-                if (!isPackage || sendIndex >= count)
+                if ((ReadAllData && (!isPackage || sendIndex >= count))
+                    || (!ReadAllData && (!isPackage || sendIndex >= endSeekIndex)))
                     cts.Cancel();
             }
+
             return ok;
-        }//func
+        }
 
         /// <summary>
         /// 打印日志
@@ -364,6 +467,42 @@ namespace SofarHVMExe.ViewModel
                 Message = tmp;
             });
         }
+
+        /// <summary>
+        /// 下发读取序列号指令（请求帧）
+        /// </summary>
+        private void write_read_sn()
+        {
+            CanFrameID frameID = null;
+            if (CurrentObjval == 0)
+            {
+                //BCU
+                if (BmuId == 0)
+                {
+                    frameID = new CanFrameID(0x0E0B8000);
+                    frameID.DstAddr = targetAddr;
+
+                    SendFrame(frameID.ID, new byte[] { 0x03, 0x00, 0x0A, 0x00 });
+                }
+                else
+                {
+                    int startAddr = 33 + 144 * (BmuId - 1);
+
+                    frameID = new CanFrameID(0x0E058000);
+                    frameID.DstAddr = targetAddr;
+
+                    SendFrame(frameID.ID, new byte[] { (byte)(startAddr & 0xff), (byte)(startAddr << 8), 0x0A, 0x00 });
+                }
+            }
+            else
+            {
+                frameID = new CanFrameID(0x0E0BA080);
+                frameID.DstAddr = targetAddr;
+
+                SendFrame(frameID.ID, new byte[] { 0x03, 0x00, 0xA0, 0x00 });
+            }
+        }
+
         /// <summary>
         /// 下发读取文件指令（请求帧）
         /// </summary>
@@ -371,20 +510,34 @@ namespace SofarHVMExe.ViewModel
         /// <param name="readType">读取方式：0/1</param>
         private void write_read_file(int no, int readType = 1)
         {
+            if (ReadAllData)
+                readType = 0;
+
+            int dstType = 0;
+            byte data0 = 0x00;//表示交互BCU，无需填写设备ID；交互BMU、需要设备ID+0xA0;
+            switch (CurrentObjval)
+            {
+                case 0:
+                    dstType = 4;
+                    data0 = Convert.ToByte(BmuId + 0xA0); break;
+                    break;
+                case 1:
+                    dstType = 5;
+                    data0 = Convert.ToByte(BmuId + 0xA0); break;
+                default:
+                    break;
+            }
+
             CanFrameID cid = new CanFrameID();
             cid.Priority = 3;
             cid.FrameType = 2;
             cid.ContinuousFlag = 0;
             cid.FC = 40;    //功能码
-            cid.DstType = 4;//BCU
+            cid.DstType = (byte)dstType;//BCU  ->BMU
             cid.DstAddr = targetAddr; //目标地址
             cid.SrcType = 0;//CSU-MCU1  010
             cid.SrcAddr = 0;//地址1
             uint id = cid.ID;
-
-            byte data0 = 0x00;//表示交互BCU，无需填写设备ID；交互BMU、需要设备ID+0xA0;
-            if (CurrentObjval != 0)
-                data0 = Convert.ToByte(BmuId + 0xA0);
 
             byte[] send = new byte[8];
             send[0] = data0;//子设备地址为
@@ -401,20 +554,31 @@ namespace SofarHVMExe.ViewModel
         /// <param name="dataSize">数据长度</param>
         private void write_read_file_data(int fileOffset, int dataSize, int fileNo)
         {
+            int dstType = 0;
+            byte data0 = 0x00;//表示交互BCU，无需填写设备ID；交互BMU、需要设备ID+0xA0;
+            switch (CurrentObjval)
+            {
+                case 0:
+                    dstType = 4;
+                    data0 = Convert.ToByte(BmuId + 0xA0); break;
+                    break;
+                case 1:
+                    dstType = 5;
+                    data0 = Convert.ToByte(BmuId + 0xA0); break;
+                default:
+                    break;
+            }
+
             CanFrameID cid = new CanFrameID();
             cid.Priority = 3;
             cid.FrameType = 2;
             cid.ContinuousFlag = 1;
             cid.FC = 41;    //功能码
-            cid.DstType = 4;//PCS
+            cid.DstType = (byte)dstType;//PCS
             cid.DstAddr = targetAddr; //目标地址
             cid.SrcType = 0;//CSU-MCU1  010
             cid.SrcAddr = 0;//地址1
             uint id = cid.ID;
-
-            byte data0 = 0x00;//表示交互BCU，无需填写设备ID；交互BMU、需要设备ID+0xA0;
-            if (CurrentObjval != 0)
-                data0 = Convert.ToByte(BmuId + 0xA0);
 
             byte[] send = new byte[8];
             send[0] = data0;
@@ -422,6 +586,7 @@ namespace SofarHVMExe.ViewModel
             send[2] = (byte)(fileOffset & 0xff);
             send[3] = (byte)(fileOffset >> 8);
             send[4] = (byte)(fileOffset >> 16);
+            //默认-1将触发“{"Index was outside the bounds of the array."}”
             send[5] = Convert.ToByte(dataSize & 0xff);
             send[6] = Convert.ToByte(dataSize >> 8);
             SendFrame(id, send);
@@ -514,7 +679,7 @@ namespace SofarHVMExe.ViewModel
             frameId.ID = recvData.ID;
 
             //过滤其他帧：默认id| 请求帧
-            if (recvData.ID == 0x01000000 || frameId.FrameType == 2)
+            if (recvData.ID == 0x01000000 || frameId.FrameType == 2)//|| frameId.FC == 127 || frameId.FC == 1
                 return;
 
             //获取设备ID
@@ -549,7 +714,21 @@ namespace SofarHVMExe.ViewModel
                         fileTotal = int.Parse(dataInfos[3].Value);
 
                         //1.生成文件名称
-                        fileName = string.Format("{0}_{1}_{2}_{3}", fileType, CurrentObjval == 0 ? "BCU" : "BMU", CurrentObjval == 0 ? targetAddr.ToString("X2") : BmuId, System.DateTime.Now.ToString("yy-MM-dd-HH-mm-ss"));
+                        string fileNameType = "";
+                        string fileHeadContent = "";
+                        if (CurrentObjval == 0 && BmuId == 0)
+                        {
+                            fileNameType = "BCU";
+                            fileHeadContent = BCUStr;
+                        }
+                        else
+                        {
+                            fileNameType = "BMU";
+                            fileHeadContent = BMUStr;
+                        }
+
+
+                        fileName = string.Format("{0}_{1}_{2}_{3}", fileType, fileNameType, CurrentObjval == 0 ? targetAddr.ToString("X2") : BmuId, System.DateTime.Now.ToString("yy-MM-dd-HH-mm-ss"));
                         //2.检查文件夹，生成文件及表头
                         if (!Directory.Exists("Log//InteractionFile"))
                         {
@@ -559,6 +738,12 @@ namespace SofarHVMExe.ViewModel
                         string extendName = fileType == "运行日志文件" ? "txt" : "csv";
 
                         fileName = $"{AppDomain.CurrentDomain.SetupInformation.ApplicationBase}//Log//InteractionFile//{fileName}.{extendName}";
+                        /*if (!File.Exists(fileName))
+                        {
+                            //MessageBox.Show($"{fileName}.{extendName}文件格式非法，创建失败！");
+                            fileName = string.Format("{0}_{1}_{2}_{3}", fileType, fileNameType, CurrentObjval == 0 ? targetAddr.ToString("X2") : BmuId, System.DateTime.Now.ToString("yy-MM-dd-HH-mm-ss"));
+                            File.Create(fileName);
+                        }*/
 
                         switch (fileType)
                         {
@@ -568,7 +753,7 @@ namespace SofarHVMExe.ViewModel
                                 File.AppendAllText(fileName, FaultRecordStr);
                                 break;
                             case "5min特性数据文件":
-                                File.AppendAllText(fileName, currentObjval == 0 ? BCUStr : BMUStr);
+                                File.AppendAllText(fileName, fileHeadContent);
                                 break;
                             default:
                                 break;
@@ -583,7 +768,11 @@ namespace SofarHVMExe.ViewModel
                 byte[] dataw = recvData.Data;
                 Debug.WriteLine($"[接收]请求应答帧，0x{idw.ToString("X")} {BitConverter.ToString(dataw)}");
 
-                bool bcu = CurrentObjval == 0 ? true : false;
+                bool bcu = false;
+                if (CurrentObjval == 0 && bmuId == 0)
+                {
+                    bcu = true;
+                }
                 CanFrameModel? frame = ProtocolHelper.MultiFrameToModel2(fileNo, recvData.ID, recvData.Data, devAddr, bcu);
 
                 if (frame == null || frame.FrameDatas.Count <= 0 || frame.FrameDatas[0].Data.Length == 0)
@@ -662,12 +851,46 @@ namespace SofarHVMExe.ViewModel
                     FileWrite(fileName, content);
                 }
             }
+            /*else if (frameId.ContinuousFlag == 1 &&  (frameId.FC == 11 || frameId.FC == 5))
+            {
+                //List<CanFrameModel>
+                CanFrameModel? frame = ProtocolHelper.MultiFrameToModel(frameCfgModel.CanFrameModels, recvData.ID, recvData.Data, devAddr);
+                if (frame == null)
+                    return;
+
+                UpdateContinueRecv(frame);
+                isPackage = true;
+            }*/
         }
+
+        private void UpdateContinueRecv(CanFrameModel frame)
+        {
+            if (frame.FrameDatas.Count <= 0)
+                return;
+
+            try
+            {
+                byte[] datas = frame.FrameDatas[0].Data;
+                byte[] bytes = new byte[20];
+
+                for (int i = 0; i < bytes.Length; i++)
+                {
+                    bytes[0] = datas[i + 4];
+                }
+
+                SN = Encoding.ASCII.GetString(bytes);
+            }
+            catch (Exception ex)
+            {
+                SN = "00000000000000000000";
+            }
+        }
+
         #endregion
     }
 
     /// <summary>
-    /// 文件编码(未启用)
+    /// 文件编码
     /// </summary>
     public class FileCode
     {

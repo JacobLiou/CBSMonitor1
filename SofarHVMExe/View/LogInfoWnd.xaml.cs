@@ -1,6 +1,4 @@
-﻿using SofarHVMExe.SubPubEvent;
-using SofarHVMExe.ViewModel;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -13,6 +11,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
+using SofarHVMExe.ViewModel;
 
 namespace SofarHVMExe.View
 {
@@ -21,12 +20,11 @@ namespace SofarHVMExe.View
     /// </summary>
     public partial class LogInfoWnd : Window
     {
-        public LogInfoWnd(IEventAggregator eventAggregator)
+        public LogInfoWnd()
         {
             InitializeComponent();
 
-            this.DataContext = new LogInfoWndVm(eventAggregator);
-            //this.DataContext = new LogInfoWndVm();
+            this.DataContext = new LogInfoWndVm();
         }
 
         private void Border_MouseDown(object sender, MouseButtonEventArgs e)

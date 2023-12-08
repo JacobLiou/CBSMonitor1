@@ -1,12 +1,5 @@
-﻿using CanProtocol.ProtocolModel;
-using Communication.Can;
+﻿using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
-using SofarHVMExe.Model;
-using SofarHVMExe.Utilities;
-using SofarHVMExe.Utilities.Global;
-using SofarHVMExe.View;
-using SofarHVMExe.ViewModel;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -19,12 +12,19 @@ using System.Windows;
 using System.Windows.Forms;
 using System.Windows.Input;
 using System.Windows.Media;
-using static SofarHVMExe.Utilities.Global.GlobalManager;
-using MessageBox = System.Windows.MessageBox;
-using SofarHVMExe.SubPubEvent;
 using log4net.Util;
 using System.Reflection.Metadata;
 using System.Text.Json.Serialization;
+using CanProtocol.ProtocolModel;
+using SofarHVMExe.Model;
+using SofarHVMExe.Utilities;
+using SofarHVMExe.Utilities.Global;
+using SofarHVMExe.View;
+using SofarHVMExe.ViewModel;
+using Communication.Can;
+using static SofarHVMExe.Utilities.Global.GlobalManager;
+using MessageBox = System.Windows.MessageBox;
+
 
 namespace SofarHVMExe.ViewModel
 {
@@ -34,16 +34,15 @@ namespace SofarHVMExe.ViewModel
 
         public MainWindowVm()
         {
-            _eventAggregator = new EventAggregator();
-
             //检查配置文件（注意：检查配置文件和初始化配置页面viewModel必须要放到前面）
             CheckConfigFile();
 
             //初始化viewModel，初始化是有顺序的
             configPageVm = new ConfigPageVm();
             canTestPageVm = new CANConnectPageVm();
-            monitorPageVm = new MonitorPageVm(canTestPageVm.ecanHelper, _eventAggregator);
+            monitorPageVm = new MonitorPageVm(canTestPageVm.ecanHelper);
             mapOptPageVm = new MapOptPageVm(canTestPageVm.ecanHelper);
+            projectCfgPageVm = new ProjectCfgPageVm(canTestPageVm.ecanHelper);
             heartBeatPageVm = new HeartBeatPageVm(canTestPageVm.ecanHelper);
             downloadPageVm = new DownloadPageVm(canTestPageVm.ecanHelper);
             oscilloscopePageVm = new OscilloscopePageVM(canTestPageVm.ecanHelper);
@@ -80,10 +79,10 @@ namespace SofarHVMExe.ViewModel
         }
 
         #region 字段 
-        private readonly IEventAggregator _eventAggregator;
         private ConfigPageVm configPageVm = null;
         private MonitorPageVm monitorPageVm = null;
         private MapOptPageVm mapOptPageVm = null;
+        private ProjectCfgPageVm projectCfgPageVm = null;
         private HeartBeatPageVm heartBeatPageVm = null;
         private CANConnectPageVm canTestPageVm = null;
         private DownloadPageVm downloadPageVm = null;
@@ -116,19 +115,6 @@ namespace SofarHVMExe.ViewModel
         public string SelectDev
         {
             get => selectDev;
-            //get
-            //{
-            //    var devs = DeviceManager.Instance().Devices;
-            //    var findDev = devs.Find((dev) => dev.Selected = true);
-            //    if (findDev != null)
-            //    {
-            //        return findDev.Name;
-            //    }
-            //    else
-            //    {
-            //        return "无";
-            //    }
-            //}
             set
             {
                 if (selectDev != value)
@@ -321,7 +307,7 @@ namespace SofarHVMExe.ViewModel
         {
             if (logInfoWndClose)
             {
-                logInfoWnd = new LogInfoWnd(_eventAggregator);
+                logInfoWnd = new LogInfoWnd();
                 logInfoWnd.Closed += LogInfoWnd_Closed;
                 logInfoWnd.Topmost = true;
                 logInfoWnd.Show();

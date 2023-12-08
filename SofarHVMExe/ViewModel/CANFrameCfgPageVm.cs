@@ -217,7 +217,7 @@ namespace SofarHVMExe.ViewModel
             DataSource = new BindingList<CanFrameModel>(beforeList);
             DataSource.ListChanged += DataSource_ListChanged;
 
-            //SaveData();
+            SaveData();
             newFrame.Sort = SelectModel.Sort + 1;
             newFrame.Name += "(复制)";
             InsertCanFrame(newFrame);
@@ -245,8 +245,8 @@ namespace SofarHVMExe.ViewModel
         /// </summary>
         private void SaveData()
         {
-            //frameCfgModel.CanFrameModels = DataSource.ToList();
-            //JsonConfigHelper.WirteConfigFile(fileCfgModel);
+            frameCfgModel.CanFrameModels = DataSource.ToList();
+            JsonConfigHelper.WirteConfigFile(fileCfgModel);
         }
 
         private void MoveUp(object o)

@@ -31,32 +31,18 @@ namespace SofarHVMExe.Utilities
         /// <param name="message">日志内容</param>
         public static void Info(string message)
         {
-            log4net.ILog log = log4net.LogManager.GetLogger("InfoLog");
+            log4net.ILog log = log4net.LogManager.GetLogger("Info");
             if (log.IsInfoEnabled)
             {
                 log.Info(message);
             }
             log = null;
         }
-
         /// <summary>
         /// 错误日志
         /// </summary>
         /// <param name="message">错误日志</param>
-        public static void Error(string message)
-        {
-            log4net.ILog log = log4net.LogManager.GetLogger("Error");
-            if (log.IsInfoEnabled)
-            {
-                log.Error(message);
-            }
-            log = null;
-        }
-        /// <summary>
-        /// 错误日志
-        /// </summary>
-        /// <param name="message">错误日志</param>
-        public static void Error(string message, Exception ex)
+        public static void Error(string message, Exception ex = null)
         {
             log4net.ILog log = log4net.LogManager.GetLogger("Error");
             if (log.IsInfoEnabled)
@@ -110,8 +96,8 @@ namespace SofarHVMExe.Utilities
 
         //public static bool CreateNewLog = false;
         private static string LogFileName = "";
-        public static string SubDirectory = "Info";
         static log4net.ILog? _currentLogger = null;
+        public static string SubDirectory = string.Empty;
 
         /// <summary>
         /// 公共方法，记录日志到固定的文件名

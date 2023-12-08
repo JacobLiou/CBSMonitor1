@@ -139,6 +139,7 @@ namespace SofarHVMExe.ViewModel
 
             CanFrameID frameId = new CanFrameID();
             frameId.ID = recvData.ID;
+            int devId = frameId.SrcType;
             int addr = frameId.SrcAddr;
 
             //指定时间内检测到设备
@@ -158,7 +159,7 @@ namespace SofarHVMExe.ViewModel
                     //1、高亮设备显示
                     findDev.Connected = true;
                     findDev.ID = "0x" + strId;
-                    findDev.Name = $"设备{findDev.address}";
+                    findDev.Name = $"设备{(SrcType)devId}-{findDev.address}";
                     findDev.address = addr;
                     UpdateDevData(findDev, recvData.Data);
                     findDev.StartDetect(UpdateMsg);
@@ -174,7 +175,7 @@ namespace SofarHVMExe.ViewModel
                 if (unConnectedDev != null)
                 {
                     //1、高亮设备显示
-                    unConnectedDev.Name = "设备" + addr.ToString();
+                    unConnectedDev.Name = $"设备{(SrcType)devId}-{addr.ToString()}"; 
                     unConnectedDev.address = addr;
                     unConnectedDev.Connected = true;
                     unConnectedDev.ID = "0x" + strId;
@@ -195,7 +196,7 @@ namespace SofarHVMExe.ViewModel
             string devs = "";
             devList.ForEach((dev) =>
             {
-                string tmp = "设备" + dev.address.ToString();
+                string tmp = dev.Name.ToString();
                 devs += tmp + ",";
             });
 
@@ -208,8 +209,6 @@ namespace SofarHVMExe.ViewModel
         /// <param name="recvData"></param>
         private void RecvProcCan1(CAN_OBJ recvData)
         {
-            //心跳不能加下面这个 否则切换到其他页面无法正常检测心跳帧
-            //if (GlobalManager.Instance().CurrentPage == GlobalManager.Page.HeartBeat)
             RecvFrame(recvData);
         }
         /// <summary>
@@ -218,7 +217,6 @@ namespace SofarHVMExe.ViewModel
         /// <param name="recvData"></param>
         private void RecvProcCan2(CAN_OBJ recvData)
         {
-            //if (GlobalManager.Instance().CurrentPage == GlobalManager.Page.HeartBeat)
             RecvFrame(recvData);
         }
         #endregion
@@ -228,14 +226,7 @@ namespace SofarHVMExe.ViewModel
             string tmp = Message;
             tmp += ">" + msg + "\r\n";
 
-            //添加异步线程处理
-            //Task.Factory.StartNew(() =>
-            //{
-            //    System.Windows.Application.Current?.Dispatcher.Invoke(() =>
-            //    {
             Message = tmp;
-            //    });
-            //});
             return true;
         }
         private void UpdateDevData(Device dev, byte[] data)
@@ -282,4 +273,15 @@ namespace SofarHVMExe.ViewModel
             return (BitConverter.ToInt16(datas, 6) * 0.01).ToString("F2") + "kW";
         }
     }//class
+
+
+    public enum SrcType
+    {
+        PCS = 1,
+        CSU_MCU1 = 2,
+        CSU_MCU2 = 3,
+        BCU = 4,
+        BMU = 5,
+        DCDC = 6
+    }
 }

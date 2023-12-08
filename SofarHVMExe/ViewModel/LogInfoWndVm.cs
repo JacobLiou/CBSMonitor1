@@ -23,41 +23,25 @@ using System.Windows.Forms;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
-using static SofarHVMExe.Utilities.Global.GlobalManager;
+using SofarHVMExe.Model;
+using System.Windows.Interop;
 using Application = System.Windows.Application;
 using DataFormats = System.Windows.DataFormats;
 using MessageBox = System.Windows.MessageBox;
-using SofarHVMExe.SubPubEvent.Events;
-using SofarHVMExe.SubPubEvent;
-using SofarHVMExe.Model;
-using System.Windows.Interop;
+using static SofarHVMExe.Utilities.Global.GlobalManager;
 
 namespace SofarHVMExe.ViewModel
 {
-    partial class LogInfoWndVm : ObservableObject, IHandle<string>
+    partial class LogInfoWndVm : ObservableObject
     {
-        IEventAggregator eventAggregator;
-
         public LogInfoWndVm()
         {
             Init();
         }
 
-        public LogInfoWndVm(IEventAggregator eventAggregator)
-        {
-            Init();
-            this.eventAggregator = eventAggregator;
-            eventAggregator.Subscribe(this, new string[] { "FaultAndWarning" });
-        }
-
         public void Handle(string msg)
         {
             UpdateMsg(msg);
-        }
-
-        ~LogInfoWndVm()
-        {
-            eventAggregator.Unsubscribe(this, new string[] { "FaultAndWarning" });
         }
 
         private List<CurrentEventModel> allEventsList = new List<CurrentEventModel>();
@@ -256,10 +240,5 @@ namespace SofarHVMExe.ViewModel
             text.Foreground = new SolidColorBrush(color);
             pg.Inlines.Add(text);
         }
-
-        //public void Handle(LogInfiEvent message)
-        //{
-        //    //CurrentEventList = message.CurrentEventList;
-        //}
     }//class
 }

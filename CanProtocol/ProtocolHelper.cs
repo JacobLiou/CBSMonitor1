@@ -4,7 +4,6 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
-using System.Net.Http.Headers;
 using System.Text;
 using CanProtocol.ProtocolModel;
 using CanProtocol.Utilities;
@@ -27,139 +26,145 @@ namespace CanProtocol
         #region 接收解析（字节数据转字段信息）
         public static CanFrameModel? FrameToModel2(uint id, byte[] data, byte devAddr = 0)
         {
-            CanFrameData data1 = new CanFrameData();
-            data1.AddInitDataTofile();
-
-            List<CanFrameModel> frameModels = new List<CanFrameModel>()
+            try
             {
+                CanFrameData data1 = new CanFrameData();
+                data1.AddInitDataTofile();
+
+                //定义响应的CAN帧信息的集合
+                List<CanFrameModel> frameModels = new List<CanFrameModel>()
                 {
-                    new CanFrameModel(){
-                        Id = 0x1B280081,
-                        Name ="响应方返回文件相关信息",
-                        FrameDatas = new List<CanFrameData>()
+                    {
+                        new CanFrameModel()
                         {
-                            { data1 }
+                            Id = 0x1B280081,Name ="BCU响应返回文件相关信息 ",FrameDatas = new List<CanFrameData>() { { data1 } }
+                        }
+                    },
+                    {
+                        new CanFrameModel()
+                        {
+                            Id = 0x1B2800A1,Name ="BMU响应返回文件相关信息",FrameDatas = new List<CanFrameData>(){ { data1 } }
                         }
                     }
+                };
+
+                if (data.Length == 8)
+                {
+                    CanFrameID frameId = new CanFrameID();
+
+                    foreach (CanFrameModel frame in frameModels)
+                    {
+                        //1、匹配id
+                        frameId.ID = frame.Id;
+                        if (frameId.ContinuousFlag != 0)
+                            continue;
+
+                        if (devAddr != 0)
+                        {
+                            frameId.SrcAddr = devAddr;
+                        }
+
+                        if (frameId.ID != id)
+                            continue;
+
+                        CanFrameModel newFrame = new CanFrameModel(frame);
+                        newFrame.FrameId.ID = frameId.ID;
+
+                        //2、匹配相同点表起始地址/设备地址
+                        int addr = 0x0;
+
+                        CanFrameData? frameData = newFrame.FrameDatas.Find(t =>
+                        {
+                            //匹配点表起始地址
+                            string strAddr = t.DataInfos[0].Value;
+                            if (strAddr.Contains("0x") || strAddr.Contains("0X"))
+                            {
+                                strAddr = strAddr.Replace("0x", "").Replace("0X", "");
+                                int tmpAddr = int.Parse(strAddr, NumberStyles.HexNumber, CultureInfo.InvariantCulture);
+                                return tmpAddr == addr;
+                            }
+                            else
+                            {
+                                return int.Parse(strAddr) == addr;
+                            }
+                        });
+
+                        //id相同，而点表地址不相同，仍表示不匹配
+                        if (frameData == null)
+                            continue;
+
+                        //帧字节数据转字段信息
+                        frameData.Data = data;
+                        ByteDataToDataInfo(frameData);
+
+                        return newFrame;
+                    }//foreach
                 }
-            };
-
-            if (data.Length != 8)
-                return null;
-
-            CanFrameID frameId = new CanFrameID();
-
-            foreach (CanFrameModel frame in frameModels)
+            }
+            catch (Exception ex)
             {
-                //1、匹配id
-                {
-                    frameId.ID = frame.Id;
-                    if (frameId.ContinuousFlag != 0)
-                        continue;
+                string strError = System.DateTime.Now.ToString() + "接收解析【非连续帧错误】出现异常，错误信息" + ex.Message;
+                MultiLanguages.Common.LogHelper.WriteLog(strError);
 
-                    if (devAddr != 0)
-                    {
-                        frameId.SrcAddr = devAddr;
-                    }
-
-                    if (frameId.ID != id)
-                        continue;
-                }
-
-                CanFrameModel newFrame = new CanFrameModel(frame);
-                newFrame.FrameId.ID = frameId.ID;
-
-                //2、匹配相同点表起始地址/设备地址
-                int addr = 0x0;
-                //int addr = data[0];
-                //addr |= (int)(data[1]) << 8;
-                CanFrameData? frameData = newFrame.FrameDatas.Find(t =>
-                {
-                    //匹配点表起始地址
-                    string strAddr = t.DataInfos[0].Value;
-                    if (strAddr.Contains("0x") || strAddr.Contains("0X"))
-                    {
-                        strAddr = strAddr.Replace("0x", "").Replace("0X", "");
-                        int tmpAddr = int.Parse(strAddr, NumberStyles.HexNumber, CultureInfo.InvariantCulture);
-                        return tmpAddr == addr;
-                    }
-                    else
-                    {
-                        return int.Parse(strAddr) == addr;
-                    }
-                });
-
-
-                if (frameData == null)
-                {
-                    //id相同，而点表地址不相同，仍表示不匹配
-                    continue;
-                }
-
-                //帧字节数据转字段信息
-                try
-                {
-                    frameData.Data = data;
-                    ByteDataToDataInfo(frameData);
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine($"接收解析非连续帧错误 id: 0x{id.ToString("X8")}, error: {ex.ToString()}");
-                }
-                return newFrame;
-            }//foreach
+                //throw new Exception(strError);
+            }
 
             return null;
-        }
+        }//func
 
         public static CanFrameModel? MultiFrameToModel2(int obj, uint id, byte[] data, byte devAddr = 0, bool bcu = true)
         {
-            CanFrameData data1 = new CanFrameData();
-            if (obj == 3)
+            try
             {
-                if (bcu)
+                //定义帧格式
+                CanFrameData data1 = new CanFrameData();
+                if (obj == 3)
                 {
-                    data1.AddInitMultiDataToBCU();
+                    if (bcu)
+                    {
+                        data1.AddInitMultiDataToBCU();
+                    }
+                    else
+                    {
+                        data1.AddInitMultiDataToBMU();
+                    }
                 }
-                else
+                else if (obj < 3)
                 {
-                    data1.AddInitMultiDataToBMU();
+                    data1.AddInitMultiDataToFaultInfo();
                 }
-            }
-            else if (obj < 3)
-            {
-                data1.AddInitMultiDataToFaultInfo();
-            }
-            else if (obj > 3)
-            {
-                data1.AddInitMultiData();
-            }
+                else if (obj > 3)
+                {
+                    data1.AddInitMultiData();
+                }
 
-            List<CanFrameModel> frameModels = new List<CanFrameModel>()
+                //定义响应的CAN帧信息的集合
+                List<CanFrameModel> frameModels = new List<CanFrameModel>()
             {
                 {
-                    new CanFrameModel(){
-                        Id = 0x19A90081,
-                        Name ="响应方返回文件数据内容",
-                        FrameDatas = new List<CanFrameData>()
-                        {
-                            { data1 }
-                        }
+                    new CanFrameModel()
+                    {
+                        Id = 0x19A90081,Name ="BCU响应方返回文件数据内容",FrameDatas = new List<CanFrameData>() { { data1 } }
+                    }
+                },
+                {
+                    new CanFrameModel()
+                    {
+                        Id = 0x19A900A1,Name ="BMU响应方返回文件数据内容",FrameDatas = new List<CanFrameData>(){ { data1 } }
                     }
                 }
             };
 
-            CanFrameModel? findFrame = null;
-            int devIndex = data[0];
-            int packageIndex = data[1];
+                CanFrameModel? findFrame = null;
+                int devIndex = data[0];
+                int packageIndex = data[1];
 
-            CanFrameID frameId = new CanFrameID();
+                CanFrameID frameId = new CanFrameID();
 
-            //1、查询当前帧
-            foreach (CanFrameModel frame in frameModels)
-            {
-                //匹配id
+                //1、查询当前帧
+                foreach (CanFrameModel frame in frameModels)
                 {
+                    //匹配id
                     frameId.ID = frame.Id;
                     if (frameId.ContinuousFlag != 1)
                         continue;
@@ -171,15 +176,25 @@ namespace CanProtocol
 
                     if (frameId.ID != id)
                         continue;
-                }
 
-                if (packageIndex == 0)
-                {
-                    //第一包 匹配点表起始地址
-                    int addr = data[1];// | (data[2]) << 8;
-                    int tmpAddr = frame.GetAddrInt();
-                    if (tmpAddr == addr)
+                    if (packageIndex == 0)
                     {
+                        //第一包 匹配点表起始地址
+                        int addr = data[1];// | (data[2]) << 8;
+                        int tmpAddr = frame.GetAddrInt();
+                        if (tmpAddr == addr)
+                        {
+                            findFrame = frame;
+                            if (devAddr != 0)
+                            {
+                                findFrame.FrameId.SrcAddr = frameId.SrcAddr;
+                            }
+                            break;
+                        }
+                    }
+                    else
+                    {
+                        //不是第一包 只匹配id
                         findFrame = frame;
                         if (devAddr != 0)
                         {
@@ -187,100 +202,80 @@ namespace CanProtocol
                         }
                         break;
                     }
-                }
-                else
+                }//foreach
+
+                if (findFrame != null && s_packageBufferList != null)
                 {
-                    //不是第一包 只匹配id
-                    findFrame = frame;
-                    if (devAddr != 0)
+                    //2、将当前帧加入到包缓存中
+                    //为第一包或中间包，则加入到缓存中
+                    //为最后一包或超出包数量限制，则此多包收集结束
+                    MultyPackage? findMulPackage = s_packageBufferList.Find((o) =>
                     {
-                        findFrame.FrameId.SrcAddr = frameId.SrcAddr;
-                    }
-                    break;
-                }
-            }//foreach
+                        return (id == o.frame.Id);
+                    });
 
-            if (findFrame == null || s_packageBufferList == null)
-                return null;
-
-
-            //2、将当前帧加入到包缓存中
-            //为第一包或中间包，则加入到缓存中
-            //为最后一包或超出包数量限制，则此多包收集结束
-            MultyPackage? findMulPackage = s_packageBufferList.Find((o) =>
-            {
-                return (id == o.frame.Id);
-            });
-
-            if (findMulPackage == null)
-            {
-                //不在缓存中
-                if (packageIndex == 0)
-                {
-                    MultyPackage newMulPackage = new MultyPackage();
-                    newMulPackage.packageNum++;
-                    newMulPackage.datas.AddRange(data);//Add(data[7]);
-                    newMulPackage.frame = findFrame;
-                    s_packageBufferList.Add(newMulPackage);
-                }
-                else
-                {
-                    //不是第一包则丢弃
-                }
-            }
-            else
-            {
-                //在缓存中，为最后一包或超出包数限制，则出包
-                if (packageIndex == 0)
-                {
-                    //第一包丢弃
-                }
-                else if (packageIndex == 0xff)
-                {
-                    //最后一包 出包
-                    findMulPackage.datas.AddRange(data.Skip(2));
-                    findMulPackage.frame.FrameDatas[0].Data = findMulPackage.datas.ToArray();
-                    CanFrameModel resultFrame = new CanFrameModel(findMulPackage.frame);
-                    try
+                    if (findMulPackage == null)
                     {
-                        if (obj < 4)
+                        //不在缓存中，是第一包->加入；否则丢弃
+                        if (packageIndex == 0)
                         {
-                            ByteDataToDataInfo(resultFrame.FrameDatas[0]);
+                            MultyPackage newMulPackage = new MultyPackage();
+                            newMulPackage.packageNum++;
+                            newMulPackage.datas.AddRange(data);//Add(data[7]);
+                            newMulPackage.frame = findFrame;
+                            s_packageBufferList.Add(newMulPackage);
                         }
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.WriteLine($"接收解析连续帧错误 id: 0x{id.ToString("X8")}, error: {ex.ToString()}");
-                    }
-
-                    s_packageBufferList.Remove(findMulPackage);
-                    return resultFrame;
-                }
-                else
-                {
-                    if (findMulPackage.packageNum > _maxPackageNum)
-                    {
-                        //包超出范围 出包
-                        findMulPackage.frame.FrameDatas[0].Data = findMulPackage.datas.ToArray();
-                        CanFrameModel resultFrame = new CanFrameModel(findMulPackage.frame);
-                        try
-                        {
-                            ByteDataToDataInfo(resultFrame.FrameDatas[0]);
-                        }
-                        catch (Exception ex)
-                        {
-                            Debug.WriteLine($"接收解析连续帧错误 id: 0x{id.ToString("X8")}, error: {ex.ToString()}");
-                        }
-
-                        s_packageBufferList.Remove(findMulPackage);
-                        return resultFrame;
                     }
                     else
                     {
-                        findMulPackage.packageNum++;
-                        findMulPackage.datas.AddRange(data.Skip(2)); //去除设备ID，包序号
+                        //在缓存中，为最后一包或超出包数限制，则出包
+                        if (packageIndex == 0)
+                        {
+                            //第一包丢弃
+                        }
+                        else if (packageIndex == 0xff)
+                        {
+                            //最后一包 出包
+                            findMulPackage.datas.AddRange(data.Skip(2));
+                            findMulPackage.frame.FrameDatas[0].Data = findMulPackage.datas.ToArray();
+                            CanFrameModel resultFrame = new CanFrameModel(findMulPackage.frame);
+
+                            if (obj < 4)
+                            {
+                                ByteDataToDataInfo(resultFrame.FrameDatas[0]);
+                            }
+
+                            s_packageBufferList.Remove(findMulPackage);
+                            return resultFrame;
+                        }
+                        else
+                        {
+                            if (findMulPackage.packageNum > _maxPackageNum)
+                            {
+                                //包超出范围 出包
+                                findMulPackage.frame.FrameDatas[0].Data = findMulPackage.datas.ToArray();
+                                CanFrameModel resultFrame = new CanFrameModel(findMulPackage.frame);
+
+                                ByteDataToDataInfo(resultFrame.FrameDatas[0]);
+
+                                s_packageBufferList.Remove(findMulPackage);
+                                return resultFrame;
+                            }
+                            else
+                            {
+                                findMulPackage.packageNum++;
+                                findMulPackage.datas.AddRange(data.Skip(2)); //去除设备ID，包序号
+                            }
+                        }
                     }
                 }
+            }
+            catch (Exception ex)
+            {
+                string strError = System.DateTime.Now.ToString() + "接收解析【连续帧错误】出现异常，错误信息" + ex.Message;
+                MultiLanguages.Common.LogHelper.WriteLog(strError);
+
+                //throw new Exception(strError);
             }
 
             return null;
@@ -297,69 +292,68 @@ namespace CanProtocol
         /// <returns>帧模型对象</returns>
         public static CanFrameModel? FrameToModel(List<CanFrameModel> frameModels, uint id, byte[] data, byte devAddr = 0)
         {
-            if (data.Length != 8)
-                return null;
-
-            CanFrameID frameId = new CanFrameID();
-
-            foreach (CanFrameModel frame in frameModels)
+            try
             {
-                //1、匹配id
+                if (data.Length == 8)
                 {
-                    frameId.ID = frame.Id;
-                    if (frameId.ContinuousFlag != 0)
-                        continue;
+                    CanFrameID frameId = new CanFrameID();
 
-                    if (devAddr != 0)
+                    foreach (CanFrameModel frame in frameModels)
                     {
-                        frameId.SrcAddr = devAddr;
-                    }
+                        //1、匹配id
+                        frameId.ID = frame.Id;
+                        if (frameId.ContinuousFlag != 0)
+                            continue;
 
-                    if (frameId.ID != id)
-                        continue;
+                        if (devAddr != 0)
+                        {
+                            frameId.SrcAddr = devAddr;
+                        }
+
+                        if (frameId.ID != id)
+                            continue;
+
+                        CanFrameModel newFrame = new CanFrameModel(frame);
+                        newFrame.FrameId.ID = frameId.ID;
+
+                        //2、匹配相同点表起始地址
+                        int addr = data[0];
+                        addr |= (int)(data[1]) << 8;
+                        CanFrameData? frameData = newFrame.FrameDatas.Find(t =>
+                        {
+                            //匹配点表起始地址
+                            string strAddr = t.DataInfos[0].Value;
+                            if (strAddr.Contains("0x") || strAddr.Contains("0X"))
+                            {
+                                strAddr = strAddr.Replace("0x", "").Replace("0X", "");
+                                int tmpAddr = int.Parse(strAddr, NumberStyles.HexNumber, CultureInfo.InvariantCulture);
+                                return tmpAddr == addr;
+                            }
+                            else
+                            {
+                                return int.Parse(strAddr) == addr;
+                            }
+                        });
+
+                        //id相同，而点表地址不相同，仍表示不匹配
+                        if (frameData == null)
+                            continue;
+
+                        //帧字节数据转字段信息
+                        frameData.Data = data;
+                        ByteDataToDataInfo(frameData);
+
+                        return newFrame;
+                    }//foreach
                 }
+            }
+            catch (Exception ex)
+            {
+                string strError = System.DateTime.Now.ToString() + "接收解析非连续帧【转化FrameModel】出现异常，错误信息" + ex.Message;
+                MultiLanguages.Common.LogHelper.WriteLog(strError);
 
-                CanFrameModel newFrame = new CanFrameModel(frame);
-                newFrame.FrameId.ID = frameId.ID;
-
-                //2、匹配相同点表起始地址
-                int addr = data[0];
-                addr |= (int)(data[1]) << 8;
-                CanFrameData? frameData = newFrame.FrameDatas.Find(t =>
-                {
-                    //匹配点表起始地址
-                    string strAddr = t.DataInfos[0].Value;
-                    if (strAddr.Contains("0x") || strAddr.Contains("0X"))
-                    {
-                        strAddr = strAddr.Replace("0x", "").Replace("0X", "");
-                        int tmpAddr = int.Parse(strAddr, NumberStyles.HexNumber, CultureInfo.InvariantCulture);
-                        return tmpAddr == addr;
-                    }
-                    else
-                    {
-                        return int.Parse(strAddr) == addr;
-                    }
-                });
-
-                if (frameData == null)
-                {
-                    //id相同，而点表地址不相同，仍表示不匹配
-                    continue;
-                }
-
-                //帧字节数据转字段信息
-                try
-                {
-                    frameData.Data = data;
-                    ByteDataToDataInfo(frameData);
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine($"接收解析非连续帧错误 id: 0x{id.ToString("X8")}, error: {ex.ToString()}");
-                }
-
-                return newFrame;
-            }//foreach
+                //throw new Exception(strError);
+            }
 
             return null;
         }//func
@@ -375,16 +369,17 @@ namespace CanProtocol
         /// <returns>帧模型对象</returns>
         public static CanFrameModel? MultiFrameToModel(List<CanFrameModel> frameModels, uint id, byte[] data, byte devAddr = 0)
         {
-            CanFrameModel? findFrame = null;
-            int packageIndex = data[0];
-
-            CanFrameID frameId = new CanFrameID();
-
-            //1、查询当前帧
-            foreach (CanFrameModel frame in frameModels)
+            try
             {
-                //匹配id
+                CanFrameModel? findFrame = null;
+                int packageIndex = data[0];
+
+                CanFrameID frameId = new CanFrameID();
+
+                //1、查询当前帧
+                foreach (CanFrameModel frame in frameModels)
                 {
+                    //匹配id
                     frameId.ID = frame.Id;
                     if (frameId.ContinuousFlag != 1)
                         continue;
@@ -396,15 +391,25 @@ namespace CanProtocol
 
                     if (frameId.ID != id)
                         continue;
-                }
 
-                if (packageIndex == 0)
-                {
-                    //第一包 匹配点表起始地址
-                    int addr = data[1] | (data[2]) << 8;
-                    int tmpAddr = frame.GetAddrInt();
-                    if (tmpAddr == addr)
+                    if (packageIndex == 0)
                     {
+                        //第一包 匹配点表起始地址
+                        int addr = data[1] | (data[2]) << 8;
+                        int tmpAddr = frame.GetAddrInt();
+                        if (tmpAddr == addr)
+                        {
+                            findFrame = frame;
+                            if (devAddr != 0)
+                            {
+                                findFrame.FrameId.SrcAddr = frameId.SrcAddr;
+                            }
+                            break;
+                        }
+                    }
+                    else
+                    {
+                        //不是第一包 只匹配id
                         findFrame = frame;
                         if (devAddr != 0)
                         {
@@ -412,97 +417,77 @@ namespace CanProtocol
                         }
                         break;
                     }
-                }
-                else
+                }//foreach
+
+                if (findFrame != null && s_packageBufferList != null)
                 {
-                    //不是第一包 只匹配id
-                    findFrame = frame;
-                    if (devAddr != 0)
+                    //2、将当前帧加入到包缓存中
+                    //为第一包或中间包，则加入到缓存中
+                    //为最后一包或超出包数量限制，则此多包收集结束
+                    MultyPackage? findMulPackage = s_packageBufferList.Find((o) =>
                     {
-                        findFrame.FrameId.SrcAddr = frameId.SrcAddr;
-                    }
-                    break;
-                }
-            }//foreach
+                        return (id == o.frame.Id);
+                    });
 
-            if (findFrame == null || s_packageBufferList == null)
-                return null;
-
-
-            //2、将当前帧加入到包缓存中
-            //为第一包或中间包，则加入到缓存中
-            //为最后一包或超出包数量限制，则此多包收集结束
-            MultyPackage? findMulPackage = s_packageBufferList.Find((o) =>
-            {
-                return (id == o.frame.Id);
-            });
-
-            if (findMulPackage == null)
-            {
-                //不在缓存中
-                if (packageIndex == 0)
-                {
-                    MultyPackage newMulPackage = new MultyPackage();
-                    newMulPackage.packageNum++;
-                    newMulPackage.datas.AddRange(data);
-                    newMulPackage.frame = findFrame;
-                    s_packageBufferList.Add(newMulPackage);
-                }
-                else
-                {
-                    //不是第一包则丢弃
-                }
-            }
-            else
-            {
-                //在缓存中，为最后一包或超出包数限制，则出包
-                if (packageIndex == 0)
-                {
-                    //第一包丢弃
-                }
-                else if (packageIndex == 0xff)
-                {
-                    //最后一包 出包
-                    findMulPackage.datas.AddRange(data.Skip(1));
-                    findMulPackage.frame.FrameDatas[0].Data = findMulPackage.datas.ToArray();
-                    CanFrameModel resultFrame = new CanFrameModel(findMulPackage.frame);
-                    try
+                    if (findMulPackage == null)
                     {
-                        ByteDataToDataInfo(resultFrame.FrameDatas[0]);
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.WriteLine($"接收解析连续帧错误 id: 0x{id.ToString("X8")}, error: {ex.ToString()}");
-                    }
-
-                    s_packageBufferList.Remove(findMulPackage);
-                    return resultFrame;
-                }
-                else
-                {
-                    if (findMulPackage.packageNum > _maxPackageNum)
-                    {
-                        //包超出范围 出包
-                        findMulPackage.frame.FrameDatas[0].Data = findMulPackage.datas.ToArray();
-                        CanFrameModel resultFrame = new CanFrameModel(findMulPackage.frame);
-                        try
+                        //不在缓存中，不是第一包则丢弃
+                        if (packageIndex == 0)
                         {
-                            ByteDataToDataInfo(resultFrame.FrameDatas[0]);
+                            MultyPackage newMulPackage = new MultyPackage();
+                            newMulPackage.packageNum++;
+                            newMulPackage.datas.AddRange(data);
+                            newMulPackage.frame = findFrame;
+                            s_packageBufferList.Add(newMulPackage);
                         }
-                        catch (Exception ex)
-                        {
-                            Debug.WriteLine($"接收解析连续帧错误 id: 0x{id.ToString("X8")}, error: {ex.ToString()}");
-                        }
-
-                        s_packageBufferList.Remove(findMulPackage);
-                        return resultFrame;
                     }
                     else
                     {
-                        findMulPackage.packageNum++;
-                        findMulPackage.datas.AddRange(data.Skip(1)); //去除包序号
+                        //在缓存中，为最后一包或超出包数限制，则出包
+                        if (packageIndex == 0)
+                        {
+                            //第一包丢弃
+                        }
+                        else if (packageIndex == 0xff)
+                        {
+                            //最后一包 出包
+                            findMulPackage.datas.AddRange(data.Skip(1));
+                            findMulPackage.frame.FrameDatas[0].Data = findMulPackage.datas.ToArray();
+                            CanFrameModel resultFrame = new CanFrameModel(findMulPackage.frame);
+
+                            ByteDataToDataInfo(resultFrame.FrameDatas[0]);
+
+                            s_packageBufferList.Remove(findMulPackage);
+                            return resultFrame;
+                        }
+                        else
+                        {
+                            if (findMulPackage.packageNum > _maxPackageNum)
+                            {
+                                //包超出范围 出包
+                                findMulPackage.frame.FrameDatas[0].Data = findMulPackage.datas.ToArray();
+                                CanFrameModel resultFrame = new CanFrameModel(findMulPackage.frame);
+
+                                ByteDataToDataInfo(resultFrame.FrameDatas[0]);
+
+                                s_packageBufferList.Remove(findMulPackage);
+                                return resultFrame;
+                            }
+                            else
+                            {
+                                findMulPackage.packageNum++;
+                                findMulPackage.datas.AddRange(data.Skip(1)); //去除包序号
+                            }
+                        }
                     }
                 }
+            }
+            catch (Exception ex)
+            {
+                string strError = System.DateTime.Now.ToString() + "接收解析连续帧【转化FrameModel】出现异常，错误信息" + ex.Message;
+                MultiLanguages.Common.LogHelper.WriteLog(strError);
+
+                //throw new Exception(strError);
             }
 
             return null;
@@ -526,37 +511,50 @@ namespace CanProtocol
                     long realVal = 0;
                     float fRealVal = 0.0f;
 
+                    string values = "";
+
                     //数据类型
                     if (dataInfo.Type == "U8" || dataInfo.Type == "char8")
                     {
-                        realVal = datas[index++];
+                        byte byte1;
+                        realVal = byte1 = datas[index++];
+
+                        if (byte1 == 0xff)
+                            values = "NA";
                     }
                     else if (dataInfo.Type == "I8")
                     {
-                        realVal = datas[index++];
+                        byte byte1;
+                        realVal = byte1 = datas[index++];
                         if (realVal > 127)
                             realVal = (256 - realVal) * -1;
+
+                        if (byte1 == 0x7f)
+                            values = "NA";
                     }
                     else if (dataInfo.Type == "U16")
                     {
-                        int byte1 = datas[index++];
-                        int byte2 = datas[index++] << 8;
-                        realVal = byte1 + byte2;
+                        byte[] bytes = new byte[2];
+
+                        int byte1 = bytes[0] = datas[index++];
+                        int byte2 = bytes[1] = datas[index++];
+
+                        realVal = byte1 + (byte2 << 8);
+
+                        if (realVal == 0xffff)
+                            values = "NA";
                     }
                     else if (dataInfo.Type == "I16")
                     {
                         string byte1 = datas[index++].ToString("X2");
                         string byte2 = datas[index++].ToString("X2");
                         realVal = Convert.ToInt16(byte2 + byte1, 16);
+
+                        if (realVal == 0x7fff)
+                            values = "NA";
                     }
                     else if (dataInfo.Type == "U32")
                     {
-                        /*long byte1 = datas[index++];
-                        long byte2 = datas[index++] << 8;
-                        long byte3 = datas[index++] << 16;
-                        long byte4 = datas[index++] << 24;
-                        realVal = byte1 + byte2 + byte3 + byte4;*/
-
                         byte[] buffer = new byte[4];
                         buffer[0] = datas[index++];
                         buffer[1] = datas[index++];
@@ -599,60 +597,57 @@ namespace CanProtocol
                         realVal = datas[index++] | (datas[index++] << 8) | (datas[index++] << 16); ;
                     }
 
-                    //处理精度问题
-                    string type = dataInfo.Type;
-                    if (type == "float32")
+                    if (!string.IsNullOrEmpty(values))
                     {
-                        if (dataInfo.Precision != null)
-                        {
-                            fRealVal = (float)(dataInfo.Precision ?? 1) * (fRealVal);
-                        }
-
-                        dataInfo.Value = fRealVal.ToString();
+                        dataInfo.Value = values;//检查非法数据，默认显示为NA
                     }
-                    else if (type == "char8")
+                    else
                     {
-                        dataInfo.Value = realVal.ToString();
-                    }
-                    else if (type != "string")
-                    {
-                        if (dataInfo.Precision == 1 || dataInfo.Precision == null)
+                        //处理精度问题
+                        string type = dataInfo.Type;
+                        if (type == "float32")
                         {
-                            if (dataInfo.Value.Contains("0x") || dataInfo.Value.Contains("0X"))
+                            if (dataInfo.Precision != null)
                             {
-                                //十六进制值
-                                dataInfo.Value = "0x" + realVal.ToString("X");
+                                fRealVal = (float)(dataInfo.Precision ?? 1) * (fRealVal);
+                            }
+
+                            dataInfo.Value = fRealVal.ToString();
+                        }
+                        else if (type == "char8")
+                        {
+                            dataInfo.Value = realVal.ToString();
+                        }
+                        else if (type != "string")
+                        {
+                            if (dataInfo.Precision == 1 || dataInfo.Precision == null)
+                            {
+                                if (dataInfo.Value.Contains("0x") || dataInfo.Value.Contains("0X"))
+                                {
+                                    //十六进制值
+                                    dataInfo.Value = "0x" + realVal.ToString("X");
+                                }
+                                else
+                                {
+                                    //十进制值
+                                    dataInfo.Value = realVal.ToString();
+                                }
                             }
                             else
                             {
-                                //十进制值
-                                dataInfo.Value = realVal.ToString();
-                            }
-                        }
-                        else
-                        {
-                            //有精度统一按照
-                            double dVlaue = (double)((dataInfo.Precision * (decimal)realVal));
+                                //有精度统一按照
+                                double dVlaue = (double)((dataInfo.Precision * (decimal)realVal));
 
-                            dataInfo.Value = dVlaue.ToString();//十进制值
-
-                            /*if (dataInfo.Value.Contains("0x") || dataInfo.Value.Contains("0X"))
-                            {
-                                //十六进制值
-                                dataInfo.Value = "0x" + dVlaue.ToString("X");
+                                dataInfo.Value = dVlaue.ToString();//十进制值
                             }
-                            else
-                            {
-                                //十进制值
-                                dataInfo.Value = dVlaue.ToString();
-                            }*/
                         }
                     }
                 }//for
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                //try-catch配置长度与响应数值长度不匹配错误，导致数组越界解析
+                //try-catch
+                throw new Exception("配置长度与响应数值长度不匹配错误，导致数组越界解析" + ex.Message);
             }
         }//func
         #endregion
@@ -676,22 +671,13 @@ namespace CanProtocol
                 List<byte> datas = AnalyseFrameData(frameData);
 
                 //不足8个字节补0
+                if (datas.Count < 8)
                 {
-                    if (datas.Count < 8)
-                    {
-                        int num = 8 - datas.Count;
-                        datas.AddRange(new byte[num]);
-                    }
+                    int num = 8 - datas.Count;
+                    datas.AddRange(new byte[num]);
                 }
-
-                //超过长度截取
-                {
-                    //if (DateByte.Count > 8)
-                    //{
-                    //    DateByte = DateByte.Take(8).ToList();
-                    //}
-                }
-                frameData.Data = datas.ToArray();
+                //及时变更/更新数据
+                frameData.Data = datas.Take(8).ToArray();
             }
 
             return true;
@@ -721,126 +707,128 @@ namespace CanProtocol
         public static List<byte> AnalyseDataInfo(CanFrameDataInfo dataInfo)
         {
             List<byte> datas = new List<byte>();
-            byte[] byteArr;
-            string strVal = dataInfo.Value;
-            if (strVal == "")
-                return datas;
 
-            //if (dataInfo.IsValidData())
+            try
             {
-                //十六进制数转十进制数处理
-                if (strVal.Contains("0x") || strVal.Contains("0X"))
-                {
-                    strVal = strVal.Replace("0x", "").Replace("0X", "");
+                string strVal = dataInfo.Value;
 
-                    if (dataInfo.Type.Contains("I") || dataInfo.Type.Contains("U"))
-                    {
-                        strVal = long.Parse(strVal, NumberStyles.HexNumber).ToString();
-                    }
-                    else if (dataInfo.Type.Contains("float"))
-                    {
-                        float value;
-                        if (float.TryParse(strVal, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out value))
-                        {
-                            strVal = value.ToString();
-                        }
-                        else
-                        {
-                            strVal = "0";
-                        }
-                    }
-                }
-
-                //处理精度问题
-                if (dataInfo.Type != "char8" && dataInfo.Type != "BCD16" && dataInfo.Type != "string")
+                if (strVal == "") { return datas; }
+                else
                 {
-                    if (dataInfo.Precision != null)
+                    byte[] byteArr;
+
+                    //十六进制数转十进制数处理
+                    if (strVal.Contains("0x") || strVal.Contains("0X"))
+                    {
+                        strVal = strVal.Replace("0x", "").Replace("0X", "");
+
+                        if (dataInfo.Type.Contains("I") || dataInfo.Type.Contains("U"))
+                        {
+                            strVal = long.Parse(strVal, NumberStyles.HexNumber).ToString();
+                        }
+                        else if (dataInfo.Type.Contains("float"))
+                        {
+                            float value;
+                            if (float.TryParse(strVal, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out value))
+                            {
+                                strVal = value.ToString();
+                            }
+                            else
+                            {
+                                strVal = "0";
+                            }
+                        }
+                    }
+
+                    //处理精度问题
+                    if (dataInfo.Type != "char8" && dataInfo.Type != "BCD16" && dataInfo.Type != "string"
+                        && dataInfo.Precision != null)
                     {
                         strVal = (decimal.Parse(strVal) / (dataInfo.Precision ?? 1)).ToString();
-
                     }
-                }
-            }
 
-            //数据类型
-            switch (dataInfo.Type)
-            {
-                case "char8":
-                    byteArr = Encoding.ASCII.GetBytes(strVal);
-                    if (byteArr.Length > 0) datas.Add(byteArr[0]);
-                    break;
-                case "U8":
-                case "I8":
+                    //数据类型
+                    if (dataInfo.Type == "char8")
+                    {
+                        byteArr = Encoding.ASCII.GetBytes(strVal);
+
+                        if (byteArr.Length > 0)
+                        {
+                            datas.Add(byteArr[0]);
+                        }
+                    }
+                    else if (dataInfo.Type == "U8" || dataInfo.Type == "I8")
                     {
                         byte value = Convert.ToByte(Math.Round(Convert.ToDecimal(strVal), MidpointRounding.ToZero));
                         //byte.TryParse(strVal, out value);
                         datas.Add(value);
                     }
-                    break;
-                case "BCD16":
+                    else if (dataInfo.Type == "U16")
                     {
-                        int value = Convert.ToInt32(Math.Round(Convert.ToDecimal(strVal), MidpointRounding.ToZero));
-                        //int.TryParse(strVal, out value);
-                        byte[] data = new byte[2];
-                        data[0] = (byte)(value & 0xff);
-                        data[1] = (byte)(value >> 8);
-                        datas.AddRange(data);
-                    }
-                    break;
-                case "U16":
-                    {
+                        //decimal.TryParse(strVal, out decimal val);
+
                         ushort value = Convert.ToUInt16(Math.Round(Convert.ToDecimal(strVal), MidpointRounding.ToZero));
                         //ushort.TryParse(strVal, out value);
                         byteArr = HexDataHelper.UShortToByte((ushort)value);
                         datas.AddRange(byteArr);
                     }
-                    break;
-                case "I16":
+                    else if (dataInfo.Type == "I16")
                     {
                         short value = Convert.ToInt16(Math.Round(Convert.ToDecimal(strVal), MidpointRounding.ToZero));
                         //short.TryParse(strVal, out value);
                         byteArr = HexDataHelper.ShortToByte(value);
                         datas.AddRange(byteArr);
                     }
-                    break;
-                case "U32":
+                    else if (dataInfo.Type == "BCD16")
+                    {
+                        int value = Convert.ToInt32(Math.Round(Convert.ToDecimal(strVal), MidpointRounding.ToZero));
+                        //int.TryParse(strVal, out value);
+
+                        byte[] data = new byte[2];
+                        data[0] = (byte)(value & 0xff);
+                        data[1] = (byte)(value >> 8);
+                        datas.AddRange(data);
+                    }
+                    else if (dataInfo.Type == "U32")
                     {
                         long value = Convert.ToUInt32(Math.Round(Convert.ToDecimal(strVal), MidpointRounding.ToZero));
                         //long.TryParse(strVal, out value);
                         byteArr = HexDataHelper.IntToByte((int)value, true);
                         datas.AddRange(byteArr);
                     }
-                    break;
-                case "I32":
+                    else if (dataInfo.Type == "I32")
                     {
                         long value = Convert.ToInt64(Math.Round(Convert.ToDecimal(strVal), MidpointRounding.ToZero));
                         //long.TryParse(strVal, out value);
                         byteArr = HexDataHelper.IntToByte((int)value, true);
                         datas.AddRange(byteArr);
                     }
-                    break;
-                case "float32":
+                    else if (dataInfo.Type == "float32")
                     {
                         float value = 0.0f;
                         float.TryParse(strVal, out value);
                         byteArr = BitConverter.GetBytes(value);
                         datas.AddRange(byteArr);
                     }
-                    break;
-                case "string":
+                    else if (dataInfo.Type == "string")
                     {
-                        //字符串转字节
                         byteArr = Encoding.ASCII.GetBytes(strVal);
                         datas.AddRange(byteArr);
                     }
-                    break;
-                default:
-                    //byteArr = HexDataHelper.HexStringToByte(dataInfo.Value);
-                    break;
-            }//switch
+                    else
+                    {
+                        //byteArr = HexDataHelper.HexStringToByte(dataInfo.Value);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                string strError = System.DateTime.Now.ToString() + "发送解析【单个字段信息】出现异常，错误信息" + ex.Message;
+                MultiLanguages.Common.LogHelper.WriteLog(strError);
+            }
 
             return datas;
-        }//func
+        }
 
         /// <summary>
         /// 解析多帧
@@ -850,63 +838,71 @@ namespace CanProtocol
         public static List<CanFrameData> AnalyseMultiPackage(CanFrameData canFrameData)
         {
             List<CanFrameData> result = new List<CanFrameData>();
-            List<byte> byteList = new List<byte>();
-            IEnumerable<CanFrameDataInfo> dataInfos = canFrameData.DataInfos;
-            //收集所有字节
-            foreach (CanFrameDataInfo dataInfo in dataInfos)
-            {
-                List<byte> bytes = AnalyseDataInfo(dataInfo);
-                byteList.AddRange(bytes);
-            }
 
-            //计算CRC
+            try
             {
-                int validLen = byteList.Count - 6; //包序号1+起始地址2+个数1+CRC2
-                List<byte> validDatas = byteList.Skip(4).Take(validLen).ToList();
-                //CRCHelper helper = new CRCHelper();
-                ushort crcVal = CRCHelper.ComputeCrc16(validDatas.ToArray(), validDatas.Count);
-                byteList[byteList.Count - 2] = (byte)(crcVal & 0xff);
-                byteList[byteList.Count - 1] = (byte)((crcVal >> 8) & 0xff);
-            }
-
-            //1、起始帧
-            {
-                CanFrameData start = new CanFrameData();
-                start.Data = byteList.Take(8).ToArray();
-                result.Add(start);
-            }
-
-            //2、中间帧、结束帧
-            {
-                byteList.RemoveRange(0, 8);
-                int len = byteList.Count / 7;
-                len += (byteList.Count % 7) > 0 ? 1 : 0;
-                for (int i = 0; i < len; i++)
+                List<byte> byteList = new List<byte>();
+                IEnumerable<CanFrameDataInfo> dataInfos = canFrameData.DataInfos;
+                //收集所有字节
+                foreach (CanFrameDataInfo dataInfo in dataInfos)
                 {
-                    byte[] datas = byteList.Skip(i * 7).Take(7).ToArray();
-                    byte index = (byte)(i + 1);
-                    if (i == (len - 1)) //最后帧
-                    {
-                        index = 0xff;
-                    }
-
-                    List<byte> tmp = new List<byte>();
-                    tmp.Add(index);
-                    tmp.AddRange(datas);
-
-                    //补满8字节
-                    byte[] arr = new byte[8];
-                    for (int j = 0; j < tmp.Count; j++)
-                    {
-                        arr[j] = tmp[j];
-                    }
-
-                    CanFrameData fd = new CanFrameData();
-                    fd.Data = arr;
-                    result.Add(fd);
+                    List<byte> bytes = AnalyseDataInfo(dataInfo);
+                    byteList.AddRange(bytes);
                 }
-            }
 
+                //计算CRC
+                {
+                    int validLen = byteList.Count - 6; //包序号1+起始地址2+个数1+CRC2
+                    List<byte> validDatas = byteList.Skip(4).Take(validLen).ToList();
+                    ushort crcVal = CRCHelper.ComputeCrc16(validDatas.ToArray(), validDatas.Count);
+                    byteList[byteList.Count - 2] = (byte)(crcVal & 0xff);
+                    byteList[byteList.Count - 1] = (byte)((crcVal >> 8) & 0xff);
+                }
+
+                //1、起始帧
+                {
+                    CanFrameData start = new CanFrameData();
+                    start.Data = byteList.Take(8).ToArray();
+                    result.Add(start);
+                }
+
+                //2、中间帧、结束帧
+                {
+                    byteList.RemoveRange(0, 8);
+                    int len = byteList.Count / 7;
+                    len += (byteList.Count % 7) > 0 ? 1 : 0;
+                    for (int i = 0; i < len; i++)
+                    {
+                        byte[] datas = byteList.Skip(i * 7).Take(7).ToArray();
+                        byte index = (byte)(i + 1);
+                        if (i == (len - 1)) //最后帧
+                        {
+                            index = 0xff;
+                        }
+
+                        List<byte> tmp = new List<byte>();
+                        tmp.Add(index);
+                        tmp.AddRange(datas);
+
+                        //补满8字节
+                        byte[] arr = new byte[8];
+                        for (int j = 0; j < tmp.Count; j++)
+                        {
+                            arr[j] = tmp[j];
+                        }
+
+                        CanFrameData fd = new CanFrameData();
+                        fd.Data = arr;
+                        result.Add(fd);
+                    }
+                }
+
+            }
+            catch (Exception ex)
+            {
+                string strError = System.DateTime.Now.ToString() + "发送解析【多帧/多个字段信息】出现异常，错误信息" + ex.Message;
+                MultiLanguages.Common.LogHelper.WriteLog(strError);
+            }
             return result;
         }
 
@@ -932,19 +928,6 @@ namespace CanProtocol
     public class MultyPackage
     {
         public int packageNum = 0; //包数量
-        public List<byte> datas = new List<byte>();
-        public CanFrameModel frame = new CanFrameModel();
-    }
-
-
-    /// <summary>
-    /// 多包暂存数据
-    /// 用于接收时多包数据暂存
-    /// </summary>
-    public class MultyPackage2
-    {
-        public int packageNum = 0; //包数量
-        public uint id = 0x0;
         public List<byte> datas = new List<byte>();
         public CanFrameModel frame = new CanFrameModel();
     }

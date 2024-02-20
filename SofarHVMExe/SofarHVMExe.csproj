@@ -84,9 +84,6 @@
     <Reference Include="Newtonsoft.Json">
       <HintPath>..\Reference\Newtonsoft.Json.dll</HintPath>
     </Reference>
-    <Reference Include="System.Windows.Interactivity">
-      <HintPath>Dll\System.Windows.Interactivity.dll</HintPath>
-    </Reference>
   </ItemGroup>
 
   <ItemGroup>

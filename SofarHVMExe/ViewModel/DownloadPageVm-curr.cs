@@ -1525,7 +1525,7 @@ namespace SofarHVMExe.ViewModel
             {
                 uint id = recvData.ID;
                 string strId = id.ToString("X");
-                if (strId.Contains("197F") || id == 0x01000000)  //过滤dsp的app心跳
+                if (strId.Contains("197F") || strId.StartsWith("D7F") || id == 0x01000000)  //过滤dsp的app心跳
                     continue;
 
                 CanFrameID frameID = new CanFrameID();
@@ -2236,7 +2236,7 @@ namespace SofarHVMExe.ViewModel
         {
             uint id = recvData.ID;
             string strId = id.ToString("X");
-            if (strId.Contains("197F") || id == 0x01000000)  //过滤dsp的app心跳
+            if (strId.Contains("197F") || strId.StartsWith("D7F") || id == 0x01000000)  //过滤dsp的app心跳
                 return;
 
             CanFrameID frameID = new CanFrameID();

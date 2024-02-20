@@ -34,6 +34,9 @@ using CanProtocol.ProtocolModel;
 using SofarHVMExe.Model;
 using SofarHVMExe.Utilities;
 using SofarHVMExe.Utilities.Global;
+using static ICSharpCode.SharpZipLib.Zip.ExtendedUnixData;
+using MathNet.Numerics;
+using NPOI.Util;
 
 namespace SofarHVMExe.ViewModel
 {
@@ -53,12 +56,13 @@ namespace SofarHVMExe.ViewModel
         private int fileTotal = -1;    //当前文件总大小
         private int dataLength = -1;   //交互长度
         private string fileType;       //文件类型
+        private bool Flag_sn = true;
 
         private static bool isPackage; //当前包
         private static string fileName = "";  //文件名称：文件类型+设备类型+设备号+导出日期
 
         private StringBuilder logMsg = new StringBuilder();//文件字符串
-        private String BCUStr = "时间,电池簇电压(V),电池簇SOC(%),电池簇SOH(%),电池簇电流(mA),继电器状态,风扇状态,继电器切断请求,BCU状态,充放电使能,保护信息1,保护信息2,保护信息3,保护信息4,告警信息1,告警信息2,最高PACK电压,最低PACK电压,最高PACK电压序号,最低PACK电压序号,簇号,簇内电池包数量,高压绝缘阻抗(V),保险丝后电压(V),功率侧电压(V),负载端电压(V),辅助电源电压(V),电池簇的充电电压(V),电池簇充电电流上限(A),电池簇放电电流上限(A),电池簇的放电截止电压(V),电池包均衡状态,最高功率端子温度(℃),环境温度(℃),累计充电安时(Ah),累计放电安时(Ah),累计充电瓦时(Wh),累计放电瓦时(Wh),BMU编号,电芯电压1,电芯电压2,电芯电压3,电芯电压4,电芯电压5,电芯电压6,电芯电压7,电芯电压8,电芯电压9,电芯电压10,电芯电压11,电芯电压12,电芯电压13,电芯电压14,电芯电压15,电芯电压16,PACK1最大单体电压,PACK2最大单体电压,PACK3最大单体电压,PACK4最大单体电压,PACK5最大单体电压,PACK6最大单体电压,PACK7最大单体电压,PACK8最大单体电压,PACK9最大单体电压,PACK10最大单体电压,PACK1最小单体电压,PACK2最小单体电压,PACK3最小单体电压,PACK4最小单体电压,PACK5最小单体电压,PACK6最小单体电压,PACK7最小单体电压,PACK8最小单体电压,PACK9最小单体电压,PACK10最小单体电压,PACK1平均单体电压,PACK2平均单体电压,PACK3平均单体电压,PACK4平均单体电压,PACK5平均单体电压,PACK6平均单体电压,PACK7平均单体电压,PACK8平均单体电压,PACK9平均单体电压,PACK10平均单体电压,PACK1最大单体温度,PACK2最大单体温度,PACK3最大单体温度,PACK4最大单体温度,PACK5最大单体温度,PACK6最大单体温度,PACK7最大单体温度,PACK8最大单体温度,PACK9最大单体温度,PACK10最大单体温度,PACK1最小单体温度,PACK2最小单体温度,PACK3最小单体温度,PACK4最小单体温度,PACK5最小单体温度,PACK6最小单体温度,PACK7最小单体温度,PACK8最小单体温度,PACK9最小单体温度,PACK10最小单体温度,预留1,预留2\r\n";
+        private String BCUStr = "时间,电池簇电压(V),电池簇SOC(%),电池簇SOH(%),电池簇电流(mA),继电器状态,风扇状态,继电器切断请求,BCU状态,充放电使能,保护信息1,保护信息2,保护信息3,保护信息4,告警信息1,告警信息2,最高PACK电压,最低PACK电压,最高PACK电压序号,最低PACK电压序号,簇号,簇内电池包数量,高压绝缘阻抗(kΩ),保险丝后电压(V),功率侧电压(V),负载端电压(V),辅助电源电压(V),电池簇的充电电压(V),电池簇充电电流上限(A),电池簇放电电流上限(A),电池簇的放电截止电压(V),电池包均衡状态,最高功率端子温度(℃),环境温度(℃),累计充电安时(Ah),累计放电安时(Ah),累计充电瓦时(Wh),累计放电瓦时(Wh),BMU编号,电芯电压1,电芯电压2,电芯电压3,电芯电压4,电芯电压5,电芯电压6,电芯电压7,电芯电压8,电芯电压9,电芯电压10,电芯电压11,电芯电压12,电芯电压13,电芯电压14,电芯电压15,电芯电压16,PACK1最大单体电压,PACK2最大单体电压,PACK3最大单体电压,PACK4最大单体电压,PACK5最大单体电压,PACK6最大单体电压,PACK7最大单体电压,PACK8最大单体电压,PACK9最大单体电压,PACK10最大单体电压,PACK1最小单体电压,PACK2最小单体电压,PACK3最小单体电压,PACK4最小单体电压,PACK5最小单体电压,PACK6最小单体电压,PACK7最小单体电压,PACK8最小单体电压,PACK9最小单体电压,PACK10最小单体电压,PACK1平均单体电压,PACK2平均单体电压,PACK3平均单体电压,PACK4平均单体电压,PACK5平均单体电压,PACK6平均单体电压,PACK7平均单体电压,PACK8平均单体电压,PACK9平均单体电压,PACK10平均单体电压,PACK1最大单体温度,PACK2最大单体温度,PACK3最大单体温度,PACK4最大单体温度,PACK5最大单体温度,PACK6最大单体温度,PACK7最大单体温度,PACK8最大单体温度,PACK9最大单体温度,PACK10最大单体温度,PACK1最小单体温度,PACK2最小单体温度,PACK3最小单体温度,PACK4最小单体温度,PACK5最小单体温度,PACK6最小单体温度,PACK7最小单体温度,PACK8最小单体温度,PACK9最小单体温度,PACK10最小单体温度,预留1,预留2\r\n";
         private String BMUStr = "时间,电池采集电压(mV),电池累计电压(mV),SOC显示值(%),SOH显示值(%),SOC计算值,SOH计算值,电池电流(mA),最高单体电压(mV),最低单体电压(mV),最高单体电压序号,最低单体电压序号,最高单体温度(℃),最低单体温度(℃),最高单体温度序号,最低单体温度序号,BMU编号,系统状态,充放电使能,切断请求,关机请求,充电电流上限(A),放电电流上限(A),保护1,保护2,告警1,告警2,故障1,故障2,主动均衡状态,均衡母线电压(mV),均衡母线电流(mA),辅助供电电压(mV),满充容量(Ah),循环次数,累计放电安时(Ah),累计充电安时(Ah),累计放电瓦时(Wh),累计充电瓦时(Wh),环境温度(℃),DCDC温度1(℃),DCDC温度2(℃),均衡温度1(℃),均衡温度2(℃),1-16串均衡状态,单体电压1(mV),单体电压2(mV),单体电压3(mV),单体电压4(mV),单体电压5(mV),单体电压6(mV),单体电压7(mV),单体电压8(mV),单体电压9(mV),单体电压10(mV),单体电压11(mV),单体电压12(mV),单体电压13(mV),单体电压14(mV),单体电压15(mV),单体电压16(mV),单体温度1(℃),单体温度2(℃),单体温度3(℃),单体温度4(℃),单体温度5(℃),单体温度6(℃),单体温度7(℃),单体温度8(℃),单体温度9(℃),单体温度10(℃),单体温度11(℃),单体温度12(℃),单体温度13(℃),单体温度14(℃),单体温度15(℃),单体温度16(℃),RSV1,RSV2,RSV3,RSV4,RSV5,RSV6,RSV7,RSV8,RSV9,RSV10\r\n";
         private String FaultRecordStr = "电流(A),最大电压(mV),最小电压(mV),最大温度(℃),最小温度(℃)\r\n";
 
@@ -213,6 +217,8 @@ namespace SofarHVMExe.ViewModel
 
         #endregion
 
+        List<CanFrameModel> snList = new List<CanFrameModel>();
+
         #region 成员方法
         private void Init()
         {
@@ -233,6 +239,17 @@ namespace SofarHVMExe.ViewModel
                 //BCU选择设备ID
                 targetAddr = DeviceManager.Instance().GetSelectDev();
 
+                foreach (CanFrameModel item in frameCfgModel.CanFrameModels)
+                {
+                    if (item.Name.Contains("SN"))
+                    {
+                        if (item.Id == 0x19850081 || item.Id == 0x0D8B80A3 || item.Id == 0x0D8B80A1 || item.Id == 0x0D8B0080)
+                        {
+                            snList.Add(item);
+                        }
+                    }
+                }
+
                 //正在读取状态，需终止操作并将变量初始化
                 if (Status)
                 {
@@ -252,11 +269,13 @@ namespace SofarHVMExe.ViewModel
                     {
                         cts = new CancellationTokenSource();
                         Status = true;
+                        Flag_sn = true;
 
-                        /*if (!GetSn())
+                        if (!GetSn())
                         {
                             AddMsg($"下发读设备序列号失败！");
-                        }*/
+                            Flag_sn = false;
+                        }
 
                         if (!StartReadFile())
                         {
@@ -317,7 +336,7 @@ namespace SofarHVMExe.ViewModel
                     {
                         if (isPackage)
                         {
-                            Debug.WriteLine("SN:" + SN);
+                            Debug.WriteLine("success-sn:" + SN);
                             ok = true;
                             break;
                         }
@@ -404,7 +423,7 @@ namespace SofarHVMExe.ViewModel
                         }
                         write_read_file_data(sendIndex * dataLength, datasize, fileNo);
                         AddMsg($"请求次数：{i + 1} 请求偏移地址：{sendIndex * dataLength}，长度为{datasize}");
-                        Thread.Sleep(50 * (i + 1));
+                        Thread.Sleep(5 * (i + 1));
 
                         //在1000ms内如果收到正确应答则ok
                         Stopwatch timer = new Stopwatch();
@@ -690,7 +709,17 @@ namespace SofarHVMExe.ViewModel
             }
 
             //非连续帧0，连续帧1
-            if (frameId.ContinuousFlag == 0 && frameId.FC == 40)
+            if (frameId.ContinuousFlag == 1 && Flag_sn && (frameId.FC == 11 || frameId.FC == 5))
+            {
+                CanFrameModel? frame = ProtocolHelper.MultiFrameToModel(snList, recvData.ID, recvData.Data, devAddr);
+                if (frame == null)
+                    return;
+
+                UpdateContinueRecv(frame);
+                isPackage = true;
+                Flag_sn = false;
+            }
+            else if (frameId.ContinuousFlag == 0 && frameId.FC == 40)
             {
                 //测试打印
                 Debug.WriteLine($"[接收]请求应答帧，0x{recvData.ID.ToString("X")} {BitConverter.ToString(recvData.Data)}");
@@ -708,27 +737,38 @@ namespace SofarHVMExe.ViewModel
 
                     AddMsg($"{DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff")} result：{dataInfos[2].Value},子设备地址：{dataInfos[0].Value},文件编号：{dataInfos[1].Value},文件大小：{dataInfos[3].Value}");
 
-                    if (int.Parse(dataInfos[2].Value) == 0x0)
+                    int val = 0;
+                    int.TryParse(dataInfos[2].Value, out val);
+                    if (val == 0x0)
                     {
                         isPackage = true;
                         fileTotal = int.Parse(dataInfos[3].Value);
 
                         //1.生成文件名称
+                        string fileNo = "";
                         string fileNameType = "";
                         string fileHeadContent = "";
                         if (CurrentObjval == 0 && BmuId == 0)
                         {
+                            fileNo = targetAddr.ToString("X2");
                             fileNameType = "BCU";
                             fileHeadContent = BCUStr;
                         }
+                        else if (CurrentObjval == 0 && BmuId != 0)
+                        {
+                            fileNo = BmuId.ToString();
+                            fileNameType = "BMU";
+                            fileHeadContent = BMUStr;
+                        }
                         else
                         {
+                            fileNo = targetAddr.ToString("X2");
                             fileNameType = "BMU";
                             fileHeadContent = BMUStr;
                         }
 
 
-                        fileName = string.Format("{0}_{1}_{2}_{3}", fileType, fileNameType, CurrentObjval == 0 ? targetAddr.ToString("X2") : BmuId, System.DateTime.Now.ToString("yy-MM-dd-HH-mm-ss"));
+                        fileName = string.Format("{0}_{1}_{2}_{3}_{4}", fileType, fileNameType, fileNo, System.DateTime.Now.ToString("yy-MM-dd-HH-mm-ss"), SN);
                         //2.检查文件夹，生成文件及表头
                         if (!Directory.Exists("Log//InteractionFile"))
                         {
@@ -851,21 +891,11 @@ namespace SofarHVMExe.ViewModel
                     FileWrite(fileName, content);
                 }
             }
-            /*else if (frameId.ContinuousFlag == 1 &&  (frameId.FC == 11 || frameId.FC == 5))
-            {
-                //List<CanFrameModel>
-                CanFrameModel? frame = ProtocolHelper.MultiFrameToModel(frameCfgModel.CanFrameModels, recvData.ID, recvData.Data, devAddr);
-                if (frame == null)
-                    return;
-
-                UpdateContinueRecv(frame);
-                isPackage = true;
-            }*/
         }
 
         private void UpdateContinueRecv(CanFrameModel frame)
         {
-            if (frame.FrameDatas.Count <= 0)
+            if (frame.FrameDatas.Count <= 0 || frame.FrameDatas[0].Data.Length < 20)
                 return;
 
             try
@@ -875,10 +905,10 @@ namespace SofarHVMExe.ViewModel
 
                 for (int i = 0; i < bytes.Length; i++)
                 {
-                    bytes[0] = datas[i + 4];
+                    bytes[i] = datas[i + 4];
                 }
 
-                SN = Encoding.ASCII.GetString(bytes);
+                SN = System.Text.Encoding.UTF8.GetString(bytes).Replace("\0", ""); //Encoding.ASCII.GetString(bytes);
             }
             catch (Exception ex)
             {

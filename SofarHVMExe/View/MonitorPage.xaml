@@ -190,9 +190,9 @@
                                 <Button Content="清除" Width="50" Height="25" BorderBrush="#bdc3c7" Margin="0 0 0 0"
                                         Command="{Binding ClearDataCommand}" />
 
-                                <!--<CheckBox Content="按配置排序" VerticalAlignment="Center" VerticalContentAlignment="Center" Visibility="Collapsed"
+                                <!--<CheckBox Content="按配置排序" VerticalAlignment="Center" VerticalContentAlignment="Center"
                                           IsChecked="{Binding SortByCfg}" Margin="10 0 0 0"/>
-
+                                
                                 <Button Content="保存" Width="50" Height="25" BorderBrush="#bdc3c7" Margin="10 0 0 0" Visibility="Collapsed"
                                         Command="{Binding SaveCommand}"/>
 

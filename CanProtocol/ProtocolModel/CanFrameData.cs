@@ -359,7 +359,7 @@ namespace CanProtocol.ProtocolModel
                 Type = "U16",
                 Value = "0",
                 Unit = "V",
-                Precision = Convert.ToDecimal(0.1)
+                Precision = Convert.ToDecimal(1)
             });
             DataInfos.Add(new CanFrameDataInfo()
             {
@@ -2057,5 +2057,9 @@ namespace CanProtocol.ProtocolModel
             return true;
         }
 
+        public static implicit operator ObservableCollection<object>(CanFrameDataInfo v)
+        {
+            throw new NotImplementedException();
+        }
     }//class
 }

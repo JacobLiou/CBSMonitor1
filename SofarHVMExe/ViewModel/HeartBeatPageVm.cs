@@ -1,5 +1,6 @@
 ﻿using CanProtocol.ProtocolModel;
 using Communication.Can;
+using CommunityToolkit.Mvvm.ComponentModel;
 using SofarHVMExe.Model;
 using SofarHVMExe.Utilities;
 using SofarHVMExe.Utilities.Global;
@@ -44,6 +45,37 @@ namespace SofarHVMExe.ViewModel
             {
 
                 DeviceManager.Instance().Devices = value;
+                OnPropertyChanged();
+            }
+        }
+
+        private List<string> _SrcTypeItems = new List<string>()
+        {
+            "PCS",
+            "BCU",
+            "BMU"
+        };
+        public List<string> SrcTypeItems
+        {
+            get => _SrcTypeItems;
+            set
+            {
+                _SrcTypeItems = value;
+                OnPropertyChanged();
+            }
+        }
+
+        private bool refreshFlag = true;
+
+        private string _selectSrcType = "";
+        public string SelectSrcType
+        {
+            get => _selectSrcType;
+            set
+            {
+                refreshFlag = true;
+
+                _selectSrcType = value;
                 OnPropertyChanged();
             }
         }
@@ -134,74 +166,100 @@ namespace SofarHVMExe.ViewModel
             string strId = recvData.ID.ToString("X");
             Debug.WriteLine(strId);
 
-            if (!strId.Contains("197F")) //非心跳帧过滤
-                return;
-
-            CanFrameID frameId = new CanFrameID();
-            frameId.ID = recvData.ID;
-            int devId = frameId.SrcType;
-            int addr = frameId.SrcAddr;
-
-            //指定时间内检测到设备
-            Device findDev = DataSource.Find((dev) => (dev.address == addr));
-
-            if (findDev != null)
+            if (strId.Contains("197F") || strId.StartsWith("D7F"))
             {
-                if (findDev.Connected)
+                CanFrameID frameId = new CanFrameID();
+                frameId.ID = recvData.ID;
+                int devId = frameId.SrcType;
+                int addr = frameId.SrcAddr;
+
+                string srcType = "";
+                switch (devId)
                 {
-                    //已连接 重新启动定时器
-                    findDev.ResetTimer();
-                    UpdateDevData(findDev, recvData.Data);
+                    case 1:
+                        srcType = "PCS";
+                        break;
+                    case 4:
+                        srcType = "BCU";
+                        break;
+                    case 5:
+                        srcType = "BMU";
+                        break;
+                    default:
+                        srcType = devId.ToString();
+                        break;
+                }
+
+                if (_selectSrcType != "" && srcType != _selectSrcType)
+                    return;
+
+
+                if (refreshFlag && _selectSrcType == "")
+                {
+                    refreshFlag = false;
+                    _selectSrcType = srcType;
+                }
+
+                //指定时间内检测到设备
+                Device findDev = DataSource.Find((dev) => (dev.address == addr));
+
+                if (findDev != null)
+                {
+                    if (findDev.Connected)
+                    {
+                        //已连接 重新启动定时器
+                        findDev.ResetTimer();
+                        UpdateDevData(findDev, recvData.Data);
+                    }
+                    else
+                    {
+                        //未连接
+                        //1、高亮设备显示
+                        findDev.Connected = true;
+                        findDev.ID = "0x" + strId;
+                        findDev.Name = $"设备{findDev.address}";
+                        findDev.address = addr;
+                        UpdateDevData(findDev, recvData.Data);
+                        findDev.StartDetect(UpdateMsg);
+                        //2、更新信息框信息
+                        string msg = $"{DateTime.Now.ToString("HH:mm:ss.fff")}  设备[{addr}]已连接！";
+                        UpdateMsg(msg);
+                    }
                 }
                 else
                 {
-                    //未连接
-                    //1、高亮设备显示
-                    findDev.Connected = true;
-                    findDev.ID = "0x" + strId;
-                    findDev.Name = $"设备{(SrcType)devId}-{findDev.address}";
-                    findDev.address = addr;
-                    UpdateDevData(findDev, recvData.Data);
-                    findDev.StartDetect(UpdateMsg);
-                    //2、更新信息框信息
-                    string msg = $"{DateTime.Now.ToString("HH:mm:ss.fff")}  设备[{addr}]已连接！";
-                    UpdateMsg(msg);
+                    //设备地址不在已有的范围 设置到最后一个未连接的设备上
+                    Device unConnectedDev = DataSource.FindLast((dev) => (!dev.Connected));
+                    if (unConnectedDev != null)
+                    {
+                        //1、高亮设备显示
+                        unConnectedDev.Name = "设备" + addr.ToString();
+                        unConnectedDev.address = addr;
+                        unConnectedDev.Connected = true;
+                        unConnectedDev.ID = "0x" + strId;
+                        UpdateDevData(unConnectedDev, recvData.Data);
+                        unConnectedDev.StartDetect(UpdateMsg);
+                        //2、更新信息框信息
+                        string msg = $"{DateTime.Now.ToString("HH:mm:ss.fff")}  设备[{addr}]已连接！";
+                        UpdateMsg(msg);
+
+                        //按设备地址大小调整顺序
+                        DataSource.Sort((dev1, dev2) => dev1.address.CompareTo(dev2.address));
+                    }
                 }
-            }
-            else
-            {
-                //设备地址不在已有的范围 设置到最后一个未连接的设备上
-                Device unConnectedDev = DataSource.FindLast((dev) => (!dev.Connected));
-                if (unConnectedDev != null)
+
+                //更新状态栏已连接设备集合
+                List<Device> devList = DeviceManager.Instance().GetConnectDevs();
+                string devs = "";
+                devList.ForEach((dev) =>
                 {
-                    //1、高亮设备显示
-                    unConnectedDev.Name = $"设备{(SrcType)devId}-{addr.ToString()}"; 
-                    unConnectedDev.address = addr;
-                    unConnectedDev.Connected = true;
-                    unConnectedDev.ID = "0x" + strId;
-                    UpdateDevData(unConnectedDev, recvData.Data);
-                    unConnectedDev.StartDetect(UpdateMsg);
-                    //2、更新信息框信息
-                    string msg = $"{DateTime.Now.ToString("HH:mm:ss.fff")}  设备[{addr}]已连接！";
-                    UpdateMsg(msg);
+                    string tmp = dev.Name.ToString();
+                    devs += tmp + ",";
+                });
 
-                    //按设备地址大小调整顺序
-                    DataSource.Sort((dev1, dev2) => dev1.address.CompareTo(dev2.address));
-                }
+                devs = devs.TrimEnd(',');
+                GlobalManager.Instance().UpdateStatusBar_ConnectDevs(devs);
             }
-
-            //更新状态栏已连接设备集合
-            List<Device> devList = DeviceManager.Instance().GetConnectDevs();
-            //List<string> devs = new List<string>();
-            string devs = "";
-            devList.ForEach((dev) =>
-            {
-                string tmp = dev.Name.ToString();
-                devs += tmp + ",";
-            });
-
-            devs = devs.TrimEnd(',');
-            GlobalManager.Instance().UpdateStatusBar_ConnectDevs(devs);
         }
         /// <summary>
         /// 通道1接收处理

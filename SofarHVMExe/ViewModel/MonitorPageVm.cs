@@ -357,14 +357,15 @@ namespace SofarHVMExe.ViewModel
         {
             //FrameInfoDataSrc.Clear();
             SpecialFrameInfo.Clear();
-
             sortFrameInfos.Clear();
-            FrameInfoDataSrc = new ObservableCollection<SendRecvFrameInfo>(sortFrameInfos);
+            //FrameInfoDataSrc = new ObservableCollection<SendRecvFrameInfo>(sortFrameInfos);
+            UpdateMsgDisplay(sortFrameInfos);
         }
         public void ClearDataByUnSelectDev(Device dev)
         {
             sortFrameInfos.Clear();
-            FrameInfoDataSrc = new ObservableCollection<SendRecvFrameInfo>(sortFrameInfos);
+            //FrameInfoDataSrc = new ObservableCollection<SendRecvFrameInfo>(sortFrameInfos);
+            UpdateMsgDisplay(sortFrameInfos);
         }
         private void ShowMsgInfo(object o)
         {
@@ -669,7 +670,7 @@ namespace SofarHVMExe.ViewModel
                     devAddr = 0;
                 }
 
-                if ((id >> 16) == 0x197F)//心跳帧特殊处理
+                if ((id >> 16) == 0x197F || (id >> 16) == 0xD7F)//心跳帧特殊处理
                 {
                     if ((devAddr != 0 && frameId.SrcAddr != devAddr) || recvData.Data.Length != 8)
                     {
@@ -1033,11 +1034,11 @@ namespace SofarHVMExe.ViewModel
             frameInfoList.AddRange(sendList);
 
             //变更源数据，DESC排序
-            frameInfoList = frameInfoList.OrderBy(X => X.ID).ToList();
-            UpdateMsgDisplay(frameInfoList);
+            //frameInfoList = frameInfoList.OrderBy(X => X.ID).ToList();
+            UpdateMsgDisplay(SortByFrameCfg(frameInfoList));
         }//func
 
-        /// <summary>
+        /// <summary> 
         /// 更新界面帧数据显示
         /// </summary>
         /// <param name="frameInfos"></param>
@@ -1049,11 +1050,14 @@ namespace SofarHVMExe.ViewModel
                 if (GlobalManager.Instance().CurrentPage != GlobalManager.Page.Monitor)
                     return;
 
-                sortFrameInfos = frameInfos;
-                if (sortByCfg)
+                //sortFrameInfos = frameInfos;
+                sortFrameInfos = SortByFrameCfg(frameInfos);
+                //sortFrameInfos = frameInfos.OrderBy(X => X.ID).ToList();
+
+                System.Windows.Application.Current?.Dispatcher.Invoke(() =>
                 {
-                    sortFrameInfos = SortByFrameCfg(frameInfos);
-                }
+                    FrameInfoDataSrc = new ObservableCollection<SendRecvFrameInfo>(sortFrameInfos);
+                });
             }
             catch (Exception ex)
             {
@@ -1282,7 +1286,8 @@ namespace SofarHVMExe.ViewModel
                 if (!CheckConnect())
                     return;
 
-                FrameInfoDataSrc = new ObservableCollection<SendRecvFrameInfo>(sortFrameInfos);
+                //FrameInfoDataSrc = new ObservableCollection<SendRecvFrameInfo>(sortFrameInfos);
+                UpdateMsgDisplay(sortFrameInfos);
             }
             catch (Exception ex)
             {

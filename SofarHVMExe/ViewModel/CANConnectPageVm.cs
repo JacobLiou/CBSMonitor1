@@ -602,16 +602,9 @@ namespace SofarHVMExe.ViewModel
             if (!ShowHeartBeatCan1)
             {
                 string recvId = recvData.ID.ToString("X");
-                if (recvId.Contains("197F"))
+                if (recvId.Contains("197F") || recvId.StartsWith("D7F"))
                     return;
             }
-            /*//微秒显示间隔时间
-            uint timeus = recvdata.timestamp - lasttime;
-            lasttime = recvdata.timestamp;
-            uint timesecond = timeus / 1000000;
-            uint timems = timeus % 1000000 / 1000;
-            timeus = timeus % 1000000 % 1000;
-            string time = $"{timesecond}:{timems}:{timeus}";*/
             string time = DateTime.Now.ToString("HH:mm:ss.fff"); //时分秒毫秒
             string id = "0x" + recvData.ID.ToString("X8");
             string len = recvData.DataLen.ToString();
@@ -643,7 +636,7 @@ namespace SofarHVMExe.ViewModel
             if (!ShowHeartBeatCan2)
             {
                 string recvId = recvData.ID.ToString("X");
-                if (recvId.Contains("197F"))
+                if (recvId.Contains("197F") || recvId.StartsWith("D7F"))
                     return;
             }
 

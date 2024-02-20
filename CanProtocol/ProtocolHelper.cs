@@ -261,6 +261,10 @@ namespace CanProtocol
                                 s_packageBufferList.Remove(findMulPackage);
                                 return resultFrame;
                             }
+                            else if (packageIndex != findMulPackage.packageNum)
+                            {
+                                return null; //包非连续，直接清除
+                            }
                             else
                             {
                                 findMulPackage.packageNum++;

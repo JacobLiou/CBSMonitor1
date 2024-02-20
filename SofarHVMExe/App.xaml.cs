@@ -77,8 +77,8 @@ namespace SofarHVMExe
         /// <param name="e"></param>
         private void Current_DispatcherUnhandledException(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
         {
-            MessageBox.Show("当前应用程序遇到一些问题，出现异常须重启软件。");
-            LogHelper.Error("未捕获到的UI线程异常！", e.Exception);
+            //MessageBox.Show("当前应用程序遇到一些问题，出现异常须重启软件。");
+            LogHelper.Error($"{System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")}未捕获到的UI线程异常: {e.Exception.Message}", e.Exception);
             e.Handled = true;
         }
 
@@ -93,7 +93,7 @@ namespace SofarHVMExe
             //var terminatingMessage = e.IsTerminating ? " The application is terminating." : string.Empty;
             //var exceptionMessage = exception?.Message ?? "An unmanaged exception occured.";
             //var message = string.Concat(exceptionMessage, terminatingMessage);
-            LogHelper.Error("未捕获到的非UI线程异常！" , (System.Exception)e.ExceptionObject);
+            LogHelper.Error($"{System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")}未捕获到的非UI线程异常！" , (System.Exception)e.ExceptionObject);
         }
 
         /// <summary>
@@ -103,7 +103,7 @@ namespace SofarHVMExe
         /// <param name="e"></param>
         private void UnobservedTaskException(object sender, UnobservedTaskExceptionEventArgs e)
         {
-            LogHelper.Error("未捕获到的Task任务异常！" + e.Exception);
+            LogHelper.Error($"{System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")}未捕获到的Task任务异常: {e.Exception.Message}" + e.Exception);
             e.SetObserved();
         }
 

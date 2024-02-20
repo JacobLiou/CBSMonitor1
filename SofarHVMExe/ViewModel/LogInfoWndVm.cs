@@ -29,6 +29,7 @@ using Application = System.Windows.Application;
 using DataFormats = System.Windows.DataFormats;
 using MessageBox = System.Windows.MessageBox;
 using static SofarHVMExe.Utilities.Global.GlobalManager;
+using NPOI.SS.Formula.Functions;
 
 namespace SofarHVMExe.ViewModel
 {
@@ -137,32 +138,24 @@ namespace SofarHVMExe.ViewModel
 
             //读取所有log文件
             DirectoryInfo folder = new DirectoryInfo(directory);
-            foreach (FileInfo logFile in folder.GetFiles("*.log"))
+            FileInfo[] fileInfos1 = folder.GetFiles("*.log");
+            var fileInfos = fileInfos1.OrderByDescending(f => f.LastWriteTime).ToArray();
+
+            foreach (FileInfo logFile in fileInfos)
             {
                 string date = $"日期：{logFile.Name}";
                 logInfos.Add(date);
                 string[] temp = TxtFileHelper.ReadFileLines(logFile.FullName);
-                logInfos.AddRange(temp);
-            }
+                int count = (temp.Length - 1) / 3;
+                for (int row = count - 1; row >= 0; row--)
+                {
+                    int index = row * 3;
+                    logInfos.Add(temp[index]);
+                    logInfos.Add(temp[index + 1]);
+                    logInfos.Add(temp[index + 2]);
+                }
 
-            return logInfos.ToArray();
-        }
-        private string[] ReadFaultFile2()
-        {
-            List<string> logInfos = new List<string>();
-            string exePath = System.AppDomain.CurrentDomain.BaseDirectory;
-            string directory = exePath + @"log\FaultAndWarning\";
-            if (!Directory.Exists(directory))
-                return logInfos.ToArray();
-
-            //读取所有log文件
-            DirectoryInfo folder = new DirectoryInfo(directory);
-            foreach (FileInfo logFile in folder.GetFiles("*.log"))
-            {
-                string date = $"日期：{logFile.Name}";
-                logInfos.Add(date);
-                string[] temp = TxtFileHelper.ReadFileLines(logFile.FullName);
-                logInfos.AddRange(temp);
+                //logInfos.AddRange(temp);
             }
 
             return logInfos.ToArray();
@@ -173,15 +166,16 @@ namespace SofarHVMExe.ViewModel
                 return;
 
             Paragraph pg = new Paragraph();
-            //for (int i=0; i< msgs.Length; i++)
-            for (int i = msgs.Length - 1; i > 0; i--)
+            for (int i = 0; i < msgs.Length; i++)
+            //for (int i = msgs.Length - 1; i > 0; i--)
             {
                 string msg = msgs[i];
                 Color color = Colors.Gray;
-                if (i == msgs.Length - 1 && msgs[0].StartsWith("日期"))
+                //if (i == msgs.Length - 1 && msgs[0].StartsWith("日期"))
+                if (msg.StartsWith("日期"))
                 {
                     msg = msg.Replace("故障告警日志-", "").Replace(".log", "");
-                    msg = $"******** {msgs[0]} ********";
+                    msg = $"******** {msg} ********";
                     color = Colors.Orange;
                 }
                 else if (msg.Contains("[故障]"))

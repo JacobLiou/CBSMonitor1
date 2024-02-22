@@ -1740,6 +1740,147 @@ namespace CanProtocol.ProtocolModel
         }
 
         /// <summary>
+        /// 增加文件传输子设备交互报文-事件记录数据
+        /// 用于连续-多包
+        /// </summary>
+        public void AddInitMultiDataToPCS()
+        {
+            CanFrameDataInfo info1 = new CanFrameDataInfo();
+            info1.Name = "包序号";
+            info1.Type = "U8";
+            info1.Value = "0";
+            DataInfos.Add(info1);
+
+            CanFrameDataInfo info2 = new CanFrameDataInfo();
+            info2.Name = "故障起始地址";
+            info2.Type = "U16";
+            info2.Value = "0x0000";
+            DataInfos.Add(info2);
+
+            CanFrameDataInfo info3 = new CanFrameDataInfo();
+            info3.Name = "故障响应条数";
+            info3.Type = "U16";
+            info3.Value = "0";
+            info3.Unit = "个";
+            DataInfos.Add(info3);
+
+            #region 事件记录
+            for (int i = 0; i < 4; i++)
+            {
+                //时间
+                DataInfos.Add(new CanFrameDataInfo()
+                {
+                    Name = "时间-年",
+                    Type = "U8",
+                    Value = "0"
+                });
+                DataInfos.Add(new CanFrameDataInfo()
+                {
+                    Name = "时间-月",
+                    Type = "U8",
+                    Value = "0"
+                });
+                DataInfos.Add(new CanFrameDataInfo()
+                {
+                    Name = "时间-日",
+                    Type = "U8",
+                    Value = "0"
+                });
+                DataInfos.Add(new CanFrameDataInfo()
+                {
+                    Name = "时间-时",
+                    Type = "U8",
+                    Value = "0"
+                });
+                DataInfos.Add(new CanFrameDataInfo()
+                {
+                    Name = "时间-分",
+                    Type = "U8",
+                    Value = "0"
+                });
+                DataInfos.Add(new CanFrameDataInfo()
+                {
+                    Name = "时间-秒",
+                    Type = "U8",
+                    Value = "0"
+                });
+                DataInfos.Add(new CanFrameDataInfo()
+                {
+                    Name = "event->Code",
+                    Type = "U8",
+                    Value = "0"
+                });
+                DataInfos.Add(new CanFrameDataInfo()
+                {
+                    Name = "event->Type",
+                    Type = "U8",
+                    Value = "0"
+                });
+                DataInfos.Add(new CanFrameDataInfo()
+                {
+                    Name = "log.code",
+                    Type = "U16",
+                    Value = "0"
+                });
+                DataInfos.Add(new CanFrameDataInfo()
+                {
+                    Name = "info[0]",
+                    Type = "U16",
+                    Value = "0"
+                });
+                DataInfos.Add(new CanFrameDataInfo()
+                {
+                    Name = "info[1]",
+                    Type = "U16",
+                    Value = "0"
+                });
+                DataInfos.Add(new CanFrameDataInfo()
+                {
+                    Name = "info[2]",
+                    Type = "U16",
+                    Value = "0"
+                });
+                DataInfos.Add(new CanFrameDataInfo()
+                {
+                    Name = "info[3]",
+                    Type = "U16",
+                    Value = "0"
+                });
+                DataInfos.Add(new CanFrameDataInfo()
+                {
+                    Name = "info[4]",
+                    Type = "U16",
+                    Value = "0"
+                });
+                DataInfos.Add(new CanFrameDataInfo()
+                {
+                    Name = "info[5]",
+                    Type = "U16",
+                    Value = "0"
+                });
+                DataInfos.Add(new CanFrameDataInfo()
+                {
+                    Name = "info[6]",
+                    Type = "U16",
+                    Value = "0"
+                });
+                DataInfos.Add(new CanFrameDataInfo()
+                {
+                    Name = "info[7]",
+                    Type = "U16",
+                    Value = "0"
+                });
+            }
+            #endregion
+
+            CanFrameDataInfo info4 = new CanFrameDataInfo();
+            info4.Name = "CRC校验";
+            info4.Type = "U16";
+            info4.Value = "0x0";
+            DataInfos.Add(info4);
+        }
+
+        /// <summary>
         /// 增加起始帧默认数据（废弃无用）
         /// 用于连续-多包
         /// </summary>

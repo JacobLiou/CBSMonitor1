@@ -347,10 +347,6 @@ namespace SofarHVMExe.ViewModel
                 OnPropertyChanged();
             }
         }
-        /*public List<string> FirmwareList
-        {
-            get { return new List<string> { "PCS", "BCU", "BMU" }; }
-        }*/
         /// <summary>
         /// 当前升级的固件下标
         /// </summary>
@@ -361,25 +357,7 @@ namespace SofarHVMExe.ViewModel
             set
             {
                 firmwareIndex = value;
-                /*switch (firmwareIndex)
-                {
-                    case 0:
-                        IsTiming = Visibility.Hidden;
-                        DeleteFFData = true;
-                        break;
-                    case 1:
-                        IsTiming = Visibility.Visible;
-                        DeleteFFData = false;
-                        ChipRole = 0x24;
-
-                        break;
-                    case 2:
-                        IsTiming = Visibility.Visible;
-                        DeleteFFData = false;
-                        ChipRole = 0x2D;
-                        break;
-                }*/
-
+               
                 if (firmwareIndex <= 1)
                 {
                     IsTiming = Visibility.Visible;
@@ -396,7 +374,6 @@ namespace SofarHVMExe.ViewModel
         }
         public DstAndSrcType[] dstAndSrcTypes
         {
-            //get { return typeKey[FirmwareIndex].ToArray(); }
             get
             {
                 int index = FirmwareIndex <= 1 ? 0 : FirmwareIndex - 1;
@@ -425,6 +402,8 @@ namespace SofarHVMExe.ViewModel
         /// 当前升级对象集合
         /// </summary>
         public Dictionary<int, bool> UpDeviceDic = new Dictionary<int, bool>();
+        private HashSet<uint> successIdsPublic = new HashSet<uint>();
+
         #endregion
 
         #region 命令
@@ -898,7 +877,7 @@ namespace SofarHVMExe.ViewModel
             MaxPackageNum = 5;
             upgradeExecuteResult = -1;
             AddMsg($"{DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff")}  发起查询升级固件请求");
-            for (int i = 0; i < 90; i++)
+            for (int i = 0; i < 180; i++)
             {
                 write_upgrade_execute_request(0x01);
                 Thread.Sleep(1000);
@@ -912,11 +891,26 @@ namespace SofarHVMExe.ViewModel
                     {
                         if (upgradeExecuteResult == 0)
                         {
-                            AddMsg($"请求成功");
-                            ok = true;
+                            //AddMsg($"请求成功");
+                            var test = UpDeviceDic.Where(x => x.Value == false);
+                            if (test.Count() == 0)
+                            {
+                                ok = true;
+
+                                foreach (var item in successIdsPublic)
+                                {
+                                    AddMsg($"设备[{item}]查询成功，升级成功☺");
+                                }
+                            }
                         }
 
+
                         break;
+                    }
+                    else
+                    {
+                        if (upgradeExecuteResult == 0x1 || upgradeExecuteResult == 0x2)
+                            return ok;
                     }
 
                     if (timer.ElapsedMilliseconds > 1000)
@@ -929,6 +923,22 @@ namespace SofarHVMExe.ViewModel
                 if (ok)
                     break;
             }//for
+
+            var test2 = UpDeviceDic.Where(x => x.Value == false);
+            if (test2.Count() != 0)
+            {
+                foreach (var item in UpDeviceDic)
+                {
+                    if (item.Value)
+                    {
+                        AddMsg($"设备[{item}]查询成功，升级成功☺");
+                    }
+                    else
+                    {
+                        AddMsg($"设备[{item}]查询异常，升级失败！！！☹");
+                    }
+                }
+            }
 
             return ok;
         }
@@ -1694,7 +1704,7 @@ namespace SofarHVMExe.ViewModel
                 {
                     foreach (var item in successIds)
                     {
-                        AddMsg($"设备[{item}]检验成功，升级成功☺");
+                        AddMsg($"设备[{item}]检验成功，升级成功☺（如果为电池产品，请忽略该提示信息）");
 
                         UpDeviceDic[Convert.ToInt32(item)] = false;
                     }
@@ -1744,7 +1754,7 @@ namespace SofarHVMExe.ViewModel
                         {
                             if (devId.Key == item && devId.Value)
                             {
-                                AddMsg($"设备[{item}]检验成功，升级成功☺");
+                                AddMsg($"设备[{item}]检验成功，升级成功☺（如果为电池产品，请忽略该提示信息）");
                             }
                         }
                     }
@@ -1833,7 +1843,6 @@ namespace SofarHVMExe.ViewModel
                         }
                     }
 
-
                     for (int i = 0; i < num; i++)
                     {
                         //对每一个设备进行循环补包（指定补包次数）
@@ -1874,7 +1883,7 @@ namespace SofarHVMExe.ViewModel
                         //待调整区域
                         if (ok)
                         {
-                            AddMsg($"设备[{frameId.SrcAddr}]升级成功！！！☺");
+                            AddMsg($"设备[{frameId.SrcAddr}]升级成功！！！☺（如果为电池产品，请忽略该提示信息）");
                         }
                         else
                         {
@@ -1958,30 +1967,31 @@ namespace SofarHVMExe.ViewModel
                     return false;
                 }
 
-
-
                 byte resultDesc = data[0];
-                switch (resultDesc)
-                {
-                    case 0:
-                    case 3:
-                        upgradeExecuteResult = resultDesc;
+                upgradeExecuteResult = resultDesc;
 
-                        /*if (resultDesc == 0x03)
+                if (resultDesc == 0 || resultDesc == 3)
+                {
+                    if (resultDesc == 0)
+                    {
+                        foreach (var item in UpDeviceDic)
                         {
-                            t1 = new System.Timers.Timer(100);
-                            t1.Elapsed += T1_Elapsed;
-                            t1.Enabled = true;
-                            t1.Start();
-                        }*/
-                        return true;
-                        break;
-                    default:
-                        LogHelper.AddLog($"非正常状态值：{resultDesc}");
-                        break;
+                            CanFrameID canId = new CanFrameID(id);
+                            if (item.Key == canId.SrcAddr)
+                            {
+                                successIdsPublic.Add(canId.SrcAddr);
+                                UpDeviceDic[item.Key] = true;
+                                break;
+                            }
+                        }
+                    }
+                    return true;
                 }
-                //if (resultDesc == 0)
-                //    return true;
+                else
+                {
+
+                    LogHelper.AddLog($"非正常状态值：{resultDesc}");
+                }
 
             }
             catch (Exception ex)

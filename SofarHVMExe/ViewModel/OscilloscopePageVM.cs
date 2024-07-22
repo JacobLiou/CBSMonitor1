@@ -5,44 +5,24 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
-using System.Security.RightsManagement;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Data;
-using System.Windows.Input;
 using System.Windows.Media;
 using CanProtocol.ProtocolModel;
 using Communication.Can;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using NPOI.SS.Formula.Functions;
-using Org.BouncyCastle.Asn1.Cmp;
 using ScottPlot;
-using ScottPlot.Plottable;
 using ScottPlot.Renderable;
 using SofarHVMExe.Util.TI;
 using CanProtocol.Utilities;
-using System.Windows.Threading;
-using System.Windows.Interop;
-using NPOI.OpenXml4Net.Util;
 using SofarHVMExe.Utilities;
-using Org.BouncyCastle.Asn1.Ocsp;
-using MultiLanguages;
 using SofarHVMExe.Model;
-using NPOI.POIFS.NIO;
-using NPOI.OpenXmlFormats.Dml.Chart;
-using ScottPlot.Drawing.Colormaps;
-using System.Collections;
 using System.IO;
-using FontAwesome.Sharp;
-using NPOI.SS.Formula.Atp;
-using NPOI.Util;
 using SofarHVMExe.Utilities.Global;
 using Microsoft.Win32;
-using System.Linq.Expressions;
-using System.Data;
 
 namespace SofarHVMExe.ViewModel
 {
@@ -1927,7 +1907,6 @@ namespace SofarHVMExe.ViewModel
                 System.Drawing.Color.Red,
                 System.Drawing.Color.Green,
                 System.Drawing.Color.DodgerBlue,
-                
 
                 System.Drawing.Color.Fuchsia,
                 System.Drawing.Color.Goldenrod,
@@ -2665,6 +2644,7 @@ namespace SofarHVMExe.ViewModel
                         {
                             Index = curWaveIdx,
                             FaultType = (FaultWavesInfoVM.FaultTypeEnum)faultTypeIndex,
+                            
                             RecordTime = recordTime,
                             FaultWavesData = wavesDataList,
                         });
@@ -2726,7 +2706,22 @@ namespace SofarHVMExe.ViewModel
 
         public DateTime RecordDateTime { get; set; }
 
-        public FaultTypeEnum FaultType { get; set; }
+
+        public FaultTypeEnum FaultType
+        {
+            get => _faultType;
+            set
+            {
+                _faultType = value;
+                OnPropertyChanged();
+            }
+        }
+        private FaultTypeEnum _faultType;
+
+        public string FaultTypeString
+        {
+            get => $"[{((int)FaultType)}]{FaultType.ToString()}"; 
+        }
 
         public List<List<double>> FaultWavesData { get; set; }
 
@@ -2812,7 +2807,7 @@ namespace SofarHVMExe.ViewModel
 
 
     #region ValueConverters
-    public class ChannelColorConverter : IValueConverter
+    public class DrawingColorToMediaColorConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {

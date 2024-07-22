@@ -19,7 +19,7 @@
         <Grid.Resources>
             <!--<vm:TimeUnitSliderConverter x:Key="TimeUnitSliderCvt"/>-->
             <vm:BoolInverseConverter x:Key="BoolInverseCvt"/>
-            <vm:ChannelColorConverter x:Key="ChannelColorCvt"/>
+            <vm:DrawingColorToMediaColorConverter x:Key="ChannelColorCvt"/>
         </Grid.Resources>
 
         <Grid.ColumnDefinitions>
@@ -596,7 +596,7 @@
                                             <DataGridTemplateColumn.CellTemplate>
                                                 <DataTemplate>
                                                     <TextBox  IsReadOnly="True"  VerticalContentAlignment="Center" BorderBrush="Transparent"
-                                                              Text="{Binding FaultType}" />
+                                                              Text="{Binding FaultTypeString, Mode=OneWay}" />
                                                 </DataTemplate>
                                             </DataGridTemplateColumn.CellTemplate>
                                         </DataGridTemplateColumn>

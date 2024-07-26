@@ -1,11 +1,7 @@
-﻿using NPOI.SS.Formula.Functions;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Xml.Linq;
 using System.Xml.XPath;
 
@@ -412,7 +408,8 @@ namespace SofarHVMExe.Util.TI
             return "";
         }
 
-        /*public void PrintInfo() {
+        /*
+         public void PrintInfo() {
             // For debug
             Console.WriteLine($"\n=========\"{FullName}\" VariableInfo==========");
             Console.Write("SplitNames:");
@@ -447,6 +444,7 @@ namespace SofarHVMExe.Util.TI
             }
             Console.WriteLine($"\n=========\"{FullName}\" VariableInfo==========\n");
 
-        }*/
+        }
+        */
     }
 }

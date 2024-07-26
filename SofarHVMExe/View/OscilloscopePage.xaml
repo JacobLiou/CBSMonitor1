@@ -603,7 +603,7 @@
 
                                         <!--<DataGridTextColumn Header="录波时间" IsReadOnly="True"  Width="120" Binding="{Binding RecordTime}"/>-->
 
-                                        <DataGridTemplateColumn Header="录波时间" Width="130" CanUserResize="False">
+                                        <DataGridTemplateColumn Header="录波时间" Width="130" CanUserResize="True">
                                             <DataGridTemplateColumn.CellTemplate>
                                                 <DataTemplate>
                                                     <TextBox  IsReadOnly="True"  VerticalContentAlignment="Center" BorderBrush="Transparent"

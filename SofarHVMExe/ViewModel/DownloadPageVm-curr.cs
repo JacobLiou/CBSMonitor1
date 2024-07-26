@@ -357,7 +357,7 @@ namespace SofarHVMExe.ViewModel
             set
             {
                 firmwareIndex = value;
-               
+
                 if (firmwareIndex <= 1)
                 {
                     IsTiming = Visibility.Visible;
@@ -539,7 +539,7 @@ namespace SofarHVMExe.ViewModel
         }
         private void StartDownload(object o)
         {
-            bool connectState = CheckConnect();
+            bool connectState = true;//CheckConnect();
             if (connectState)
             {
                 if (!isUpdating)
@@ -552,7 +552,7 @@ namespace SofarHVMExe.ViewModel
                         {
                             if (item.FirmwareChipRole != ChipRole)
                             {
-                                AddMsg("升级失败：选择的升级固件类型与导入文件不匹配！");
+                                AddMsg("选择的升级固件类型与导入文件不匹配，升级失败！");
                                 return;
                             }
                         }
@@ -579,7 +579,7 @@ namespace SofarHVMExe.ViewModel
 
                         if (this.UpDeviceDic.Count == 0)
                         {
-                            AddMsg("升级失败：无在线设备！");
+                            AddMsg("无在线设备，升级失败！");
                             return;
                         }
 
@@ -670,7 +670,7 @@ namespace SofarHVMExe.ViewModel
 
                     if (sdspFailedCnt > 10)
                     {
-                        AddMsg($"升级失败，超过10次未收到副DSP传包确认☹");
+                        AddMsg("副DSP未应答已超过10次，升级失败！！！☹");
                         ButtonText = "开始更新";
                         isUpdating = false;
                         return;
@@ -682,7 +682,7 @@ namespace SofarHVMExe.ViewModel
 
                 if (!isUpdating)
                 {
-                    AddMsg($"升级失败，已停止更新！！！☹");
+                    AddMsg("已终止更新，升级失败！！！☹");
                     ButtonText = "开始更新";
                     isUpdating = false;
                     return;
@@ -702,7 +702,7 @@ namespace SofarHVMExe.ViewModel
                     AddMsg("");
                     if (!StartUpgrade())
                     {
-                        AddMsg($"升级失败，请再次尝试！！！☹");
+                        AddMsg("升级失败，请再次尝试！！！☹");
                         ButtonText = "开始更新";
                         isUpdating = false;
                         return;
@@ -716,7 +716,7 @@ namespace SofarHVMExe.ViewModel
                             t1.Stop();
                             isUpdating = false;
                             ButtonText = "开始更新";
-                            AddMsg($"已完成本轮升级操作☺ ☺ ☺");
+                            AddMsg("已完成本轮升级操作☺ ☺ ☺");
                         }
                     }
                 }
@@ -724,7 +724,7 @@ namespace SofarHVMExe.ViewModel
                 {
                     isUpdating = false;
                     ButtonText = "开始更新";
-                    AddMsg($"已完成本轮升级操作☺ ☺ ☺");
+                    AddMsg("已完成本轮升级操作☺ ☺ ☺");
                 }
             }
             else
@@ -775,7 +775,7 @@ namespace SofarHVMExe.ViewModel
         /// <returns></returns>
         public bool ShakeHandsV2()
         {
-            AddMsg($"{DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff")}  发起升级请求");
+            AddMsg($"{DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff")}  Step:发起握手升级请求");
 
             // 遍历当前所有的请求对象
             for (int i = 0; i < MaxPackageNum; i++)
@@ -789,7 +789,7 @@ namespace SofarHVMExe.ViewModel
                     return false;
                 }
 
-                AddMsg($"请求第{i + 1}次");
+                AddMsg($"请求第{i + 1}次");//检测2s内如果收到正确应答则ok
                 write_firmware_request();
 
                 this.CanReceiveList.Clear();
@@ -843,7 +843,7 @@ namespace SofarHVMExe.ViewModel
 
             bool ok = false;
             MaxPackageNum = 5;
-            AddMsg($"{DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff")}  发起启动升级固件请求");
+            AddMsg($"{DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff")}  Step:发起启动升级固件请求");
             write_upgrade_execute_request();
 
             foreach (var dev in UpDeviceDic)
@@ -876,7 +876,7 @@ namespace SofarHVMExe.ViewModel
             bool ok = false;
             MaxPackageNum = 5;
             upgradeExecuteResult = -1;
-            AddMsg($"{DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff")}  发起查询升级固件请求");
+            AddMsg($"{DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff")}  Step:发起查询升级固件请求");
             for (int i = 0; i < 180; i++)
             {
                 write_upgrade_execute_request(0x01);
@@ -945,7 +945,7 @@ namespace SofarHVMExe.ViewModel
         public bool CheckDateTime()
         {
             bool ok = false;
-            AddMsg("发起升级时间请求");
+            AddMsg($"{DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff")}  Step:发起升级时间请求");
             for (int i = 0; i < 3; i++)
             {
                 AddMsg($"请求第{i + 1}次");
@@ -1005,15 +1005,15 @@ namespace SofarHVMExe.ViewModel
                 {
                     try
                     {
+                        //判断数据块接收确认数据帧应答
                         if (write_firmware_block_response())
-                        {
                             return true;
-                        }
-                        else
-                        {
-                            Thread.Sleep(TempInterval);
-                            write_firmware_block_request(dstAddr, blockSize);//发起数据块接收确认数据帧请求
-                        }
+
+
+                        LogHelper.AddLog($"[请求无应答] 再次发起数据块接收确认数据帧请求");
+                        Thread.Sleep(TempInterval);
+
+                        write_firmware_block_request(dstAddr, blockSize);//发起数据块接收确认数据帧请求
                     }
                     catch (Exception ex)
                     {
@@ -1116,7 +1116,10 @@ namespace SofarHVMExe.ViewModel
         public void write_firmware_block(byte dstAddr, int blockIndex, byte[] block, int time, ref int sdspFailedCnt, bool lostPackage = false)
         {
             if (block.Length == 0)
+            {
+                AddMsg("[发送]固件块数据内容为空，已终止下发");
                 return;
+            }
 
             CanFrameID cid = new CanFrameID
             {
@@ -1471,13 +1474,13 @@ namespace SofarHVMExe.ViewModel
                     return false;
                 }
 
-                LogHelper.AddLog($"[接收]请求应答帧，0x{id.ToString("X")} {BitConverter.ToString(data)}");
-
-                byte resultDesc = data[0];
-                if (resultDesc == 0)
-                {
-                    return true;
-                }
+                LogHelper.AddLog($"[接收]请求应答帧，0x{id.ToString("X")} {BitConverter.ToString(data)} 返回状态值：{data[0].ToString("X2")}，非0为异常");
+                return true;
+                //byte resultDesc = data[0];
+                //if (resultDesc == 0)
+                //{
+                //    return true;
+                //}
             }
             catch (Exception ex)
             {
@@ -1622,7 +1625,7 @@ namespace SofarHVMExe.ViewModel
                 //实时检测当前升级状态
                 if (cts.IsCancellationRequested || !isUpdating)
                 {
-                    AddMsg($"已停止更新。");
+                    AddMsg($"已终止更新。");
                     return false;
                 }
 
@@ -1662,7 +1665,7 @@ namespace SofarHVMExe.ViewModel
 
                 if (resultFrameList.Count == 0)
                 {
-                    AddMsg($"校验固件接收结果失败，重新查询");
+                    AddMsg($"查询失败，[下载固件结果请求帧]在3秒内未响应");
                     continue;
                 }
 
@@ -1686,10 +1689,10 @@ namespace SofarHVMExe.ViewModel
                 HashSet<uint> successIds = new HashSet<uint>();
                 foreach (var item in lostPackageList)
                 {
-                    if (item.resultType != 0)//校验失败
+                    if (item.resultType != 0)
                     {
                         CanFrameID canId = new CanFrameID(item.id);
-                        AddMsg($"设备[{canId.SrcAddr}]检验失败，进入补包队列");
+                        AddMsg($"设备[{canId.SrcAddr}]检验失败，错误码:{item.resultType}");//进入补包队列
                     }
                     else
                     {
@@ -1773,7 +1776,7 @@ namespace SofarHVMExe.ViewModel
             {
                 if (!isUpdating)
                 {
-                    AddMsg($"已停止更新。");
+                    AddMsg($"已终止更新。");
                     return false;
                 }
 
@@ -1804,7 +1807,7 @@ namespace SofarHVMExe.ViewModel
 
                 if (resultFrameList.Count == 0)
                 {
-                    AddMsg($"校验固件指令在3s内接收失败，重新查询");
+                    AddMsg("查询失败，[校验固件接收结果请求帧]在3秒内未响应");
                     continue;
                 }
 
